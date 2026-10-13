@@ -60,7 +60,7 @@ Na frequência (RH), a aba **onboarding** controla a admissão 100% digital:
 
 ### Acordo de confidencialidade (NDA)
 
-Quando o onboarding tem uma **empresa contratante** (escolhida em *Dados internos*), o candidato também recebe o item **Acordo de confidencialidade (NDA)** em "Seus documentos":
+Quando o onboarding tem uma **empresa contratante**, o candidato também recebe o item **Acordo de confidencialidade (NDA)** em "Seus documentos":
 
 1. Depois de preencher "Seus dados", clica em **Baixar acordo preenchido (PDF)** — o sistema gera o acordo com a empresa contratante e o nome, nascimento, RG, CPF e endereço do candidato, mais a data de hoje.
 2. Assina de graça com a conta gov.br em [assinador.iti.br](https://assinador.iti.br).
@@ -68,7 +68,7 @@ Quando o onboarding tem uma **empresa contratante** (escolhida em *Dados interno
 
 O PDF segue o formato do modelo do RH: Times 10 justificado, margens de 1 cm, título no alto à direita, faixas cinza nos títulos das cláusulas e quadro de assinaturas em duas colunas. A fonte é a Tinos (livre, com as mesmas medidas da Times New Roman), embutida no PDF para sair igual em qualquer leitor.
 
-Um administrador cadastra as empresas (nome, qualificação como aparece no acordo — `**texto**` sai em negrito —, quem assina, cargo e CPF) e pode editar o texto do acordo em **Acordo de confidencialidade**, na aba onboarding. O texto usa marcadores como `{{NOME}}` e `{{CPF}}` e uma marcação simples por linha (`# ` título, `## ` cláusula, `> ` à direita, `a)`/`I.` listas, `[ASSINATURAS]` com `|` separando as colunas); **Voltar ao texto padrão** desfaz a edição. Com uma só empresa cadastrada, os novos onboardings já saem com ela; sem empresa, o acordo não é pedido. Os dados das empresas ficam só no banco, nunca no repositório.
+Um administrador cadastra as empresas (nome, qualificação como aparece no acordo — `**texto**` sai em negrito —, quem assina, cargo e CPF) e pode editar o texto do acordo em **Acordo de confidencialidade**, na aba onboarding. O texto usa marcadores como `{{NOME}}` e `{{CPF}}` e uma marcação simples por linha (`# ` título, `## ` cláusula, `> ` à direita, `a)`/`I.` listas, `[ASSINATURAS]` com `|` separando as colunas); **Voltar ao texto padrão** desfaz a edição. Ao clicar em **Novo onboarding** com mais de uma empresa cadastrada, o sistema pergunta com qual delas será o acordo (ou "sem acordo"); com uma só, já usa ela. A empresa pode ser trocada depois no cartão **Acordo de confidencialidade**, logo acima da lista de documentos; sem empresa, o acordo não é pedido. Os dados das empresas ficam só no banco, nunca no repositório.
 
 Os arquivos ficam em `admissoes/`, ao lado do banco (local: `prisma/admissoes/`, fora do git; produção: o volume `/data`). Só o RH logado consegue abri-los; o candidato vê apenas nome e situação dos próprios documentos. Excluir a admissão apaga os arquivos.
 

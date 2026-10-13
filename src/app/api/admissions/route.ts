@@ -28,9 +28,18 @@ export async function POST(request: NextRequest) {
   const checklist = parseChecklist(body.documents ?? DEFAULT_CHECKLIST);
   if ("error" in checklist) return NextResponse.json({ error: checklist.error }, { status: 400 });
 
-  // Com uma única empresa cadastrada, ela já vira a contratante (e o NDA entra na lista).
-  const companies = await prisma.contractingCompany.findMany({ select: { id: true }, take: 2 });
-  const contractingCompanyId = companies.length === 1 ? companies[0].id : null;
+  // Empresa do acordo de confidencialidade: a escolhida pelo RH ("" = sem acordo);
+  // se não vier, e só houver uma empresa cadastrada, ela já vira a contratante.
+  let contractingCompanyId: string | null = null;
+  if (typeof body.contractingCompanyId === "string") {
+    contractingCompanyId = body.contractingCompanyId || null;
+    if (contractingCompanyId && !(await prisma.contractingCompany.findUnique({ where: { id: contractingCompanyId } }))) {
+      return NextResponse.json({ error: "Empresa contratante não encontrada." }, { status: 400 });
+    }
+  } else {
+    const companies = await prisma.contractingCompany.findMany({ select: { id: true }, take: 2 });
+    if (companies.length === 1) contractingCompanyId = companies[0].id;
+  }
 
   const { token, tokenHash, tokenExpiresAt } = newAdmissionToken();
   const admission = await prisma.admission.create({

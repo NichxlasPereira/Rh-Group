@@ -95,9 +95,6 @@ export async function PATCH(
     return NextResponse.json(publicAdmission(withDrive!));
   }
 
-  const fields = parseAdmissionFields(body);
-  if ("error" in fields) return NextResponse.json({ error: fields.error }, { status: 400 });
-
   // Empresa contratante: undefined = não mexe; "" ou null = nenhuma.
   let contractingCompanyId: string | null | undefined;
   if (body && "contractingCompanyId" in body) {
@@ -107,10 +104,18 @@ export async function PATCH(
     }
   }
 
+  // "empresa" troca só a contratante do acordo (seletor ao lado dos documentos);
+  // sem ação, a rota grava o registro inteiro (cartão "Dados internos").
+  const fields = body?.action === "empresa" ? null : parseAdmissionFields(body);
+  if (fields && "error" in fields) return NextResponse.json({ error: fields.error }, { status: 400 });
+  if (!fields && contractingCompanyId === undefined) {
+    return NextResponse.json({ error: "Escolha a empresa." }, { status: 400 });
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.admission.update({
       where: { id },
-      data: { ...fields.data, ...(contractingCompanyId !== undefined ? { contractingCompanyId } : {}) },
+      data: { ...(fields ? fields.data : {}), ...(contractingCompanyId !== undefined ? { contractingCompanyId } : {}) },
     });
     if (contractingCompanyId !== undefined) await syncNdaDocument(tx, id, !!contractingCompanyId);
   });

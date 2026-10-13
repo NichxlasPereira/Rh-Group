@@ -60,6 +60,7 @@ interface AdmissionsPanelProps {
 export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: AdmissionsPanelProps) {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
   const [ndaSettings, setNdaSettings] = useState(false);
+  const [choosingCompany, setChoosingCompany] = useState(false);
   const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -95,11 +96,17 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
   const selected = admissions?.find((a) => a.id === selectedId) ?? null;
   const count = (status: AdmissionStatus) => (admissions ?? []).filter((a) => a.status === status).length;
 
-  // Um clique: cria com os dados e documentos padrão e já mostra o link.
-  async function create() {
+  // Um clique: cria com os dados e documentos padrão e já mostra o link. Com
+  // mais de uma empresa, antes pergunta com qual será o acordo de confidencialidade.
+  async function create(contractingCompanyId?: string) {
+    if (contractingCompanyId === undefined && companies.length > 1) {
+      setChoosingCompany(true);
+      return;
+    }
+    setChoosingCompany(false);
     setCreating(true);
     try {
-      const result = await send("/api/admissions", "POST", {});
+      const result = await send("/api/admissions", "POST", contractingCompanyId === undefined ? {} : { contractingCompanyId });
       await load();
       setLink({ url: result.link, admission: result.admission });
     } catch (err) {
@@ -148,7 +155,7 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
             <option value="concluida">Concluídos ({count("concluida")})</option>
             <option value="cancelada">Cancelados ({count("cancelada")})</option>
           </select>
-          <Button onClick={create} disabled={creating} className="!px-4 !py-2 text-xs">
+          <Button onClick={() => create()} disabled={creating} className="!px-4 !py-2 text-xs">
             <IconPlus className="h-3.5 w-3.5" />
             {creating ? "Gerando link..." : "Novo onboarding"}
           </Button>
@@ -220,6 +227,13 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
       </div>
 
       {link && <LinkModal link={link} onClose={() => setLink(null)} />}
+      <CompanyChoiceModal
+        open={choosingCompany}
+        companies={companies}
+        busy={creating}
+        onClose={() => setChoosingCompany(false)}
+        onConfirm={(companyId) => create(companyId)}
+      />
       {isAdmin && (
         <NdaSettingsModal
           open={ndaSettings}
@@ -392,12 +406,24 @@ function AdmissionDetail({
       <InternalInfoCard
         admission={admission}
         departments={departments}
-        companies={companies}
         editable={admission.status !== "concluida"}
         onSave={(body) => act(() => send(base, "PATCH", body), "Dados internos salvos.")}
       />
 
       <h3 className="mt-2 font-display text-lg font-semibold text-ink">Documentos</h3>
+      <NdaCompanyCard
+        admission={admission}
+        companies={companies}
+        editable={open}
+        onChange={(contractingCompanyId) =>
+          act(
+            () => send(base, "PATCH", { action: "empresa", contractingCompanyId }),
+            contractingCompanyId
+              ? "Empresa do acordo definida. O candidato já vê o acordo no link dele."
+              : "Acordo de confidencialidade retirado deste onboarding."
+          )
+        }
+      />
       <ul className="flex flex-col gap-3">
         {admission.documents.map((doc) => (
           <li key={doc.id} className="rounded-[14px] border border-border bg-surface p-4">
@@ -773,13 +799,11 @@ function CandidateDataCard({
 function InternalInfoCard({
   admission,
   departments,
-  companies,
   editable,
   onSave,
 }: {
   admission: AdmissionInfo;
   departments: string[];
-  companies: ContractingCompanyInfo[];
   editable: boolean;
   onSave: (body: Record<string, string>) => Promise<void>;
 }) {
@@ -788,9 +812,7 @@ function InternalInfoCard({
     department: admission.department ?? "",
     startDate: admission.startDate ? admission.startDate.slice(0, 10) : "",
     notes: admission.notes ?? "",
-    contractingCompanyId: admission.contractingCompanyId ?? "",
   });
-  const company = companies.find((c) => c.id === admission.contractingCompanyId);
   const [values, setValues] = useState(initial);
   const [editing, setEditing] = useState(false);
   const set = (key: keyof ReturnType<typeof initial>, value: string) => setValues((v) => ({ ...v, [key]: value }));
@@ -804,10 +826,6 @@ function InternalInfoCard({
             {[admission.role && `Cargo: ${admission.role}`, admission.department && `Setor: ${admission.department}`, admission.startDate && `Início: ${formatDateBR(admission.startDate)}`]
               .filter(Boolean)
               .join(" · ") || "Cargo, setor e início ainda não informados."}
-          </p>
-          <p className="text-sm text-muted">
-            Empresa contratante (acordo de confidencialidade):{" "}
-            {company ? <span className="text-ink">{company.name}</span> : "nenhuma — o candidato não recebe o acordo"}
           </p>
           {admission.notes && <p className="mt-1 whitespace-pre-line text-sm text-ink">{admission.notes}</p>}
           <p className="mt-1 text-xs text-muted">Só o RH vê. Cargo e setor vão para o cadastro do colaborador ao concluir.</p>
@@ -868,20 +886,6 @@ function InternalInfoCard({
           className={inputClass(false) + " font-mono"}
         />
       </Field>
-      <Field label="Empresa contratante (acordo de confidencialidade)" className="sm:col-span-3">
-        <select
-          value={values.contractingCompanyId}
-          onChange={(e) => set("contractingCompanyId", e.target.value)}
-          className={inputClass(false)}
-        >
-          <option value="">Nenhuma — sem acordo de confidencialidade</option>
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </Field>
       <Field label="Observações (só o RH vê)" className="sm:col-span-3">
         <textarea value={values.notes} onChange={(e) => set("notes", e.target.value)} rows={2} className={inputClass(false) + " resize-y"} />
       </Field>
@@ -894,5 +898,129 @@ function InternalInfoCard({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Escolhe a empresa do acordo de confidencialidade antes de gerar o link. */
+function CompanyChoiceModal({
+  open,
+  companies,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  companies: ContractingCompanyInfo[];
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: (companyId: string) => void;
+}) {
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) setCompanyId(null);
+  }, [open]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Novo onboarding"
+      maxWidthClassName="max-w-md"
+      footer={
+        <>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="button" disabled={companyId === null || busy} onClick={() => onConfirm(companyId!)}>
+            {busy ? "Gerando link..." : "Gerar link"}
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-3 text-sm text-muted">
+        Com qual empresa será o acordo de confidencialidade? O candidato recebe o acordo já com ela, junto com os
+        documentos pedidos.
+      </p>
+      <div className="flex flex-col gap-2">
+        {companies.map((c) => (
+          <label
+            key={c.id}
+            className={`flex cursor-pointer items-center gap-3 rounded-[10px] border px-3 py-2.5 text-sm transition ${
+              companyId === c.id ? "border-accent bg-accent-soft text-ink" : "border-border text-ink hover:bg-surface-2"
+            }`}
+          >
+            <input type="radio" name="nda-company" checked={companyId === c.id} onChange={() => setCompanyId(c.id)} />
+            {c.name}
+          </label>
+        ))}
+        <label
+          className={`flex cursor-pointer items-center gap-3 rounded-[10px] border px-3 py-2.5 text-sm transition ${
+            companyId === "" ? "border-accent bg-accent-soft text-ink" : "border-border text-muted hover:bg-surface-2"
+          }`}
+        >
+          <input type="radio" name="nda-company" checked={companyId === ""} onChange={() => setCompanyId("")} />
+          Sem acordo de confidencialidade
+        </label>
+      </div>
+    </Modal>
+  );
+}
+
+/** Empresa do acordo de confidencialidade, logo acima da lista de documentos. */
+function NdaCompanyCard({
+  admission,
+  companies,
+  editable,
+  onChange,
+}: {
+  admission: AdmissionInfo;
+  companies: ContractingCompanyInfo[];
+  editable: boolean;
+  onChange: (companyId: string) => void;
+}) {
+  const current = admission.contractingCompanyId ?? "";
+  const company = companies.find((c) => c.id === current);
+  const nda = admission.documents.find((d) => d.kind === "nda");
+
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border bg-surface p-4">
+      <div className="min-w-0">
+        <p className="font-medium text-ink">Acordo de confidencialidade</p>
+        <p className="text-xs text-muted">
+          {company
+            ? "O candidato baixa o acordo já preenchido com esta empresa, assina no gov.br e envia junto com os documentos."
+            : "Escolha a empresa para o candidato receber o acordo junto com os documentos."}
+        </p>
+      </div>
+      {editable && companies.length > 0 ? (
+        <select
+          value={current}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (
+              nda &&
+              nda.files.length > 0 &&
+              !window.confirm(
+                "O candidato já enviou o acordo assinado com a empresa atual. Trocar a empresa não apaga esse arquivo: recuse-o para ele baixar e assinar o novo. Continuar?"
+              )
+            ) {
+              return;
+            }
+            onChange(next);
+          }}
+          className="min-w-[16rem] rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+          aria-label="Empresa do acordo de confidencialidade"
+        >
+          <option value="">Sem acordo de confidencialidade</option>
+          {companies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className="text-sm text-ink">{company?.name ?? "Sem acordo"}</span>
+      )}
+    </section>
   );
 }
