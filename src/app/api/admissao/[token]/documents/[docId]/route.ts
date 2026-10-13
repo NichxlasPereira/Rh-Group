@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { admissionByToken } from "@/lib/admissionServer";
 import { removeAttachmentFiles, saveAttachment } from "@/lib/attachmentStorage";
+import { looksDigitallySigned } from "@/lib/nda";
 
 const MAX_FILES_PER_DOCUMENT = 6;
 
@@ -26,6 +27,20 @@ export async function POST(
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "Selecione um arquivo." }, { status: 400 });
+
+  if (document.kind === "nda") {
+    // O acordo volta assinado digitalmente (gov.br): PDF com assinatura embutida.
+    const bytes = Buffer.from(await file.arrayBuffer());
+    if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") {
+      return NextResponse.json({ error: "Envie o acordo em PDF, assinado pelo gov.br." }, { status: 400 });
+    }
+    if (!looksDigitallySigned(bytes)) {
+      return NextResponse.json(
+        { error: "Este PDF não está assinado digitalmente. Assine o acordo no gov.br (assinador.iti.br) e envie o arquivo assinado." },
+        { status: 400 }
+      );
+    }
+  }
 
   const saved = await saveAttachment(file, "admissoes");
   if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 400 });

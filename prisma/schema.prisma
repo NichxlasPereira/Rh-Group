@@ -161,6 +161,9 @@ model Admission {
   driveSyncedAt  DateTime?
   // Quando o candidato enviou os dados pela primeira vez (botão "Enviar dados").
   submittedAt DateTime?
+  // Empresa que contrata — usada no acordo de confidencialidade (NDA).
+  contractingCompanyId String?
+  contractingCompany   ContractingCompany? @relation(fields: [contractingCompanyId], references: [id], onDelete: SetNull)
   // Linha na planilha do Google Sheets (criada quando o candidato envia tudo).
   sheetStatus   String? // "ok" | "erro" | "nao_configurado"
   sheetError    String?
@@ -195,6 +198,8 @@ model AdmissionDocument {
   id          String    @id @default(cuid())
   admissionId String
   admission   Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  // "upload" (documento comum) ou "nda" (acordo gerado pelo sistema e assinado no gov.br).
+  kind        String    @default("upload")
   name        String
   description String?
   required    Boolean   @default(true)
@@ -232,4 +237,19 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Empresa contratante do acordo de confidencialidade. Fica só no banco (o
+// repositório é público e a qualificação traz CPFs dos sócios).
+model ContractingCompany {
+  id            String   @id @default(cuid())
+  name          String
+  qualification String // parágrafo de qualificação, como aparece no acordo
+  signerName    String // quem assina pela empresa
+  signerRole    String // ex.: Sócio administrador
+  signerCpf     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  admissions Admission[]
 }

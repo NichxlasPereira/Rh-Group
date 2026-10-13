@@ -396,7 +396,7 @@ export default function FrequenciaPage() {
         {tab === "acessos" && me?.role === "admin" ? (
           <AccessPanel currentUserId={me.id} onChanged={fetchMe} />
         ) : tab === "admissoes" ? (
-          <AdmissionsPanel departments={departments} onEmployeesChanged={fetchEmployees} />
+          <AdmissionsPanel departments={departments} isAdmin={me?.role === "admin"} onEmployeesChanged={fetchEmployees} />
         ) : (
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             <AttendanceFilters

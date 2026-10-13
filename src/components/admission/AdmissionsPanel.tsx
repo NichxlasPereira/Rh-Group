@@ -12,6 +12,7 @@ import {
   AdmissionInfo,
   AdmissionStatus,
   AdmissionFieldInfo,
+  ContractingCompanyInfo,
   DEFAULT_FIELDS,
   admissionProgress,
   fieldsProgress,
@@ -19,6 +20,7 @@ import {
 import { formatFileSize } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
+import { NdaSettingsModal } from "./NdaSettingsModal";
 
 async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -48,12 +50,16 @@ const STATUS_STYLE: Record<AdmissionStatus, string> = {
 
 interface AdmissionsPanelProps {
   departments: string[];
+  /** Administradores cadastram as empresas e editam o texto do acordo. */
+  isAdmin: boolean;
   /** Concluir cria um colaborador: a página recarrega a lista dela. */
   onEmployeesChanged: () => void;
 }
 
 /** Aba "admissões": admissão 100% digital, do envio dos documentos à aprovação. */
-export function AdmissionsPanel({ departments, onEmployeesChanged }: AdmissionsPanelProps) {
+export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: AdmissionsPanelProps) {
+  const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
+  const [ndaSettings, setNdaSettings] = useState(false);
   const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -69,9 +75,18 @@ export function AdmissionsPanel({ departments, onEmployeesChanged }: AdmissionsP
     }
   }, []);
 
+  const loadCompanies = useCallback(async () => {
+    try {
+      setCompanies(await send("/api/frequencia/companies", "GET"));
+    } catch (err) {
+      errorToast(err);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadCompanies();
+  }, [load, loadCompanies]);
 
   const visible = useMemo(
     () => (admissions ?? []).filter((a) => !statusFilter || a.status === statusFilter),
@@ -99,6 +114,7 @@ export function AdmissionsPanel({ departments, onEmployeesChanged }: AdmissionsP
       <AdmissionDetail
         admission={selected}
         departments={departments}
+        companies={companies}
         onBack={() => setSelectedId(null)}
         onChanged={load}
         onShowLink={(url) => setLink({ url, admission: selected })}
@@ -115,7 +131,12 @@ export function AdmissionsPanel({ departments, onEmployeesChanged }: AdmissionsP
           Crie o onboarding, envie o link para o candidato e acompanhe aqui cada documento: em análise, aprovado ou
           recusado. Ao concluir, a pessoa entra como colaborador ativo.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <Button variant="ghost" onClick={() => setNdaSettings(true)} className="!px-4 !py-2 text-xs">
+              Acordo de confidencialidade
+            </Button>
+          )}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as AdmissionStatus | "")}
@@ -199,6 +220,17 @@ export function AdmissionsPanel({ departments, onEmployeesChanged }: AdmissionsP
       </div>
 
       {link && <LinkModal link={link} onClose={() => setLink(null)} />}
+      {isAdmin && (
+        <NdaSettingsModal
+          open={ndaSettings}
+          onClose={() => setNdaSettings(false)}
+          companies={companies}
+          onCompaniesChanged={async () => {
+            await loadCompanies();
+            await load();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -206,6 +238,7 @@ export function AdmissionsPanel({ departments, onEmployeesChanged }: AdmissionsP
 function AdmissionDetail({
   admission,
   departments,
+  companies,
   onBack,
   onChanged,
   onShowLink,
@@ -214,6 +247,7 @@ function AdmissionDetail({
 }: {
   admission: AdmissionInfo;
   departments: string[];
+  companies: ContractingCompanyInfo[];
   onBack: () => void;
   onChanged: () => Promise<void>;
   onShowLink: (url: string) => void;
@@ -358,6 +392,7 @@ function AdmissionDetail({
       <InternalInfoCard
         admission={admission}
         departments={departments}
+        companies={companies}
         editable={admission.status !== "concluida"}
         onSave={(body) => act(() => send(base, "PATCH", body), "Dados internos salvos.")}
       />
@@ -382,6 +417,21 @@ function AdmissionDetail({
               </div>
               <DocumentStatusBadge status={doc.status} />
             </div>
+
+            {doc.kind === "nda" && doc.files.length > 0 && doc.status === "enviado" && (
+              <p className="mt-2 text-xs text-muted">
+                Antes de aprovar, confira a assinatura gov.br do PDF em{" "}
+                <a
+                  href="https://validar.iti.gov.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-accent-strong underline"
+                >
+                  validar.iti.gov.br
+                </a>
+                .
+              </p>
+            )}
 
             {doc.status === "recusado" && doc.reviewNote && (
               <p className="mt-2 rounded-[10px] bg-critical-soft px-3 py-2 text-sm text-ink">Motivo: {doc.reviewNote}</p>
@@ -723,11 +773,13 @@ function CandidateDataCard({
 function InternalInfoCard({
   admission,
   departments,
+  companies,
   editable,
   onSave,
 }: {
   admission: AdmissionInfo;
   departments: string[];
+  companies: ContractingCompanyInfo[];
   editable: boolean;
   onSave: (body: Record<string, string>) => Promise<void>;
 }) {
@@ -736,7 +788,9 @@ function InternalInfoCard({
     department: admission.department ?? "",
     startDate: admission.startDate ? admission.startDate.slice(0, 10) : "",
     notes: admission.notes ?? "",
+    contractingCompanyId: admission.contractingCompanyId ?? "",
   });
+  const company = companies.find((c) => c.id === admission.contractingCompanyId);
   const [values, setValues] = useState(initial);
   const [editing, setEditing] = useState(false);
   const set = (key: keyof ReturnType<typeof initial>, value: string) => setValues((v) => ({ ...v, [key]: value }));
@@ -750,6 +804,10 @@ function InternalInfoCard({
             {[admission.role && `Cargo: ${admission.role}`, admission.department && `Setor: ${admission.department}`, admission.startDate && `Início: ${formatDateBR(admission.startDate)}`]
               .filter(Boolean)
               .join(" · ") || "Cargo, setor e início ainda não informados."}
+          </p>
+          <p className="text-sm text-muted">
+            Empresa contratante (acordo de confidencialidade):{" "}
+            {company ? <span className="text-ink">{company.name}</span> : "nenhuma — o candidato não recebe o acordo"}
           </p>
           {admission.notes && <p className="mt-1 whitespace-pre-line text-sm text-ink">{admission.notes}</p>}
           <p className="mt-1 text-xs text-muted">Só o RH vê. Cargo e setor vão para o cadastro do colaborador ao concluir.</p>
@@ -809,6 +867,20 @@ function InternalInfoCard({
           onChange={(e) => set("startDate", e.target.value)}
           className={inputClass(false) + " font-mono"}
         />
+      </Field>
+      <Field label="Empresa contratante (acordo de confidencialidade)" className="sm:col-span-3">
+        <select
+          value={values.contractingCompanyId}
+          onChange={(e) => set("contractingCompanyId", e.target.value)}
+          className={inputClass(false)}
+        >
+          <option value="">Nenhuma — sem acordo de confidencialidade</option>
+          {companies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </Field>
       <Field label="Observações (só o RH vê)" className="sm:col-span-3">
         <textarea value={values.notes} onChange={(e) => set("notes", e.target.value)} rows={2} className={inputClass(false) + " resize-y"} />

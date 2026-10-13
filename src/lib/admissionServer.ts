@@ -63,3 +63,28 @@ export function publicAdmission<T extends { tokenHash: string }>(admission: T): 
   const { tokenHash, ...rest } = admission;
   return rest;
 }
+
+export const NDA_DOCUMENT = {
+  kind: "nda",
+  name: "Acordo de confidencialidade (NDA)",
+  description: "Baixe o acordo já preenchido, assine no gov.br e envie aqui o PDF assinado.",
+  required: true,
+};
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * Com empresa contratante, o onboarding pede o acordo de confidencialidade;
+ * sem ela, o item sai (se o candidato ainda não enviou nada nele).
+ */
+export async function syncNdaDocument(tx: Tx, admissionId: string, hasCompany: boolean): Promise<void> {
+  const existing = await tx.admissionDocument.findFirst({ where: { admissionId, kind: "nda" }, include: { files: true } });
+  if (hasCompany && !existing) {
+    const last = await tx.admissionDocument.aggregate({ where: { admissionId }, _max: { sortOrder: true } });
+    await tx.admissionDocument.create({
+      data: { ...NDA_DOCUMENT, admissionId, sortOrder: (last._max.sortOrder ?? -1) + 1 },
+    });
+  } else if (!hasCompany && existing && existing.files.length === 0) {
+    await tx.admissionDocument.delete({ where: { id: existing.id } });
+  }
+}

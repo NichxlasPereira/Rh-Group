@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
-import { ADMISSION_INCLUDE, admissionLink, newAdmissionToken, publicAdmission } from "@/lib/admissionServer";
+import { ADMISSION_INCLUDE, NDA_DOCUMENT, admissionLink, newAdmissionToken, publicAdmission } from "@/lib/admissionServer";
 import { parseAdmissionFields, parseChecklist } from "@/lib/admissionValidation";
 import { DEFAULT_CHECKLIST, DEFAULT_FIELDS } from "@/lib/admission";
 
@@ -28,15 +28,23 @@ export async function POST(request: NextRequest) {
   const checklist = parseChecklist(body.documents ?? DEFAULT_CHECKLIST);
   if ("error" in checklist) return NextResponse.json({ error: checklist.error }, { status: 400 });
 
+  // Com uma única empresa cadastrada, ela já vira a contratante (e o NDA entra na lista).
+  const companies = await prisma.contractingCompany.findMany({ select: { id: true }, take: 2 });
+  const contractingCompanyId = companies.length === 1 ? companies[0].id : null;
+
   const { token, tokenHash, tokenExpiresAt } = newAdmissionToken();
   const admission = await prisma.admission.create({
     data: {
       ...fields.data,
+      contractingCompanyId,
       tokenHash,
       tokenExpiresAt,
       createdBy: auth.user.name,
       documents: {
-        create: checklist.data.map((item, index) => ({ ...item, sortOrder: index })),
+        create: [
+          ...checklist.data.map((item, index) => ({ ...item, sortOrder: index })),
+          ...(contractingCompanyId ? [{ ...NDA_DOCUMENT, sortOrder: checklist.data.length }] : []),
+        ],
       },
       fields: {
         create: DEFAULT_FIELDS.map((f, index) => ({ ...f, sortOrder: index })),

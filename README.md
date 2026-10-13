@@ -58,6 +58,16 @@ Na frequência (RH), a aba **onboarding** controla a admissão 100% digital:
 3. O candidato abre o link no celular, preenche **Seus dados**, envia foto ou PDF de cada documento (até 10 MB, vários arquivos por documento) e acompanha a situação: *não enviado*, *em análise*, *aprovado* ou *recusado* — com o motivo, para reenviar. A página segue a ordem do processo: preencher os dados, enviar os documentos e, por último, o botão **Enviar dados** — que só envia com os dados completos e válidos e todos os documentos obrigatórios enviados, e então leva a uma página de agradecimento avisando que o RH vai analisar.
 4. O RH confere os dados, abre os arquivos e aprova ou recusa (a recusa exige motivo). Com os dados obrigatórios preenchidos e os documentos obrigatórios aprovados, **Concluir onboarding** cria o colaborador ativo, com o nome informado pelo candidato (ou reaproveita um com o mesmo nome) e desativa o link.
 
+### Acordo de confidencialidade (NDA)
+
+Quando o onboarding tem uma **empresa contratante** (escolhida em *Dados internos*), o candidato também recebe o item **Acordo de confidencialidade (NDA)** em "Seus documentos":
+
+1. Depois de preencher "Seus dados", clica em **Baixar acordo preenchido (PDF)** — o sistema gera o acordo com a empresa contratante e o nome, nascimento, RG, CPF e endereço do candidato, mais a data de hoje.
+2. Assina de graça com a conta gov.br em [assinador.iti.br](https://assinador.iti.br).
+3. Envia o PDF assinado no mesmo item. O sistema só aceita PDF com assinatura digital; o RH confere a assinatura em [validar.iti.gov.br](https://validar.iti.gov.br) antes de aprovar.
+
+Um administrador cadastra as empresas (nome, qualificação como aparece no acordo, quem assina, cargo e CPF) e pode editar o texto do acordo em **Acordo de confidencialidade**, na aba onboarding — o texto usa marcadores como `{{NOME}}` e `{{CPF}}`, e **Voltar ao texto padrão** desfaz a edição. Com uma só empresa cadastrada, os novos onboardings já saem com ela; sem empresa, o acordo não é pedido. Os dados das empresas ficam só no banco, nunca no repositório.
+
 Os arquivos ficam em `admissoes/`, ao lado do banco (local: `prisma/admissoes/`, fora do git; produção: o volume `/data`). Só o RH logado consegue abri-los; o candidato vê apenas nome e situação dos próprios documentos. Excluir a admissão apaga os arquivos.
 
 ### Planilha e documentos sem configurar nada no Google (em uso)
@@ -115,7 +125,7 @@ Configuração (usa a mesma conta de serviço do Drive):
 - **Material**: nome, categoria, unidade, quantidade, estoque mínimo, local, fornecedor, preço e link de compra.
 - **Retirada**: cópia dos dados do material no momento da retirada (para manter o histórico legível mesmo após edição ou exclusão do material), quantidade, data e responsável.
 
-- **Admissão**: dados do candidato, situação, hash do link e validade; cada **documento pedido** tem situação, motivo da recusa e quem avaliou, e pode ter vários **arquivos**.
+- **Admissão**: dados do candidato, situação, hash do link e validade; cada **documento pedido** tem situação, motivo da recusa e quem avaliou, e pode ter vários **arquivos**. O documento do tipo `nda` é o acordo de confidencialidade, gerado com a **empresa contratante** do onboarding.
 - **Acesso à frequência**: nome, e-mail, hash da senha, perfil (administrador ou acesso), se está ativo e último acesso; mais as sessões abertas.
 - **Colaborador**: nome, setor, cargo, total de folgas a que tem direito e se está ativo (inativos somem da lista ao registrar novas ocorrências, mas o histórico continua).
 - **Ocorrência**: tipo (`falta`, `atestado` ou `folga`), data inicial e final (atestados e folgas podem cobrir vários dias), se foi justificada, gestor que concedeu (folga) e observações. O saldo de folgas é o total do colaborador menos os dias de folga já lançados; a API recusa folgas acima do saldo. Guarda uma cópia do nome e setor do colaborador, como as retiradas fazem com o material.

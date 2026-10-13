@@ -23,6 +23,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     })),
     documents: admission.documents.map((d) => ({
       id: d.id,
+      kind: d.kind,
       name: d.name,
       description: d.description,
       required: d.required,

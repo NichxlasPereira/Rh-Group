@@ -148,6 +148,7 @@ export interface AdmissionFileInfo {
 
 export interface AdmissionDocumentInfo {
   id: string;
+  kind: "upload" | "nda";
   name: string;
   description: string | null;
   required: boolean;
@@ -171,6 +172,7 @@ export interface AdmissionInfo {
   tokenExpiresAt: string;
   createdBy: string | null;
   employeeId: string | null;
+  contractingCompanyId: string | null;
   driveStatus: "enviado" | "erro" | "nao_configurado" | null;
   driveFolderUrl: string | null;
   driveError: string | null;
@@ -204,3 +206,13 @@ export function admissionProgress(docs: Pick<AdmissionDocumentInfo, "required" |
 }
 
 export const LINK_VALID_DAYS = 30;
+
+/** Empresa que assina o acordo de confidencialidade como contratante. */
+export interface ContractingCompanyInfo {
+  id: string;
+  name: string;
+  qualification: string;
+  signerName: string;
+  signerRole: string;
+  signerCpf: string;
+}

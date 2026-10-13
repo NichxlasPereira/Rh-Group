@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { DocumentStatus, FieldType, admissionProgress, fieldsProgress, normalizeFieldValue } from "@/lib/admission";
@@ -12,6 +12,7 @@ import { DocumentStatusBadge } from "./DocumentStatusBadge";
 
 interface PortalDocument {
   id: string;
+  kind: "upload" | "nda";
   name: string;
   description: string | null;
   required: boolean;
@@ -175,6 +176,7 @@ export function AdmissionPortal({ token }: { token: string }) {
           {data.documents.map((doc) => (
             <DocumentCard
               key={doc.id}
+              token={token}
               doc={doc}
               busy={uploading === doc.id}
               onUpload={(files) => upload(doc, files)}
@@ -192,12 +194,17 @@ export function AdmissionPortal({ token }: { token: string }) {
   );
 }
 
+/** O que está digitado em "Seus dados" agora — o acordo é gerado com isso. */
+const FormValuesContext = createContext<Record<string, string>>({});
+
 function DocumentCard({
+  token,
   doc,
   busy,
   onUpload,
   onRemove,
 }: {
+  token: string;
   doc: PortalDocument;
   busy: boolean;
   onUpload: (files: FileList | null) => void;
@@ -252,6 +259,8 @@ function DocumentCard({
         </ul>
       )}
 
+      {!locked && doc.kind === "nda" && <NdaSteps token={token} />}
+
       {!locked && (
         <>
           <button
@@ -261,13 +270,19 @@ function DocumentCard({
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-border-strong px-3 py-2.5 text-sm font-semibold text-accent-strong transition hover:bg-accent-soft disabled:opacity-60"
           >
             <IconPaperclip className="h-4 w-4" />
-            {busy ? "Enviando..." : doc.files.length > 0 ? "Enviar mais um arquivo" : "Enviar documento"}
+            {busy
+              ? "Enviando..."
+              : doc.kind === "nda"
+                ? "3. Enviar o acordo assinado (PDF)"
+                : doc.files.length > 0
+                  ? "Enviar mais um arquivo"
+                  : "Enviar documento"}
           </button>
           <input
             ref={inputRef}
             type="file"
-            accept={ATTACHMENT_ACCEPT}
-            multiple
+            accept={doc.kind === "nda" ? "application/pdf" : ATTACHMENT_ACCEPT}
+            multiple={doc.kind !== "nda"}
             className="hidden"
             onChange={(e) => {
               onUpload(e.target.files);
@@ -446,7 +461,7 @@ function SubmissionForm({
         </div>
       )}
 
-      {children}
+      <FormValuesContext.Provider value={values}>{children}</FormValuesContext.Provider>
 
       <div className="flex flex-col gap-2 rounded-[14px] border border-border bg-surface p-4">
         <p className="text-sm text-muted">
@@ -461,5 +476,63 @@ function SubmissionForm({
         </button>
       </div>
     </form>
+  );
+}
+
+/** Passos do acordo de confidencialidade: baixar preenchido, assinar no gov.br, enviar. */
+function NdaSteps({ token }: { token: string }) {
+  const values = useContext(FormValuesContext);
+  const [busy, setBusy] = useState(false);
+
+  async function download() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admissao/${token}/nda`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error || "Não foi possível gerar o acordo.");
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "acordo-de-confidencialidade.pdf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ol className="mt-3 flex flex-col gap-2 rounded-[10px] bg-surface-2 p-3 text-sm text-ink">
+      <li className="flex flex-col gap-2">
+        <span>
+          <strong>1.</strong> Preencha “Seus dados” acima e baixe o acordo já preenchido com eles.
+        </span>
+        <button
+          type="button"
+          onClick={download}
+          disabled={busy}
+          className="self-start rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-accent-ink transition hover:brightness-110 disabled:opacity-60"
+        >
+          {busy ? "Gerando..." : "Baixar acordo preenchido (PDF)"}
+        </button>
+      </li>
+      <li>
+        <strong>2.</strong> Assine o PDF de graça com a sua conta gov.br em{" "}
+        <a href="https://assinador.iti.br" target="_blank" rel="noopener noreferrer" className="font-semibold text-accent-strong underline">
+          assinador.iti.br
+        </a>{" "}
+        e baixe o arquivo assinado.
+      </li>
+      <li>
+        <strong>3.</strong> Envie o PDF assinado no botão abaixo.
+      </li>
+    </ol>
   );
 }

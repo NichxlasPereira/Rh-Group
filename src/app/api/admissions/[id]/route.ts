@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { removeAttachmentFiles } from "@/lib/attachmentStorage";
-import { ADMISSION_INCLUDE, publicAdmission } from "@/lib/admissionServer";
+import { ADMISSION_INCLUDE, publicAdmission, syncNdaDocument } from "@/lib/admissionServer";
 import { parseAdmissionFields } from "@/lib/admissionValidation";
 import { admissionProgress, fieldsProgress } from "@/lib/admission";
 import { exportAdmissionToDrive } from "@/lib/admissionDrive";
@@ -97,8 +97,25 @@ export async function PATCH(
 
   const fields = parseAdmissionFields(body);
   if ("error" in fields) return NextResponse.json({ error: fields.error }, { status: 400 });
-  const updated = await prisma.admission.update({ where: { id }, data: fields.data, include: ADMISSION_INCLUDE });
-  return NextResponse.json(publicAdmission(updated));
+
+  // Empresa contratante: undefined = não mexe; "" ou null = nenhuma.
+  let contractingCompanyId: string | null | undefined;
+  if (body && "contractingCompanyId" in body) {
+    contractingCompanyId = typeof body.contractingCompanyId === "string" && body.contractingCompanyId ? body.contractingCompanyId : null;
+    if (contractingCompanyId && !(await prisma.contractingCompany.findUnique({ where: { id: contractingCompanyId } }))) {
+      return NextResponse.json({ error: "Empresa contratante não encontrada." }, { status: 400 });
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.admission.update({
+      where: { id },
+      data: { ...fields.data, ...(contractingCompanyId !== undefined ? { contractingCompanyId } : {}) },
+    });
+    if (contractingCompanyId !== undefined) await syncNdaDocument(tx, id, !!contractingCompanyId);
+  });
+  const updated = await prisma.admission.findUnique({ where: { id }, include: ADMISSION_INCLUDE });
+  return NextResponse.json(publicAdmission(updated!));
 }
 
 export async function DELETE(
