@@ -40,7 +40,12 @@ export function NdaSettingsModal({
   // null = lista; "" = nova empresa; id = editando
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CompanyForm>(EMPTY_COMPANY);
-  const [template, setTemplate] = useState<{ text: string; custom: boolean; placeholders: { key: string; description: string }[] } | null>(null);
+  const [template, setTemplate] = useState<{
+    text: string;
+    custom: boolean;
+    placeholders: { key: string; description: string }[];
+    markup: { syntax: string; description: string }[];
+  } | null>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -174,10 +179,14 @@ export function NdaSettingsModal({
               onChange={(e) => set("qualification", e.target.value)}
               rows={4}
               required
-              placeholder="EMPRESA LTDA, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ..., com sede em ..., neste ato representada por ..."
+              placeholder="**EMPRESA LTDA,** sociedade ..., com sede na ..., inscrita no CNPJ sob nº ..., neste ato representada por seus sócios **NOME DO SÓCIO**, ..."
               className={inputClass(false) + " resize-y"}
             />
           </Field>
+          <p className="-mt-1 text-xs text-muted sm:col-span-2">
+            Entre <code>**asteriscos**</code> sai em negrito, como o nome da empresa e dos sócios no modelo. Termine sem
+            pontuação: o acordo continua com “, e, de outro lado,”.
+          </p>
           <Field label="Quem assina pela empresa">
             <input value={form.signerName} onChange={(e) => set("signerName", e.target.value)} className={inputClass(false)} required />
           </Field>
@@ -210,9 +219,17 @@ export function NdaSettingsModal({
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted">
-              {template.custom ? "Texto editado pelo RH." : "Texto padrão."} Linhas entre <code>**asteriscos**</code> saem em
-              negrito. Os marcadores abaixo são trocados pelos dados de cada pessoa ao gerar o PDF:
+              {template.custom ? "Texto editado pelo RH." : "Texto padrão."} O PDF sai no formato do modelo (Times 10,
+              justificado). Formatação, uma por linha:
             </p>
+            <ul className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+              {template.markup.map((m) => (
+                <li key={m.syntax}>
+                  <code className="font-semibold text-ink">{m.syntax}</code> <span className="text-muted">— {m.description}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-muted">Os marcadores abaixo são trocados pelos dados de cada pessoa ao gerar o PDF:</p>
             <ul className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
               {template.placeholders.map((p) => (
                 <li key={p.key}>

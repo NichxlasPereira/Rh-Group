@@ -66,7 +66,9 @@ Quando o onboarding tem uma **empresa contratante** (escolhida em *Dados interno
 2. Assina de graça com a conta gov.br em [assinador.iti.br](https://assinador.iti.br).
 3. Envia o PDF assinado no mesmo item. O sistema só aceita PDF com assinatura digital; o RH confere a assinatura em [validar.iti.gov.br](https://validar.iti.gov.br) antes de aprovar.
 
-Um administrador cadastra as empresas (nome, qualificação como aparece no acordo, quem assina, cargo e CPF) e pode editar o texto do acordo em **Acordo de confidencialidade**, na aba onboarding — o texto usa marcadores como `{{NOME}}` e `{{CPF}}`, e **Voltar ao texto padrão** desfaz a edição. Com uma só empresa cadastrada, os novos onboardings já saem com ela; sem empresa, o acordo não é pedido. Os dados das empresas ficam só no banco, nunca no repositório.
+O PDF segue o formato do modelo do RH: Times 10 justificado, margens de 1 cm, título no alto à direita, faixas cinza nos títulos das cláusulas e quadro de assinaturas em duas colunas. A fonte é a Tinos (livre, com as mesmas medidas da Times New Roman), embutida no PDF para sair igual em qualquer leitor.
+
+Um administrador cadastra as empresas (nome, qualificação como aparece no acordo — `**texto**` sai em negrito —, quem assina, cargo e CPF) e pode editar o texto do acordo em **Acordo de confidencialidade**, na aba onboarding. O texto usa marcadores como `{{NOME}}` e `{{CPF}}` e uma marcação simples por linha (`# ` título, `## ` cláusula, `> ` à direita, `a)`/`I.` listas, `[ASSINATURAS]` com `|` separando as colunas); **Voltar ao texto padrão** desfaz a edição. Com uma só empresa cadastrada, os novos onboardings já saem com ela; sem empresa, o acordo não é pedido. Os dados das empresas ficam só no banco, nunca no repositório.
 
 Os arquivos ficam em `admissoes/`, ao lado do banco (local: `prisma/admissoes/`, fora do git; produção: o volume `/data`). Só o RH logado consegue abri-los; o candidato vê apenas nome e situação dos próprios documentos. Excluir a admissão apaga os arquivos.
 

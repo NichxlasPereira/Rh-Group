@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
-import { NDA_PLACEHOLDERS, NDA_TEMPLATE_KEY, ndaTemplate } from "@/lib/nda";
+import { NDA_MARKUP_HELP, NDA_PLACEHOLDERS, NDA_TEMPLATE_KEY, ndaTemplate } from "@/lib/nda";
 
 /** Texto do acordo (o padrão ou o editado pelo RH) e os marcadores disponíveis. */
 export async function GET() {
   const auth = await requireFrequenciaUser({ admin: true });
   if ("response" in auth) return auth.response;
-  return NextResponse.json({ ...(await ndaTemplate()), placeholders: NDA_PLACEHOLDERS });
+  return NextResponse.json({ ...(await ndaTemplate()), placeholders: NDA_PLACEHOLDERS, markup: NDA_MARKUP_HELP });
 }
 
 export async function PUT(request: NextRequest) {
