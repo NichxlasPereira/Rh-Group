@@ -48,10 +48,9 @@ export const DEFAULT_FIELDS: FieldTemplate[] = [
   { key: "cpf", label: "CPF", type: "cpf", required: true },
   { key: "rg", label: "RG", type: "rg", required: true },
   { key: "nascimento", label: "Data de nascimento", type: "date", required: true },
-  // Nacionalidade, estado civil e profissão entram no termo de uso de imagem.
+  // Nacionalidade e estado civil entram no termo de uso de imagem.
   { key: "nacionalidade", label: "Nacionalidade", type: "text", required: true },
   { key: "estadocivil", label: "Estado civil", type: "text", required: true },
-  { key: "profissao", label: "Profissão", type: "text", required: true },
   { key: "email", label: "E-mail", type: "email", required: true },
   { key: "telefone", label: "Telefone / WhatsApp", type: "tel", required: true },
   { key: "endereco", label: "Endereço completo (com CEP)", type: "textarea", required: true },

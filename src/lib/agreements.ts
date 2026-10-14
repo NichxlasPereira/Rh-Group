@@ -46,7 +46,6 @@ export const AGREEMENT_PLACEHOLDERS: { key: string; description: string }[] = [
   { key: "NOME", description: "nome completo do candidato (em maiúsculas)" },
   { key: "NACIONALIDADE", description: "nacionalidade do candidato" },
   { key: "ESTADO_CIVIL", description: "estado civil do candidato" },
-  { key: "PROFISSAO", description: "profissão do candidato" },
   { key: "NASCIMENTO", description: "data de nascimento do candidato" },
   { key: "RG", description: "RG do candidato" },
   { key: "CPF", description: "CPF do candidato" },
@@ -72,7 +71,6 @@ export const CANDIDATE_PLACEHOLDER_FIELD: Record<string, string> = {
   NOME: "nome",
   NACIONALIDADE: "nacionalidade",
   ESTADO_CIVIL: "estadocivil",
-  PROFISSAO: "profissao",
   NASCIMENTO: "nascimento",
   RG: "rg",
   CPF: "cpf",
@@ -164,7 +162,7 @@ export const DEFAULT_IMAGE_TEMPLATE = `^ **TERMO DE AUTORIZAÇÃO DE USO DE IMAG
 ^ **{{EMPRESA_NOME}}**
 
 Pelo presente instrumento particular:
-**{{NOME}}**, {{NACIONALIDADE}}, {{ESTADO_CIVIL}}, {{PROFISSAO}}, inscrito(a) no CPF sob o nº {{CPF}}, residente e domiciliado(a) na {{ENDERECO_SEM_CEP}}, CEP {{CEP}}, com endereço de e-mail {{EMAIL}} (“Titular”);
+**{{NOME}}**, {{NACIONALIDADE}}, {{ESTADO_CIVIL}}, inscrito(a) no CPF sob o nº {{CPF}}, residente e domiciliado(a) na {{ENDERECO_SEM_CEP}}, CEP {{CEP}}, com endereço de e-mail {{EMAIL}} (“Titular”);
 **{{EMPRESA_NOME}}**, {{EMPRESA_NATUREZA}} inscrita no CNPJ sob o nº {{EMPRESA_CNPJ}}, com sede na {{EMPRESA_ENDERECO}}, {{EMPRESA_BAIRRO}}, {{EMPRESA_CIDADE}} - {{EMPRESA_UF}}, CEP {{EMPRESA_CEP}}, neste ato representada na forma de seu contrato social (“Autorizada”);
 Resolvem celebrar o presente Termo de Autorização de Uso de Imagem, que se regerá pelas cláusulas seguintes.
 
@@ -323,7 +321,6 @@ export function fillAgreementTemplate(template: string, data: AgreementData, tod
     NOME: plain(c.nome).toUpperCase(),
     NACIONALIDADE: plain(c.nacionalidade).toLowerCase(),
     ESTADO_CIVIL: plain(c.estadocivil).toLowerCase(),
-    PROFISSAO: plain(c.profissao).toLowerCase(),
     NASCIMENTO: d ? `${d}/${m}/${y}` : plain(c.nascimento),
     RG: plain(c.rg),
     CPF: plain(c.cpf),

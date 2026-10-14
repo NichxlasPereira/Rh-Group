@@ -51,7 +51,7 @@ Senhas são guardadas só como hash (scrypt); sessões duram 12 horas e ficam re
 Na frequência (RH), a aba **onboarding** controla a admissão 100% digital:
 
 1. O RH clica em **Novo onboarding** — sem preencher nada. O onboarding já nasce com os dados e documentos padrão:
-   - **Dados** que o candidato preenche: nome completo, CPF, RG, data de nascimento, nacionalidade, estado civil, profissão, e-mail, telefone/WhatsApp, endereço e chave Pix (CNPJ) — validados: CPF e CNPJ com dígitos verificadores (inclusive o CNPJ alfanumérico emitido desde julho/2026), RG com pelo menos 5 caracteres, e-mail e telefone com DDD.
+   - **Dados** que o candidato preenche: nome completo, CPF, RG, data de nascimento, nacionalidade, estado civil, e-mail, telefone/WhatsApp, endereço e chave Pix (CNPJ) — validados: CPF e CNPJ com dígitos verificadores (inclusive o CNPJ alfanumérico emitido desde julho/2026), RG com pelo menos 5 caracteres, e-mail e telefone com DDD.
    - **Documentos**: identidade (RG ou CNH), dados bancários e foto para crachá.
    No detalhe, o RH pode retirar ou pedir outros dados e documentos, marcar como opcional e preencher os dados internos (cargo, setor, início, observações — o candidato não vê).
 2. O sistema gera um **link pessoal** para o candidato (válido por 30 dias), com atalho para enviar por WhatsApp ou e-mail. O link fica fora de todas as senhas do site — quem dá acesso é o próprio token aleatório na URL, do qual o banco guarda só o hash. Por isso o link só aparece na hora em que é gerado; se perder, gere outro (o anterior para de funcionar).
@@ -62,7 +62,7 @@ Na frequência (RH), a aba **onboarding** controla a admissão 100% digital:
 
 Quando o onboarding tem uma **empresa contratante** (a empresa em que a pessoa vai trabalhar), o candidato também recebe em "Seus documentos" o **Acordo de confidencialidade (NDA)** e o **Termo de autorização de uso de imagem**, cada um com três passos:
 
-1. Depois de preencher "Seus dados", clica em **Baixar … preenchido (PDF)** — o sistema gera o termo com os dados da empresa e do candidato (nome, nacionalidade, estado civil, profissão, nascimento, RG, CPF, e-mail, endereço e CEP, conforme o termo), mais a data de hoje.
+1. Depois de preencher "Seus dados", clica em **Baixar … preenchido (PDF)** — o sistema gera o termo com os dados da empresa e do candidato (nome, nacionalidade, estado civil, nascimento, RG, CPF, e-mail, endereço e CEP, conforme o termo), mais a data de hoje.
 2. Assina de graça com a conta gov.br em [assinador.iti.br](https://assinador.iti.br).
 3. Envia o PDF assinado no mesmo item. O sistema só aceita PDF com assinatura digital; o RH confere a assinatura em [validar.iti.gov.br](https://validar.iti.gov.br) antes de aprovar.
 
