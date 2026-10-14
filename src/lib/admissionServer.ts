@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextRequest } from "next/server";
 import { prisma } from "./prisma";
 import { LINK_VALID_DAYS } from "./admission";
+import { AGREEMENTS, AGREEMENT_KINDS } from "./agreements";
 
 /**
  * Link do candidato: um token aleatório na URL. O banco guarda só o hash, então
@@ -64,27 +65,35 @@ export function publicAdmission<T extends { tokenHash: string }>(admission: T): 
   return rest;
 }
 
-export const NDA_DOCUMENT = {
-  kind: "nda",
-  name: "Acordo de confidencialidade (NDA)",
-  description: "Baixe o acordo já preenchido, assine no gov.br e envie aqui o PDF assinado.",
+/** Termos gerados que entram na lista quando o onboarding tem empresa contratante. */
+export const AGREEMENT_DOCUMENTS = AGREEMENT_KINDS.map((kind) => ({
+  kind,
+  name: AGREEMENTS[kind].name,
+  description: AGREEMENTS[kind].description,
   required: true,
-};
+}));
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 /**
- * Com empresa contratante, o onboarding pede o acordo de confidencialidade;
- * sem ela, o item sai (se o candidato ainda não enviou nada nele).
+ * Com empresa contratante, o onboarding pede o acordo de confidencialidade e o
+ * termo de uso de imagem; sem ela, os itens saem (se o candidato ainda não
+ * enviou nada neles).
  */
-export async function syncNdaDocument(tx: Tx, admissionId: string, hasCompany: boolean): Promise<void> {
-  const existing = await tx.admissionDocument.findFirst({ where: { admissionId, kind: "nda" }, include: { files: true } });
-  if (hasCompany && !existing) {
+export async function syncAgreementDocuments(tx: Tx, admissionId: string, hasCompany: boolean): Promise<void> {
+  const existing = await tx.admissionDocument.findMany({
+    where: { admissionId, kind: { in: AGREEMENT_KINDS } },
+    include: { files: true },
+  });
+  if (hasCompany) {
     const last = await tx.admissionDocument.aggregate({ where: { admissionId }, _max: { sortOrder: true } });
-    await tx.admissionDocument.create({
-      data: { ...NDA_DOCUMENT, admissionId, sortOrder: (last._max.sortOrder ?? -1) + 1 },
-    });
-  } else if (!hasCompany && existing && existing.files.length === 0) {
-    await tx.admissionDocument.delete({ where: { id: existing.id } });
+    let sortOrder = (last._max.sortOrder ?? -1) + 1;
+    for (const doc of AGREEMENT_DOCUMENTS) {
+      if (existing.some((d) => d.kind === doc.kind)) continue;
+      await tx.admissionDocument.create({ data: { ...doc, admissionId, sortOrder: sortOrder++ } });
+    }
+  } else {
+    const removable = existing.filter((d) => d.files.length === 0).map((d) => d.id);
+    if (removable.length) await tx.admissionDocument.deleteMany({ where: { id: { in: removable } } });
   }
 }

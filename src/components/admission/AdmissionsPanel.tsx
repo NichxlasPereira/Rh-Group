@@ -15,12 +15,13 @@ import {
   ContractingCompanyInfo,
   DEFAULT_FIELDS,
   admissionProgress,
+  isGeneratedDocument,
   fieldsProgress,
 } from "@/lib/admission";
 import { formatFileSize } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
-import { NdaSettingsModal } from "./NdaSettingsModal";
+import { TermsSettingsModal, companyIncomplete } from "./TermsSettingsModal";
 
 async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -50,7 +51,7 @@ const STATUS_STYLE: Record<AdmissionStatus, string> = {
 
 interface AdmissionsPanelProps {
   departments: string[];
-  /** Administradores cadastram as empresas e editam o texto do acordo. */
+  /** Administradores cadastram as empresas e editam o texto dos termos. */
   isAdmin: boolean;
   /** Concluir cria um colaborador: a página recarrega a lista dela. */
   onEmployeesChanged: () => void;
@@ -59,7 +60,7 @@ interface AdmissionsPanelProps {
 /** Aba "admissões": admissão 100% digital, do envio dos documentos à aprovação. */
 export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: AdmissionsPanelProps) {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
-  const [ndaSettings, setNdaSettings] = useState(false);
+  const [termsSettings, setTermsSettings] = useState(false);
   const [choosingCompany, setChoosingCompany] = useState(false);
   const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
   const count = (status: AdmissionStatus) => (admissions ?? []).filter((a) => a.status === status).length;
 
   // Um clique: cria com os dados e documentos padrão e já mostra o link. Com
-  // mais de uma empresa, antes pergunta com qual será o acordo de confidencialidade.
+  // mais de uma empresa, antes pergunta com qual serão os termos (confidencialidade e imagem).
   async function create(contractingCompanyId?: string) {
     if (contractingCompanyId === undefined && companies.length > 1) {
       setChoosingCompany(true);
@@ -140,8 +141,8 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {isAdmin && (
-            <Button variant="ghost" onClick={() => setNdaSettings(true)} className="!px-4 !py-2 text-xs">
-              Acordo de confidencialidade
+            <Button variant="ghost" onClick={() => setTermsSettings(true)} className="!px-4 !py-2 text-xs">
+              Termos do onboarding
             </Button>
           )}
           <select
@@ -235,9 +236,9 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
         onConfirm={(companyId) => create(companyId)}
       />
       {isAdmin && (
-        <NdaSettingsModal
-          open={ndaSettings}
-          onClose={() => setNdaSettings(false)}
+        <TermsSettingsModal
+          open={termsSettings}
+          onClose={() => setTermsSettings(false)}
           companies={companies}
           onCompaniesChanged={async () => {
             await loadCompanies();
@@ -419,8 +420,8 @@ function AdmissionDetail({
           act(
             () => send(base, "PATCH", { action: "empresa", contractingCompanyId }),
             contractingCompanyId
-              ? "Empresa do acordo definida. O candidato já vê o acordo no link dele."
-              : "Acordo de confidencialidade retirado deste onboarding."
+              ? "Empresa definida. O candidato já vê os termos no link dele."
+              : "Termos retirados deste onboarding."
           )
         }
       />
@@ -444,7 +445,7 @@ function AdmissionDetail({
               <DocumentStatusBadge status={doc.status} />
             </div>
 
-            {doc.kind === "nda" && doc.files.length > 0 && doc.status === "enviado" && (
+            {isGeneratedDocument(doc.kind) && doc.files.length > 0 && doc.status === "enviado" && (
               <p className="mt-2 text-xs text-muted">
                 Antes de aprovar, confira a assinatura gov.br do PDF em{" "}
                 <a
@@ -938,8 +939,8 @@ function CompanyChoiceModal({
       }
     >
       <p className="mb-3 text-sm text-muted">
-        Com qual empresa será o acordo de confidencialidade? O candidato recebe o acordo já com ela, junto com os
-        documentos pedidos.
+        Em qual empresa a pessoa vai trabalhar? O acordo de confidencialidade e o termo de uso de imagem saem
+        preenchidos com ela, junto com os documentos pedidos.
       </p>
       <div className="flex flex-col gap-2">
         {companies.map((c) => (
@@ -959,14 +960,14 @@ function CompanyChoiceModal({
           }`}
         >
           <input type="radio" name="nda-company" checked={companyId === ""} onChange={() => setCompanyId("")} />
-          Sem acordo de confidencialidade
+          Sem termos (confidencialidade e uso de imagem)
         </label>
       </div>
     </Modal>
   );
 }
 
-/** Empresa do acordo de confidencialidade, logo acima da lista de documentos. */
+/** Empresa dos termos (confidencialidade e uso de imagem), logo acima da lista de documentos. */
 function NdaCompanyCard({
   admission,
   companies,
@@ -980,17 +981,23 @@ function NdaCompanyCard({
 }) {
   const current = admission.contractingCompanyId ?? "";
   const company = companies.find((c) => c.id === current);
-  const nda = admission.documents.find((d) => d.kind === "nda");
+  const signed = admission.documents.filter((d) => isGeneratedDocument(d.kind) && d.files.length > 0);
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border bg-surface p-4">
       <div className="min-w-0">
-        <p className="font-medium text-ink">Acordo de confidencialidade</p>
+        <p className="font-medium text-ink">Empresa contratante</p>
         <p className="text-xs text-muted">
           {company
-            ? "O candidato baixa o acordo já preenchido com esta empresa, assina no gov.br e envia junto com os documentos."
-            : "Escolha a empresa para o candidato receber o acordo junto com os documentos."}
+            ? "O candidato baixa o acordo de confidencialidade e o termo de uso de imagem já preenchidos com esta empresa, assina no gov.br e envia junto com os documentos."
+            : "Escolha a empresa para o candidato receber o acordo de confidencialidade e o termo de uso de imagem."}
         </p>
+        {company && companyIncomplete(company) && (
+          <p className="mt-1 text-xs font-semibold text-warn">
+            O cadastro desta empresa está sem CNPJ ou endereço da sede: o termo de uso de imagem só pode ser gerado depois
+            de completar em “Termos do onboarding”.
+          </p>
+        )}
       </div>
       {editable && companies.length > 0 ? (
         <select
@@ -998,10 +1005,9 @@ function NdaCompanyCard({
           onChange={(e) => {
             const next = e.target.value;
             if (
-              nda &&
-              nda.files.length > 0 &&
+              signed.length > 0 &&
               !window.confirm(
-                "O candidato já enviou o acordo assinado com a empresa atual. Trocar a empresa não apaga esse arquivo: recuse-o para ele baixar e assinar o novo. Continuar?"
+                "O candidato já enviou termo assinado com a empresa atual. Trocar a empresa não apaga esse arquivo: recuse-o para ele baixar e assinar o novo. Continuar?"
               )
             ) {
               return;
@@ -1009,9 +1015,9 @@ function NdaCompanyCard({
             onChange(next);
           }}
           className="min-w-[16rem] rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-          aria-label="Empresa do acordo de confidencialidade"
+          aria-label="Empresa contratante"
         >
-          <option value="">Sem acordo de confidencialidade</option>
+          <option value="">Sem termos</option>
           {companies.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -1019,7 +1025,7 @@ function NdaCompanyCard({
           ))}
         </select>
       ) : (
-        <span className="text-sm text-ink">{company?.name ?? "Sem acordo"}</span>
+        <span className="text-sm text-ink">{company?.name ?? "Sem termos"}</span>
       )}
     </section>
   );

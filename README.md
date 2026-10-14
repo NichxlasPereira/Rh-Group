@@ -51,24 +51,28 @@ Senhas são guardadas só como hash (scrypt); sessões duram 12 horas e ficam re
 Na frequência (RH), a aba **onboarding** controla a admissão 100% digital:
 
 1. O RH clica em **Novo onboarding** — sem preencher nada. O onboarding já nasce com os dados e documentos padrão:
-   - **Dados** que o candidato preenche: nome completo, CPF, RG, data de nascimento, e-mail, telefone/WhatsApp, endereço e chave Pix (CNPJ) — validados: CPF e CNPJ com dígitos verificadores (inclusive o CNPJ alfanumérico emitido desde julho/2026), RG com pelo menos 5 caracteres, e-mail e telefone com DDD.
+   - **Dados** que o candidato preenche: nome completo, CPF, RG, data de nascimento, nacionalidade, estado civil, profissão, e-mail, telefone/WhatsApp, endereço e chave Pix (CNPJ) — validados: CPF e CNPJ com dígitos verificadores (inclusive o CNPJ alfanumérico emitido desde julho/2026), RG com pelo menos 5 caracteres, e-mail e telefone com DDD.
    - **Documentos**: identidade (RG ou CNH), dados bancários e foto para crachá.
    No detalhe, o RH pode retirar ou pedir outros dados e documentos, marcar como opcional e preencher os dados internos (cargo, setor, início, observações — o candidato não vê).
 2. O sistema gera um **link pessoal** para o candidato (válido por 30 dias), com atalho para enviar por WhatsApp ou e-mail. O link fica fora de todas as senhas do site — quem dá acesso é o próprio token aleatório na URL, do qual o banco guarda só o hash. Por isso o link só aparece na hora em que é gerado; se perder, gere outro (o anterior para de funcionar).
 3. O candidato abre o link no celular, preenche **Seus dados**, envia foto ou PDF de cada documento (até 10 MB, vários arquivos por documento) e acompanha a situação: *não enviado*, *em análise*, *aprovado* ou *recusado* — com o motivo, para reenviar. A página segue a ordem do processo: preencher os dados, enviar os documentos e, por último, o botão **Enviar dados** — que só envia com os dados completos e válidos e todos os documentos obrigatórios enviados, e então leva a uma página de agradecimento avisando que o RH vai analisar.
 4. O RH confere os dados, abre os arquivos e aprova ou recusa (a recusa exige motivo). Com os dados obrigatórios preenchidos e os documentos obrigatórios aprovados, **Concluir onboarding** cria o colaborador ativo, com o nome informado pelo candidato (ou reaproveita um com o mesmo nome) e desativa o link.
 
-### Acordo de confidencialidade (NDA)
+### Termos gerados: acordo de confidencialidade e uso de imagem
 
-Quando o onboarding tem uma **empresa contratante**, o candidato também recebe o item **Acordo de confidencialidade (NDA)** em "Seus documentos":
+Quando o onboarding tem uma **empresa contratante** (a empresa em que a pessoa vai trabalhar), o candidato também recebe em "Seus documentos" o **Acordo de confidencialidade (NDA)** e o **Termo de autorização de uso de imagem**, cada um com três passos:
 
-1. Depois de preencher "Seus dados", clica em **Baixar acordo preenchido (PDF)** — o sistema gera o acordo com a empresa contratante e o nome, nascimento, RG, CPF e endereço do candidato, mais a data de hoje.
+1. Depois de preencher "Seus dados", clica em **Baixar … preenchido (PDF)** — o sistema gera o termo com os dados da empresa e do candidato (nome, nacionalidade, estado civil, profissão, nascimento, RG, CPF, e-mail, endereço e CEP, conforme o termo), mais a data de hoje.
 2. Assina de graça com a conta gov.br em [assinador.iti.br](https://assinador.iti.br).
 3. Envia o PDF assinado no mesmo item. O sistema só aceita PDF com assinatura digital; o RH confere a assinatura em [validar.iti.gov.br](https://validar.iti.gov.br) antes de aprovar.
 
-O PDF segue o formato do modelo do RH: Times 10 justificado, margens de 1 cm, título no alto à direita, faixas cinza nos títulos das cláusulas e quadro de assinaturas em duas colunas. A fonte é a Tinos (livre, com as mesmas medidas da Times New Roman), embutida no PDF para sair igual em qualquer leitor.
+Cada PDF segue o formato do modelo do RH, com a fonte embutida para sair igual em qualquer leitor:
+- **Acordo de confidencialidade:** A4, Times 10 justificado (fonte Tinos, mesmas medidas da Times New Roman), margens de 1 cm, título no alto à direita, faixas cinza nas cláusulas e quadro de assinaturas em duas colunas.
+- **Uso de imagem:** Carta, Arial 12 justificado (fonte Arimo, mesmas medidas da Arial), margens de 1 polegada, títulos centralizados e linhas de assinatura do titular e da empresa.
 
-Um administrador cadastra as empresas (nome, qualificação como aparece no acordo — `**texto**` sai em negrito —, quem assina, cargo e CPF) e pode editar o texto do acordo em **Acordo de confidencialidade**, na aba onboarding. O texto usa marcadores como `{{NOME}}` e `{{CPF}}` e uma marcação simples por linha (`# ` título, `## ` cláusula, `> ` à direita, `a)`/`I.` listas, `[ASSINATURAS]` com `|` separando as colunas); **Voltar ao texto padrão** desfaz a edição. Ao clicar em **Novo onboarding** com mais de uma empresa cadastrada, o sistema pergunta com qual delas será o acordo (ou "sem acordo"); com uma só, já usa ela. A empresa pode ser trocada depois no cartão **Acordo de confidencialidade**, logo acima da lista de documentos; sem empresa, o acordo não é pedido. Os dados das empresas ficam só no banco, nunca no repositório.
+Ao clicar em **Novo onboarding** com mais de uma empresa cadastrada, o sistema pergunta em qual delas a pessoa vai trabalhar (ou "sem termos"); com uma só, já usa ela. A empresa pode ser trocada depois no cartão **Empresa contratante**, logo acima da lista de documentos.
+
+Um administrador cadastra as empresas em **Termos do onboarding**, na aba onboarding: CNPJ (o botão **Buscar pelo CNPJ** traz razão social, natureza jurídica e endereço da sede das bases públicas da Receita — publica.cnpj.ws, BrasilAPI ou ReceitaWS, a que responder), qualificação como aparece no acordo (`**texto**` sai em negrito), quem assina, cargo e CPF. O termo de uso de imagem precisa do CNPJ e do endereço da sede; sem eles, a empresa aparece com o aviso "Falta CNPJ e endereço". Na mesma tela dá para editar o texto de cada termo: marcadores como `{{NOME}}` e `{{EMPRESA_CNPJ}}` e uma marcação simples por linha (`^ ` centralizado, `> ` à direita, `# ` título à direita, `## ` cláusula com faixa, `a)`/`I.` listas, `[ASSINATURAS]` com `|` separando as colunas); **Voltar ao texto padrão** desfaz a edição. Os dados das empresas ficam só no banco, nunca no repositório.
 
 Os arquivos ficam em `admissoes/`, ao lado do banco (local: `prisma/admissoes/`, fora do git; produção: o volume `/data`). Só o RH logado consegue abri-los; o candidato vê apenas nome e situação dos próprios documentos. Excluir a admissão apaga os arquivos.
 
@@ -127,7 +131,7 @@ Configuração (usa a mesma conta de serviço do Drive):
 - **Material**: nome, categoria, unidade, quantidade, estoque mínimo, local, fornecedor, preço e link de compra.
 - **Retirada**: cópia dos dados do material no momento da retirada (para manter o histórico legível mesmo após edição ou exclusão do material), quantidade, data e responsável.
 
-- **Admissão**: dados do candidato, situação, hash do link e validade; cada **documento pedido** tem situação, motivo da recusa e quem avaliou, e pode ter vários **arquivos**. O documento do tipo `nda` é o acordo de confidencialidade, gerado com a **empresa contratante** do onboarding.
+- **Admissão**: dados do candidato, situação, hash do link e validade; cada **documento pedido** tem situação, motivo da recusa e quem avaliou, e pode ter vários **arquivos**. Os documentos do tipo `nda` (acordo de confidencialidade) e `imagem` (termo de uso de imagem) são gerados com a **empresa contratante** do onboarding, que guarda CNPJ, natureza jurídica e endereço da sede.
 - **Acesso à frequência**: nome, e-mail, hash da senha, perfil (administrador ou acesso), se está ativo e último acesso; mais as sessões abertas.
 - **Colaborador**: nome, setor, cargo, total de folgas a que tem direito e se está ativo (inativos somem da lista ao registrar novas ocorrências, mas o histórico continua).
 - **Ocorrência**: tipo (`falta`, `atestado` ou `folga`), data inicial e final (atestados e folgas podem cobrir vários dias), se foi justificada, gestor que concedeu (folga) e observações. O saldo de folgas é o total do colaborador menos os dias de folga já lançados; a API recusa folgas acima do saldo. Guarda uma cópia do nome e setor do colaborador, como as retiradas fazem com o material.

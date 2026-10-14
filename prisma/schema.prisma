@@ -198,7 +198,8 @@ model AdmissionDocument {
   id          String    @id @default(cuid())
   admissionId String
   admission   Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
-  // "upload" (documento comum) ou "nda" (acordo gerado pelo sistema e assinado no gov.br).
+  // "upload" (documento comum) ou um termo gerado pelo sistema e assinado no gov.br:
+  // "nda" (acordo de confidencialidade) ou "imagem" (termo de uso de imagem).
   kind        String    @default("upload")
   name        String
   description String?
@@ -248,6 +249,14 @@ model ContractingCompany {
   signerName    String // quem assina pela empresa
   signerRole    String // ex.: Sócio administrador
   signerCpf     String
+  // Dados separados para os termos que citam CNPJ e sede (ex.: uso de imagem).
+  cnpj          String?
+  legalNature   String? // ex.: sociedade empresária limitada
+  address       String? // logradouro, número e complemento
+  district      String?
+  city          String?
+  state         String?
+  cep           String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

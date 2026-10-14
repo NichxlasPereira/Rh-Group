@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
-import { ADMISSION_INCLUDE, NDA_DOCUMENT, admissionLink, newAdmissionToken, publicAdmission } from "@/lib/admissionServer";
+import { ADMISSION_INCLUDE, AGREEMENT_DOCUMENTS, admissionLink, newAdmissionToken, publicAdmission } from "@/lib/admissionServer";
 import { parseAdmissionFields, parseChecklist } from "@/lib/admissionValidation";
 import { DEFAULT_CHECKLIST, DEFAULT_FIELDS } from "@/lib/admission";
 
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const checklist = parseChecklist(body.documents ?? DEFAULT_CHECKLIST);
   if ("error" in checklist) return NextResponse.json({ error: checklist.error }, { status: 400 });
 
-  // Empresa do acordo de confidencialidade: a escolhida pelo RH ("" = sem acordo);
+  // Empresa dos termos (confidencialidade e uso de imagem): a escolhida pelo RH ("" = sem termos);
   // se não vier, e só houver uma empresa cadastrada, ela já vira a contratante.
   let contractingCompanyId: string | null = null;
   if (typeof body.contractingCompanyId === "string") {
@@ -52,7 +52,9 @@ export async function POST(request: NextRequest) {
       documents: {
         create: [
           ...checklist.data.map((item, index) => ({ ...item, sortOrder: index })),
-          ...(contractingCompanyId ? [{ ...NDA_DOCUMENT, sortOrder: checklist.data.length }] : []),
+          ...(contractingCompanyId
+            ? AGREEMENT_DOCUMENTS.map((doc, index) => ({ ...doc, sortOrder: checklist.data.length + index }))
+            : []),
         ],
       },
       fields: {

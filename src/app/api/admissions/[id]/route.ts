@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { removeAttachmentFiles } from "@/lib/attachmentStorage";
-import { ADMISSION_INCLUDE, publicAdmission, syncNdaDocument } from "@/lib/admissionServer";
+import { ADMISSION_INCLUDE, publicAdmission, syncAgreementDocuments } from "@/lib/admissionServer";
 import { parseAdmissionFields } from "@/lib/admissionValidation";
 import { admissionProgress, fieldsProgress } from "@/lib/admission";
 import { exportAdmissionToDrive } from "@/lib/admissionDrive";
@@ -117,7 +117,7 @@ export async function PATCH(
       where: { id },
       data: { ...(fields ? fields.data : {}), ...(contractingCompanyId !== undefined ? { contractingCompanyId } : {}) },
     });
-    if (contractingCompanyId !== undefined) await syncNdaDocument(tx, id, !!contractingCompanyId);
+    if (contractingCompanyId !== undefined) await syncAgreementDocuments(tx, id, !!contractingCompanyId);
   });
   const updated = await prisma.admission.findUnique({ where: { id }, include: ADMISSION_INCLUDE });
   return NextResponse.json(publicAdmission(updated!));

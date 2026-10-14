@@ -12,7 +12,7 @@ import { DocumentStatusBadge } from "./DocumentStatusBadge";
 
 interface PortalDocument {
   id: string;
-  kind: "upload" | "nda";
+  kind: "upload" | "nda" | "imagem";
   name: string;
   description: string | null;
   required: boolean;
@@ -212,6 +212,8 @@ function DocumentCard({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const locked = doc.status === "aprovado";
+  // Termo gerado pelo sistema (acordo, uso de imagem): baixar preenchido, assinar, enviar.
+  const generated = doc.kind !== "upload";
 
   return (
     <li
@@ -259,7 +261,7 @@ function DocumentCard({
         </ul>
       )}
 
-      {!locked && doc.kind === "nda" && <NdaSteps token={token} />}
+      {!locked && generated && <TermSteps token={token} doc={doc} />}
 
       {!locked && (
         <>
@@ -272,8 +274,8 @@ function DocumentCard({
             <IconPaperclip className="h-4 w-4" />
             {busy
               ? "Enviando..."
-              : doc.kind === "nda"
-                ? "3. Enviar o acordo assinado (PDF)"
+              : generated
+                ? `3. Enviar o ${doc.kind === "nda" ? "acordo" : "termo"} assinado (PDF)`
                 : doc.files.length > 0
                   ? "Enviar mais um arquivo"
                   : "Enviar documento"}
@@ -281,8 +283,8 @@ function DocumentCard({
           <input
             ref={inputRef}
             type="file"
-            accept={doc.kind === "nda" ? "application/pdf" : ATTACHMENT_ACCEPT}
-            multiple={doc.kind !== "nda"}
+            accept={generated ? "application/pdf" : ATTACHMENT_ACCEPT}
+            multiple={!generated}
             className="hidden"
             onChange={(e) => {
               onUpload(e.target.files);
@@ -479,28 +481,30 @@ function SubmissionForm({
   );
 }
 
-/** Passos do acordo de confidencialidade: baixar preenchido, assinar no gov.br, enviar. */
-function NdaSteps({ token }: { token: string }) {
+/** Passos de um termo gerado: baixar preenchido, assinar no gov.br, enviar. */
+function TermSteps({ token, doc }: { token: string; doc: PortalDocument }) {
   const values = useContext(FormValuesContext);
   const [busy, setBusy] = useState(false);
+
+  const noun = doc.kind === "nda" ? "o acordo" : "o termo";
 
   async function download() {
     setBusy(true);
     try {
-      const res = await fetch(`/api/admissao/${token}/nda`, {
+      const res = await fetch(`/api/admissao/${token}/documents/${doc.id}/preenchido`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ values }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        toast.error(body.error || "Não foi possível gerar o acordo.");
+        toast.error(body.error || "Não foi possível gerar o termo.");
         return;
       }
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = "acordo-de-confidencialidade.pdf";
+      a.download = doc.kind === "nda" ? "acordo-de-confidencialidade.pdf" : "termo-de-uso-de-imagem.pdf";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } finally {
@@ -512,7 +516,7 @@ function NdaSteps({ token }: { token: string }) {
     <ol className="mt-3 flex flex-col gap-2 rounded-[10px] bg-surface-2 p-3 text-sm text-ink">
       <li className="flex flex-col gap-2">
         <span>
-          <strong>1.</strong> Preencha “Seus dados” acima e baixe o acordo já preenchido com eles.
+          <strong>1.</strong> Preencha “Seus dados” acima e baixe {noun} já preenchido com eles.
         </span>
         <button
           type="button"
@@ -520,7 +524,7 @@ function NdaSteps({ token }: { token: string }) {
           disabled={busy}
           className="self-start rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-accent-ink transition hover:brightness-110 disabled:opacity-60"
         >
-          {busy ? "Gerando..." : "Baixar acordo preenchido (PDF)"}
+          {busy ? "Gerando..." : `Baixar ${noun.slice(2)} preenchido (PDF)`}
         </button>
       </li>
       <li>

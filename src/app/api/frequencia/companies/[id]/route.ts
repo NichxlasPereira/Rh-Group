@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { parseCompany } from "@/lib/companyValidation";
-import { syncNdaDocument } from "@/lib/admissionServer";
+import { syncAgreementDocuments } from "@/lib/admissionServer";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireFrequenciaUser({ admin: true });
@@ -28,8 +28,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   await prisma.$transaction(async (tx) => {
     const admissions = await tx.admission.findMany({ where: { contractingCompanyId: id }, select: { id: true } });
     await tx.contractingCompany.delete({ where: { id } });
-    // Sem contratante não há acordo: tira o item da lista (se ainda não foi enviado).
-    for (const a of admissions) await syncNdaDocument(tx, a.id, false);
+    // Sem contratante não há termos: tira os itens da lista (se ainda não foram enviados).
+    for (const a of admissions) await syncAgreementDocuments(tx, a.id, false);
   });
   return NextResponse.json({ ok: true });
 }
