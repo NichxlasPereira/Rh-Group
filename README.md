@@ -64,7 +64,8 @@ Quando o onboarding tem uma **empresa contratante** (a empresa em que a pessoa v
 
 1. Depois de preencher "Seus dados", clica em **Baixar … preenchido (PDF)** — o sistema gera o termo com os dados da empresa e do candidato (nome, nacionalidade, estado civil, nascimento, RG, CPF, e-mail, endereço e CEP, conforme o termo), mais a data de hoje.
 2. Assina de graça com a conta gov.br em [assinador.iti.br](https://assinador.iti.br).
-3. Envia o PDF assinado no mesmo item. O sistema só aceita PDF com assinatura digital; o RH confere a assinatura em [validar.iti.gov.br](https://validar.iti.gov.br) antes de aprovar.
+3. Envia o PDF assinado no mesmo item. O sistema só aceita PDF com assinatura digital.
+4. **A empresa assina por cima.** No onboarding, o RH abre o PDF do candidato, o representante da empresa assina o mesmo arquivo no gov.br e o RH envia em **Enviar PDF assinado pela empresa**. O sistema confere que o PDF tem as duas assinaturas e que é o mesmo documento que o candidato assinou (a assinatura digital só acrescenta ao fim do arquivo). Só então o termo pode ser aprovado; o RH confere as duas assinaturas em [validar.iti.gov.br](https://validar.iti.gov.br). Cada termo mostra a linha do tempo: candidato assinou, empresa assinou, RH aprovou. Se o candidato reenviar o termo, a versão da empresa é descartada e ela assina de novo.
 
 Cada PDF segue o formato do modelo do RH, com a fonte embutida para sair igual em qualquer leitor:
 - **Acordo de confidencialidade:** A4, Times 10 justificado (fonte Tinos, mesmas medidas da Times New Roman), margens de 1 cm, título no alto à direita, faixas cinza nas cláusulas e quadro de assinaturas em duas colunas.
@@ -73,6 +74,8 @@ Cada PDF segue o formato do modelo do RH, com a fonte embutida para sair igual e
 Ao clicar em **Novo onboarding** com mais de uma empresa cadastrada, o sistema pergunta em qual delas a pessoa vai trabalhar (ou "sem termos"); com uma só, já usa ela. A empresa pode ser trocada depois no cartão **Empresa contratante**, logo acima da lista de documentos.
 
 Um administrador cadastra as empresas em **Termos do onboarding**, na aba onboarding: CNPJ (o botão **Buscar pelo CNPJ** traz razão social, natureza jurídica e endereço da sede das bases públicas da Receita — publica.cnpj.ws, BrasilAPI ou ReceitaWS, a que responder), qualificação como aparece no acordo (`**texto**` sai em negrito), quem assina, cargo e CPF. O termo de uso de imagem precisa do CNPJ e do endereço da sede; sem eles, a empresa aparece com o aviso "Falta CNPJ e endereço". Na mesma tela dá para editar o texto de cada termo: marcadores como `{{NOME}}` e `{{EMPRESA_CNPJ}}` e uma marcação simples por linha (`^ ` centralizado, `> ` à direita, `# ` título à direita, `## ` cláusula com faixa, `a)`/`I.` listas, `[ASSINATURAS]` com `|` separando as colunas); **Voltar ao texto padrão** desfaz a edição. Os dados das empresas ficam só no banco, nunca no repositório.
+
+**Prazo de guarda (LGPD):** o portal avisa o candidato de que, se a contratação não seguir, os dados e documentos são apagados 90 dias depois. Onboardings **cancelados** há mais de 90 dias são apagados automaticamente, com os arquivos (a verificação roda quando o RH abre a lista de onboardings, no máximo a cada 6 horas). A lista mostra quantos dias faltam; reabrir o onboarding interrompe a contagem.
 
 Os arquivos ficam em `admissoes/`, ao lado do banco (local: `prisma/admissoes/`, fora do git; produção: o volume `/data`). Só o RH logado consegue abri-los; o candidato vê apenas nome e situação dos próprios documentos. Excluir a admissão apaga os arquivos.
 
@@ -143,3 +146,9 @@ O tipo `atraso` foi retirado do sistema em 30/09/2026. Registros antigos desse t
 Atestados são dados de saúde (LGPD): o sistema não tem campo de CID/diagnóstico de propósito.
 
 **Anexos de atestado**: PDF ou imagem (JPG, PNG, WEBP, HEIC), até 10 MB cada. Os arquivos ficam em disco numa pasta `atestados` ao lado do banco SQLite — localmente `prisma/atestados/` (fora do git), em produção no mesmo volume do banco. Para usar outra pasta, defina `ATTACHMENTS_DIR`. Só são servidos pela API, atrás da mesma autenticação do site.
+
+## Ambiente de teste e verificação automática
+
+- **Ambiente de teste:** novidades são feitas no ramo `sistema-teste` e publicadas no ambiente `teste` do Railway (endereço próprio, banco e arquivos separados da produção). Só depois de aprovadas vão para a `main` e para produção.
+- **Verificação automática:** a cada mudança em `main` ou `sistema-teste`, o GitHub Actions (`.github/workflows/verificacao.yml`) aplica as migrações num banco vazio, roda as regras de código e compila o sistema.
+- **Saúde do site:** `GET /api/health` responde `{"ok":true}` quando o servidor e o banco estão de pé (sem senha, sem dados). Serve para um monitor externo (ex.: UptimeRobot) avisar quando o site cair.

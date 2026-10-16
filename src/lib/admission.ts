@@ -146,6 +146,8 @@ export interface AdmissionFileInfo {
   fileName: string;
   mimeType: string;
   size: number;
+  /** "empresa" = versão do termo assinada também pelo representante da empresa. */
+  origin: "candidato" | "empresa";
   createdAt: string;
 }
 
@@ -159,6 +161,8 @@ export interface AdmissionDocumentInfo {
   reviewNote: string | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
+  companySignedAt: string | null;
+  companySignedBy: string | null;
   files: AdmissionFileInfo[];
 }
 
@@ -171,6 +175,8 @@ export interface AdmissionInfo {
   department: string | null;
   startDate: string | null;
   status: AdmissionStatus;
+  /** Quando foi cancelado (conta o prazo para apagar). */
+  closedAt: string | null;
   notes: string | null;
   tokenExpiresAt: string;
   createdBy: string | null;

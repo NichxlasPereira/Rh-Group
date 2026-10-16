@@ -20,7 +20,8 @@ export async function POST(
   if (document.status === "aprovado") {
     return NextResponse.json({ error: "Este documento já foi aprovado pelo RH." }, { status: 409 });
   }
-  if (document.files.length >= MAX_FILES_PER_DOCUMENT) {
+  const generated = isAgreementKind(document.kind);
+  if (!generated && document.files.length >= MAX_FILES_PER_DOCUMENT) {
     return NextResponse.json({ error: `Limite de ${MAX_FILES_PER_DOCUMENT} arquivos por documento.` }, { status: 409 });
   }
 
@@ -28,7 +29,7 @@ export async function POST(
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "Selecione um arquivo." }, { status: 400 });
 
-  if (isAgreementKind(document.kind)) {
+  if (generated) {
     // Os termos voltam assinados digitalmente (gov.br): PDF com assinatura embutida.
     const bytes = Buffer.from(await file.arrayBuffer());
     if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") {
@@ -45,8 +46,11 @@ export async function POST(
   const saved = await saveAttachment(file, "admissoes");
   if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 400 });
 
+  // Termo assinado de novo substitui a versão anterior, inclusive a que a empresa já tinha assinado.
+  const replaced = generated ? document.files : [];
   try {
     await prisma.$transaction([
+      prisma.admissionFile.deleteMany({ where: { id: { in: replaced.map((f) => f.id) } } }),
       prisma.admissionFile.create({
         data: {
           documentId: docId,
@@ -57,11 +61,15 @@ export async function POST(
         },
       }),
       // Envio novo volta para a fila de análise do RH.
-      prisma.admissionDocument.update({ where: { id: docId }, data: { status: "enviado", reviewNote: null } }),
+      prisma.admissionDocument.update({
+        where: { id: docId },
+        data: { status: "enviado", reviewNote: null, ...(generated ? { companySignedAt: null, companySignedBy: null } : {}) },
+      }),
     ]);
   } catch (err) {
     await removeAttachmentFiles([saved.storedName], "admissoes");
     throw err;
   }
+  await removeAttachmentFiles(replaced.map((f) => f.storedName), "admissoes");
   return NextResponse.json({ ok: true }, { status: 201 });
 }

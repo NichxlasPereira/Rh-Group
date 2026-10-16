@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
-import { ADMISSION_INCLUDE, AGREEMENT_DOCUMENTS, admissionLink, newAdmissionToken, publicAdmission } from "@/lib/admissionServer";
+import { ADMISSION_INCLUDE, AGREEMENT_DOCUMENTS, admissionLink, purgeExpiredAdmissions, newAdmissionToken, publicAdmission } from "@/lib/admissionServer";
 import { parseAdmissionFields, parseChecklist } from "@/lib/admissionValidation";
 import { DEFAULT_CHECKLIST, DEFAULT_FIELDS } from "@/lib/admission";
 
@@ -9,6 +9,7 @@ export async function GET() {
   const auth = await requireFrequenciaUser();
   if ("response" in auth) return auth.response;
 
+  await purgeExpiredAdmissions();
   const admissions = await prisma.admission.findMany({
     orderBy: [{ createdAt: "desc" }],
     include: ADMISSION_INCLUDE,

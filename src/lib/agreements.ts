@@ -556,6 +556,13 @@ export async function renderAgreementPdf(kind: AgreementKind, filledText: string
  * valida a cadeia de certificados — isso o RH confere em validar.iti.gov.br.
  */
 export function looksDigitallySigned(data: Buffer): boolean {
+  return signatureCount(data) > 0;
+}
+
+/** Quantas assinaturas digitais o PDF tem (cada uma traz o seu /ByteRange com os trechos assinados). */
+export function signatureCount(data: Buffer): number {
   const text = data.toString("latin1");
-  return /\/ByteRange\s*\[/.test(text) && /\/Type\s*\/Sig\b|\/SubFilter\s*\/(adbe\.pkcs7|ETSI\.CAdES)/.test(text);
+  if (!/\/Type\s*\/Sig\b|\/SubFilter\s*\/(adbe\.pkcs7|ETSI\.CAdES)/.test(text)) return 0;
+  const ranges = new Set([...text.matchAll(/\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/g)].map((m) => m.slice(1).join(" ")));
+  return ranges.size;
 }

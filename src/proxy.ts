@@ -16,7 +16,10 @@ export function proxy(request: NextRequest) {
 function isAdmissionPortal(p: string): boolean {
   // Também o link de exportação lido pela planilha do RH (=IMPORTDATA), que
   // vem dos servidores do Google, sem senha: o token na URL é a chave.
-  return p.startsWith("/admissao/") || p.startsWith("/api/admissao/") || p.startsWith("/api/planilha/");
+  // E a verificação de saúde, que o monitor de "site no ar" consulta de fora.
+  return (
+    p.startsWith("/admissao/") || p.startsWith("/api/admissao/") || p.startsWith("/api/planilha/") || p === "/api/health"
+  );
 }
 
 const FREQ_PUBLIC = new Set([

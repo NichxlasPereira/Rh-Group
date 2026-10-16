@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "../Button";
 import { Modal } from "../Modal";
@@ -42,6 +42,13 @@ async function send(url: string, method: string, body?: unknown) {
 const displayName = (a: Pick<AdmissionInfo, "candidateName">) => a.candidateName ?? "Aguardando o candidato";
 
 const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.message : "Erro inesperado.");
+
+/** Dias até um onboarding cancelado ser apagado (o servidor apaga após 90 dias). */
+function daysUntilPurge(admission: AdmissionInfo): number | null {
+  if (admission.status !== "cancelada" || !admission.closedAt) return null;
+  const left = 90 - Math.floor((Date.now() - new Date(admission.closedAt).getTime()) / 86_400_000);
+  return Math.max(0, left);
+}
 
 const STATUS_STYLE: Record<AdmissionStatus, string> = {
   em_andamento: "bg-accent-soft text-accent-strong",
@@ -216,8 +223,13 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
                         <div className="h-full rounded-full bg-ok" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[a.status]}`}>
-                      {ADMISSION_STATUS_LABEL[a.status]}
+                    <span className="flex flex-col items-end gap-0.5">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[a.status]}`}>
+                        {ADMISSION_STATUS_LABEL[a.status]}
+                      </span>
+                      {daysUntilPurge(a) !== null && (
+                        <span className="text-[11px] text-muted">apagado em {daysUntilPurge(a)} dias</span>
+                      )}
                     </span>
                   </button>
                 </li>
@@ -308,6 +320,12 @@ function AdmissionDetail({
             {[admission.role, admission.department].filter(Boolean).join(" · ") || "Cargo não informado"}
             {admission.startDate && ` · início previsto ${formatDateBR(admission.startDate)}`}
           </p>
+          {daysUntilPurge(admission) !== null && (
+            <p className="mt-1 text-xs font-semibold text-warn">
+              Cancelado: este onboarding e os documentos serão apagados em {daysUntilPurge(admission)} dias (LGPD). Reabra
+              para manter.
+            </p>
+          )}
           <p className="text-xs text-muted">
             {[admission.email, admission.phone].filter(Boolean).join(" · ")}
             {admission.createdBy && ` · criado por ${admission.createdBy} em ${formatDateBR(admission.createdAt)}`}
@@ -445,26 +463,18 @@ function AdmissionDetail({
               <DocumentStatusBadge status={doc.status} />
             </div>
 
-            {isGeneratedDocument(doc.kind) && doc.files.length > 0 && doc.status === "enviado" && (
-              <p className="mt-2 text-xs text-muted">
-                Antes de aprovar, confira a assinatura gov.br do PDF em{" "}
-                <a
-                  href="https://validar.iti.gov.br"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-accent-strong underline"
-                >
-                  validar.iti.gov.br
-                </a>
-                .
-              </p>
-            )}
-
             {doc.status === "recusado" && doc.reviewNote && (
               <p className="mt-2 rounded-[10px] bg-critical-soft px-3 py-2 text-sm text-ink">Motivo: {doc.reviewNote}</p>
             )}
 
-            {doc.files.length > 0 ? (
+            {isGeneratedDocument(doc.kind) ? (
+              <TermSignatures
+                doc={doc}
+                uploadUrl={`${base}/documents/${doc.id}/empresa`}
+                editable={open && doc.status !== "aprovado"}
+                onChanged={onChanged}
+              />
+            ) : doc.files.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-2">
                 {doc.files.map((f) => (
                   <li key={f.id}>
@@ -490,6 +500,12 @@ function AdmissionDetail({
                 {doc.files.length > 0 && doc.status !== "aprovado" && (
                   <Button
                     className="!px-3 !py-1.5 text-xs"
+                    disabled={isGeneratedDocument(doc.kind) && !doc.companySignedAt}
+                    title={
+                      isGeneratedDocument(doc.kind) && !doc.companySignedAt
+                        ? "Envie antes a versão assinada pela empresa"
+                        : undefined
+                    }
                     onClick={() => act(() => send(`${base}/documents/${doc.id}`, "PATCH", { status: "aprovado" }), "Documento aprovado.")}
                   >
                     Aprovar
@@ -1028,5 +1044,168 @@ function NdaCompanyCard({
         <span className="text-sm text-ink">{company?.name ?? "Sem termos"}</span>
       )}
     </section>
+  );
+}
+
+/**
+ * Termo gerado (acordo, uso de imagem): o candidato assina, depois o
+ * representante da empresa assina por cima no gov.br e o RH envia aqui.
+ */
+function TermSignatures({
+  doc,
+  uploadUrl,
+  editable,
+  onChanged,
+}: {
+  doc: AdmissionDocumentInfo;
+  uploadUrl: string;
+  editable: boolean;
+  onChanged: () => Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const candidateFile = doc.files.filter((f) => f.origin === "candidato").at(-1);
+  const companyFile = doc.files.filter((f) => f.origin === "empresa").at(-1);
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+  async function upload(file: File) {
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(uploadUrl, { method: "POST", body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Não foi possível enviar.");
+      await onChanged();
+      toast.success("Assinatura da empresa registrada. Agora é só aprovar.");
+    } catch (err) {
+      errorToast(err);
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function undo() {
+    setBusy(true);
+    try {
+      await send(uploadUrl, "DELETE");
+      await onChanged();
+      toast.success("Versão da empresa retirada.");
+    } catch (err) {
+      errorToast(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const steps: { done: boolean; label: React.ReactNode; detail: string }[] = [
+    {
+      done: !!candidateFile,
+      label: "Candidato assinou",
+      detail: candidateFile ? when(candidateFile.createdAt) : "aguardando o candidato",
+    },
+    {
+      done: !!doc.companySignedAt,
+      label: "Empresa assinou",
+      detail: doc.companySignedAt
+        ? `${when(doc.companySignedAt)}${doc.companySignedBy ? ` · enviado por ${doc.companySignedBy}` : ""}`
+        : candidateFile
+          ? "aguardando o representante"
+          : "depois do candidato",
+    },
+    {
+      done: doc.status === "aprovado",
+      label: "RH aprovou",
+      detail: doc.status === "aprovado" && doc.reviewedAt ? `${when(doc.reviewedAt)}${doc.reviewedBy ? ` · ${doc.reviewedBy}` : ""}` : "—",
+    },
+  ];
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      <ol className="flex flex-col gap-1.5">
+        {steps.map((step, i) => (
+          <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+            <span
+              className={`inline-block h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${step.done ? "bg-ok" : "bg-border-strong"}`}
+              aria-hidden="true"
+            />
+            <span className={step.done ? "font-semibold text-ink" : "text-muted"}>{step.label}</span>
+            <span className="font-mono text-[11px] text-muted tabular-nums">{step.detail}</span>
+          </li>
+        ))}
+      </ol>
+
+      {(candidateFile || companyFile) && (
+        <ul className="flex flex-wrap gap-2">
+          {[candidateFile, companyFile].filter(Boolean).map((f) => (
+            <li key={f!.id}>
+              <a
+                href={`/api/admission-files/${f!.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex max-w-[20rem] items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 py-1.5 text-xs text-accent-strong hover:underline"
+              >
+                <IconPaperclip className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
+                  {f!.origin === "empresa" ? "Assinado pelas duas partes" : "Assinado pelo candidato"}
+                </span>
+                <span className="shrink-0 text-muted">{formatFileSize(f!.size)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {editable && candidateFile && !doc.companySignedAt && (
+        <div className="flex flex-col gap-2 rounded-[10px] bg-surface-2 p-3 text-xs text-muted">
+          <p>
+            <strong className="text-ink">Assinatura da empresa:</strong> abra o PDF assinado pelo candidato, baixe e peça ao
+            representante para assinar por cima em{" "}
+            <a href="https://assinador.iti.br" target="_blank" rel="noopener noreferrer" className="font-semibold text-accent-strong underline">
+              assinador.iti.br
+            </a>
+            . Depois envie aqui o PDF com as duas assinaturas.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`/api/admission-files/${candidateFile.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-full border border-border-strong px-3 py-1.5 font-semibold text-ink transition hover:bg-ink hover:text-bg"
+            >
+              Abrir PDF do candidato
+            </a>
+            <Button className="!px-3 !py-1.5 text-xs" disabled={busy} onClick={() => inputRef.current?.click()}>
+              {busy ? "Enviando..." : "Enviar PDF assinado pela empresa"}
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) upload(file);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {editable && doc.companySignedAt && (
+        <p className="text-xs text-muted">
+          Confira as duas assinaturas em{" "}
+          <a href="https://validar.iti.gov.br" target="_blank" rel="noopener noreferrer" className="font-semibold text-accent-strong underline">
+            validar.iti.gov.br
+          </a>{" "}
+          antes de aprovar.{" "}
+          <button type="button" onClick={undo} disabled={busy} className="font-semibold underline-offset-2 hover:text-ink hover:underline">
+            Retirar a versão da empresa
+          </button>
+        </p>
+      )}
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "./prisma";
 import { LINK_VALID_DAYS } from "./admission";
 import { AGREEMENTS, AGREEMENT_KINDS } from "./agreements";
+import { removeAttachmentFiles } from "./attachmentStorage";
 
 /**
  * Link do candidato: um token aleatório na URL. O banco guarda só o hash, então
@@ -52,7 +53,7 @@ export const ADMISSION_INCLUDE = {
     include: {
       files: {
         orderBy: { createdAt: "asc" as const },
-        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+        select: { id: true, fileName: true, mimeType: true, size: true, origin: true, createdAt: true },
       },
     },
   },
@@ -95,5 +96,31 @@ export async function syncAgreementDocuments(tx: Tx, admissionId: string, hasCom
   } else {
     const removable = existing.filter((d) => d.files.length === 0).map((d) => d.id);
     if (removable.length) await tx.admissionDocument.deleteMany({ where: { id: { in: removable } } });
+  }
+}
+
+/** Dias que um onboarding cancelado fica guardado antes de ser apagado (prometido ao candidato). */
+export const RETENTION_DAYS = 90;
+
+let lastPurge = 0;
+
+/**
+ * Apaga onboardings cancelados há mais de RETENTION_DAYS, com os arquivos (LGPD).
+ * Roda no máximo a cada 6 horas, quando o RH abre a lista de onboardings.
+ */
+export async function purgeExpiredAdmissions(): Promise<void> {
+  if (Date.now() - lastPurge < 6 * 60 * 60 * 1000) return;
+  lastPurge = Date.now();
+  const limit = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const expired = await prisma.admission.findMany({
+    where: { status: "cancelada", closedAt: { lt: limit } },
+    include: { documents: { include: { files: { select: { storedName: true } } } } },
+  });
+  for (const admission of expired) {
+    await prisma.admission.delete({ where: { id: admission.id } });
+    await removeAttachmentFiles(
+      admission.documents.flatMap((d) => d.files.map((f) => f.storedName)),
+      "admissoes"
+    );
   }
 }

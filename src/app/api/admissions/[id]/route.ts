@@ -38,7 +38,7 @@ export async function PATCH(
     }
     await prisma.admission.update({
       where: { id },
-      data: { status: action === "cancelar" ? "cancelada" : "em_andamento" },
+      data: action === "cancelar" ? { status: "cancelada", closedAt: new Date() } : { status: "em_andamento", closedAt: null },
     });
     await syncAdmissionToSheet(id);
     const updated = await prisma.admission.findUnique({ where: { id }, include: ADMISSION_INCLUDE });

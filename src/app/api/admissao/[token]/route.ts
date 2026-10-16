@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { admissionByToken } from "@/lib/admissionServer";
+import { prisma } from "@/lib/prisma";
+import { RETENTION_DAYS, admissionByToken } from "@/lib/admissionServer";
 
 const LINK_INVALID = "Este link de onboarding não é válido ou expirou. Fale com o RH da CFFGROUP.";
 
@@ -9,7 +10,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const admission = await admissionByToken(token);
   if (!admission) return NextResponse.json({ error: LINK_INVALID }, { status: 404 });
 
+  const company = admission.contractingCompanyId
+    ? await prisma.contractingCompany.findUnique({ where: { id: admission.contractingCompanyId }, select: { name: true } })
+    : null;
+
   return NextResponse.json({
+    companyName: company?.name ?? null,
+    retentionDays: RETENTION_DAYS,
+    submitted: !!admission.submittedAt,
     candidateName: admission.candidateName,
     role: admission.role,
     startDate: admission.startDate,
@@ -29,7 +37,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       required: d.required,
       status: d.status,
       reviewNote: d.status === "recusado" ? d.reviewNote : null,
-      files: d.files.map((f) => ({ id: f.id, fileName: f.fileName, size: f.size })),
+      companySigned: !!d.companySignedAt,
+      // Só os arquivos do próprio candidato (a versão assinada pela empresa fica com o RH).
+      files: d.files.filter((f) => f.origin === "candidato").map((f) => ({ id: f.id, fileName: f.fileName, size: f.size })),
     })),
   });
 }

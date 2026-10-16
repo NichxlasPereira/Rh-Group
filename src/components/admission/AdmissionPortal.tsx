@@ -18,6 +18,8 @@ interface PortalDocument {
   required: boolean;
   status: DocumentStatus;
   reviewNote: string | null;
+  /** Termos: o representante da empresa já assinou também. */
+  companySigned: boolean;
   files: { id: string; fileName: string; size: number }[];
 }
 
@@ -30,6 +32,9 @@ interface PortalField {
 }
 
 interface PortalData {
+  companyName: string | null;
+  retentionDays: number;
+  submitted: boolean;
   candidateName: string | null;
   fields: PortalField[];
   role: string | null;
@@ -125,42 +130,16 @@ export function AdmissionPortal({ token }: { token: string }) {
     );
   }
 
-  const progress = admissionProgress(data.documents);
-  const done = progress.approved === progress.required;
-  const pct = progress.required ? Math.round((progress.approved / progress.required) * 100) : 0;
   const firstName = data.candidateName?.split(" ")[0];
-  const dataProgress = fieldsProgress(data.fields);
 
   return (
-    <Shell>
+    <Shell companyName={data.companyName}>
       <div className="flex flex-col gap-2">
         <h1 className="font-display text-3xl font-bold leading-tight text-ink">Olá{firstName ? `, ${firstName}` : ""}!</h1>
         <p className="text-sm text-muted">
-          Este é o seu onboarding digital na CFFGROUP{data.role ? ` para ${data.role}` : ""}
+          Este é o seu onboarding digital na {data.companyName ?? "CFFGROUP"}{data.role ? ` para ${data.role}` : ""}
           {data.startDate ? `, com início previsto em ${formatDateBR(data.startDate)}` : ""}. Preencha seus dados e
           envie cada documento abaixo — foto do celular ou PDF. O RH avalia e você acompanha por aqui.
-        </p>
-      </div>
-
-      <div className="rounded-[14px] border border-border bg-surface p-4">
-        <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
-          <span className="font-semibold text-ink">
-            {done ? "Tudo aprovado! O RH vai entrar em contato." : "Documentos obrigatórios aprovados"}
-          </span>
-          <span className="font-mono tabular-nums text-muted">
-            {progress.approved}/{progress.required}
-          </span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-          <div className="h-full rounded-full bg-ok transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="mt-2 text-xs text-muted">
-          {dataProgress.filled < dataProgress.required &&
-            `${dataProgress.required - dataProgress.filled} dado(s) a preencher · `}
-          {progress.missing > 0 && `${progress.missing} a enviar · `}
-          {progress.inReview > 0 && `${progress.inReview} em análise · `}
-          {progress.refused > 0 && `${progress.refused} para reenviar · `}
-          link válido até {formatDateBR(data.tokenExpiresAt)}
         </p>
       </div>
 
@@ -168,6 +147,9 @@ export function AdmissionPortal({ token }: { token: string }) {
       <SubmissionForm
         token={token}
         fields={data.fields}
+        documents={data.documents}
+        submitted={data.submitted}
+        expiresAt={data.tokenExpiresAt}
         missingDocuments={data.documents.filter((d) => d.required && (d.status === "pendente" || d.status === "recusado"))}
         onSent={refreshAfterSend}
       >
@@ -186,10 +168,14 @@ export function AdmissionPortal({ token }: { token: string }) {
         </ul>
       </SubmissionForm>
 
-      <p className="text-xs leading-relaxed text-muted">
-        Seus documentos são usados apenas para o seu onboarding e só a equipe de RH da CFFGROUP tem acesso a eles
-        (LGPD). Não compartilhe este link — ele é pessoal.
-      </p>
+      <section className="flex flex-col gap-1 rounded-[14px] border border-dashed border-border-strong p-4 text-xs leading-relaxed text-muted">
+        <p className="font-semibold text-ink">Seus dados estão protegidos</p>
+        <p>
+          A CFFGROUP usa seus dados e documentos só para a sua admissão, e só a equipe de RH tem acesso a eles (LGPD).
+          Se a contratação não seguir, tudo é apagado {data.retentionDays} dias depois. Não compartilhe este link: ele
+          é pessoal.
+        </p>
+      </section>
     </Shell>
   );
 }
@@ -261,7 +247,20 @@ function DocumentCard({
         </ul>
       )}
 
-      {!locked && generated && <TermSteps token={token} doc={doc} />}
+      {generated && doc.files.length > 0 && doc.status !== "recusado" && (
+        <ul className="mt-3 flex flex-col gap-1 text-xs">
+          <li className="flex items-center gap-2 text-ink">
+            <span className="h-2 w-2 rounded-full bg-ok" aria-hidden="true" />
+            Você assinou
+          </li>
+          <li className={`flex items-center gap-2 ${doc.companySigned ? "text-ink" : "text-muted"}`}>
+            <span className={`h-2 w-2 rounded-full ${doc.companySigned ? "bg-ok" : "bg-warn"}`} aria-hidden="true" />
+            {doc.companySigned ? "A empresa assinou" : "Aguardando a assinatura da empresa (o RH cuida disso)"}
+          </li>
+        </ul>
+      )}
+
+      {!locked && generated && (doc.files.length === 0 || doc.status === "recusado") && <TermSteps token={token} doc={doc} />}
 
       {!locked && (
         <>
@@ -275,7 +274,9 @@ function DocumentCard({
             {busy
               ? "Enviando..."
               : generated
-                ? `3. Enviar o ${doc.kind === "nda" ? "acordo" : "termo"} assinado (PDF)`
+                ? doc.files.length > 0 && doc.status !== "recusado"
+                  ? "Enviar outra versão assinada"
+                  : `3. Enviar o ${doc.kind === "nda" ? "acordo" : "termo"} assinado (PDF)`
                 : doc.files.length > 0
                   ? "Enviar mais um arquivo"
                   : "Enviar documento"}
@@ -297,7 +298,7 @@ function DocumentCard({
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, companyName }: { children: React.ReactNode; companyName?: string | null }) {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 py-8 sm:py-12">
       <div className="flex items-center justify-between">
@@ -310,7 +311,17 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <span className="font-display text-sm font-bold tracking-tight text-ink">cffgroup · onboarding</span>
         </div>
-        <ThemeToggle />
+        <div className="flex min-w-0 items-center gap-2">
+          {companyName && (
+            <span
+              className="truncate rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-strong"
+              title={`Empresa: ${companyName}`}
+            >
+              {companyName}
+            </span>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
       {children}
     </main>
@@ -332,12 +343,18 @@ const AUTOCOMPLETE: Partial<Record<FieldType, string>> = { email: "email", tel: 
 function SubmissionForm({
   token,
   fields,
+  documents,
+  submitted,
+  expiresAt,
   missingDocuments,
   onSent,
   children,
 }: {
   token: string;
   fields: PortalField[];
+  documents: PortalDocument[];
+  submitted: boolean;
+  expiresAt: string;
   missingDocuments: PortalDocument[];
   onSent: () => Promise<void>;
   children: React.ReactNode;
@@ -401,6 +418,7 @@ function SubmissionForm({
 
   return (
     <form onSubmit={save} className="flex flex-col gap-5" noValidate>
+      <Steps fields={fields} values={values} documents={documents} submitted={submitted} expiresAt={expiresAt} />
       {fields.length > 0 && (
         <div className="flex flex-col gap-4 rounded-[14px] border border-border bg-surface p-4">
           <div className="flex items-baseline justify-between gap-2">
@@ -538,5 +556,60 @@ function TermSteps({ token, doc }: { token: string; doc: PortalDocument }) {
         <strong>3.</strong> Envie o PDF assinado no botão abaixo.
       </li>
     </ol>
+  );
+}
+
+/** Etapas do onboarding, conforme o que já está preenchido na tela e o que já foi enviado. */
+function Steps({
+  fields,
+  values,
+  documents,
+  submitted,
+  expiresAt,
+}: {
+  fields: PortalField[];
+  values: Record<string, string>;
+  documents: PortalDocument[];
+  submitted: boolean;
+  expiresAt: string;
+}) {
+  const sent = (d: PortalDocument) => d.status === "enviado" || d.status === "aprovado";
+  const uploads = documents.filter((d) => d.kind === "upload" && d.required);
+  const terms = documents.filter((d) => d.kind !== "upload" && d.required);
+  const dataOk = fields.every((f) => {
+    const result = normalizeFieldValue(f.type, values[f.id] ?? "");
+    return !("error" in result) && (!f.required || !!result.value);
+  });
+  const steps = [
+    { label: "Dados", done: dataOk },
+    { label: "Documentos", done: uploads.every(sent) },
+    ...(terms.length > 0 ? [{ label: "Termos", done: terms.every(sent) }] : []),
+    { label: "Enviar", done: submitted },
+  ];
+  const current = steps.findIndex((s) => !s.done);
+  const progress = admissionProgress(documents);
+
+  return (
+    <div className="flex flex-col gap-2 rounded-[14px] border border-border bg-surface p-4">
+      <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((step, i) => (
+          <li key={step.label} className="flex flex-col gap-1.5" aria-current={i === current ? "step" : undefined}>
+            <span
+              className={`h-1.5 rounded-full ${step.done ? "bg-ok" : i === current ? "bg-accent" : "bg-surface-2"}`}
+              aria-hidden="true"
+            />
+            <span className={`text-xs font-semibold ${step.done || i === current ? "text-ink" : "text-muted"}`}>
+              {step.done ? "✓ " : ""}
+              {step.label}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="text-xs text-muted">
+        {progress.approved > 0 && `${progress.approved}/${progress.required} aprovados pelo RH · `}
+        {progress.refused > 0 && `${progress.refused} para reenviar · `}
+        link válido até {formatDateBR(expiresAt)}
+      </p>
+    </div>
   );
 }

@@ -161,6 +161,8 @@ model Admission {
   driveSyncedAt  DateTime?
   // Quando o candidato enviou os dados pela primeira vez (botão "Enviar dados").
   submittedAt DateTime?
+  // Quando foi cancelado: depois de 90 dias o onboarding e os arquivos são apagados (LGPD).
+  closedAt DateTime?
   // Empresa que contrata — usada no acordo de confidencialidade (NDA).
   contractingCompanyId String?
   contractingCompany   ContractingCompany? @relation(fields: [contractingCompanyId], references: [id], onDelete: SetNull)
@@ -209,6 +211,9 @@ model AdmissionDocument {
   reviewNote  String?
   reviewedBy  String?
   reviewedAt  DateTime?
+  // Termos gerados: o representante da empresa assina (gov.br) depois do candidato.
+  companySignedAt DateTime?
+  companySignedBy String? // quem do RH enviou a versão assinada pela empresa
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -225,6 +230,8 @@ model AdmissionFile {
   mimeType   String
   size       Int
   storedName String            @unique
+  // Quem enviou: o candidato (no link) ou o RH, com a versão assinada pela empresa.
+  origin     String            @default("candidato") // "candidato" | "empresa"
   // Arquivo já copiado para o Google Drive (evita duplicar ao tentar de novo).
   driveFileId String?
   createdAt  DateTime          @default(now())
