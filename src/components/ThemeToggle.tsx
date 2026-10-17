@@ -11,10 +11,10 @@ import {
   ThemeMode,
 } from "@/lib/theme";
 
-const OPTIONS: { mode: ThemeMode; label: string; icon: typeof IconSun }[] = [
-  { mode: "light", label: "Modo claro", icon: IconSun },
-  { mode: "dark", label: "Modo escuro", icon: IconMoon },
-  { mode: "auto", label: "Automático (conforme o horário)", icon: IconAuto },
+const OPTIONS: { mode: ThemeMode; label: string; hint: string; icon: typeof IconSun }[] = [
+  { mode: "light", label: "Claro", hint: "Sempre claro", icon: IconSun },
+  { mode: "dark", label: "Escuro", hint: "Sempre escuro", icon: IconMoon },
+  { mode: "auto", label: "Automático", hint: "Claro de dia, escuro à noite", icon: IconAuto },
 ];
 
 export function ThemeToggle() {
@@ -91,45 +91,54 @@ export function ThemeToggle() {
       <button
         ref={buttonRef}
         type="button"
-        title="Tema"
-        aria-label="Escolher tema"
+        aria-label={`Escolher tema (atual: ${current.label})`}
         aria-expanded={open}
         onClick={toggleOpen}
-        className={`rounded-full border border-border-strong p-2.5 text-ink transition hover:bg-surface-2 ${
+        className={`flex h-10 w-10 items-center justify-center rounded-full border border-border-strong text-ink transition-colors hover:bg-surface-2 ${
           open ? "bg-surface-2" : ""
         }`}
       >
-        <CurrentIcon className="h-4 w-4" />
+        <CurrentIcon className="h-[18px] w-[18px]" />
       </button>
 
       {mounted &&
         createPortal(
           <div
             ref={panelRef}
+            role="menu"
+            aria-label="Tema"
             style={{ top: position.top, right: position.right }}
-            className={`fixed z-50 flex origin-top-right flex-col gap-0.5 rounded-[10px] border border-border bg-surface p-0.5 shadow-[0_12px_32px_rgba(0,0,0,0.25)] transition-all duration-150 ease-out ${
-              open
-                ? "translate-y-0 scale-100 opacity-100"
-                : "pointer-events-none -translate-y-1 scale-95 opacity-0"
+            // Só aparece e some (leve deslize de 4 px), sem encolher: transição discreta.
+            className={`fixed z-50 flex w-60 flex-col gap-0.5 rounded-[12px] border border-border bg-surface p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.3)] transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none ${
+              open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0"
             }`}
           >
-            {OPTIONS.map(({ mode: optionMode, label, icon: Icon }) => (
-              <button
-                key={optionMode}
-                type="button"
-                title={label}
-                aria-label={label}
-                aria-pressed={mode === optionMode}
-                onClick={() => selectMode(optionMode)}
-                className={`rounded-[8px] p-2 transition ${
-                  mode === optionMode
-                    ? "bg-surface-2 text-ink"
-                    : "text-muted hover:bg-surface-2 hover:text-ink"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            ))}
+            <span className="px-2.5 pb-1 pt-1.5 font-display text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+              Tema
+            </span>
+            {OPTIONS.map(({ mode: optionMode, label, hint, icon: Icon }) => {
+              const selected = mode === optionMode;
+              return (
+                <button
+                  key={optionMode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  tabIndex={open ? 0 : -1}
+                  onClick={() => selectMode(optionMode)}
+                  className={`flex items-center gap-3 rounded-[8px] px-2.5 py-2 text-left transition ${
+                    selected ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface-2 hover:text-ink"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="flex flex-1 flex-col leading-tight">
+                    <span className="text-[13px] font-semibold">{label}</span>
+                    <span className="text-[11.5px] text-muted">{hint}</span>
+                  </span>
+                  {selected && <span className="h-2 w-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
+                </button>
+              );
+            })}
           </div>,
           document.body
         )}

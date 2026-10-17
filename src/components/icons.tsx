@@ -139,13 +139,14 @@ export function IconInfo({ className }: IconProps) {
 }
 
 export function IconSun({ className }: IconProps) {
+  // Raios simétricos: 4 nos eixos e 4 nas diagonais, todos entre o raio 7 e 9.
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth={base} />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.75" />
       <path
-        d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"
+        d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.41 1.41M16.95 16.95l1.41 1.41M5.64 18.36l1.41-1.41M16.95 7.05l1.41-1.41"
         stroke="currentColor"
-        strokeWidth={base}
+        strokeWidth="1.75"
         strokeLinecap="round"
       />
     </svg>
@@ -153,12 +154,14 @@ export function IconSun({ className }: IconProps) {
 }
 
 export function IconMoon({ className }: IconProps) {
+  // Lua crescente: arco de 9 de raio recortado por um círculo de 6.
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
       <path
-        d="M20 14.2A8.5 8.5 0 119.8 4a6.8 6.8 0 0010.2 10.2z"
+        d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"
         stroke="currentColor"
-        strokeWidth={base}
+        strokeWidth="1.75"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
@@ -166,10 +169,11 @@ export function IconMoon({ className }: IconProps) {
 }
 
 export function IconAuto({ className }: IconProps) {
+  // Metade clara, metade escura: o preenchimento cobre exatamente meio círculo.
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={base} />
-      <path d="M12 3a9 9 0 000 18z" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M12 3.75a8.25 8.25 0 0 0 0 16.5z" fill="currentColor" />
     </svg>
   );
 }
