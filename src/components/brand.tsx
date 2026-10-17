@@ -10,8 +10,9 @@ export function CffLogo({ className, title = "CFF Group" }: { className?: string
       <g fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="butt" strokeLinejoin="round">
         {/* C: traço de cima corre até o fim do logo */}
         <path d="M94 137.5H40.5Q4.5 137.5 4.5 101.5V40.5Q4.5 4.5 40.5 4.5H287.5" />
-        {/* F F: barra do meio e as duas hastes */}
-        <path d="M126 137.5V66.5H287.5M211 66.5V137.5" />
+        {/* F F: cada um com a sua barra e haste, com um respiro entre eles (como no logo) */}
+        <path d="M126 137.5V66.5H199" />
+        <path d="M211 137.5V66.5H287.5" />
       </g>
       <text
         x="286"
