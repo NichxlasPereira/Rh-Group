@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { Button } from "./Button";
-import { ThemeToggle } from "./ThemeToggle";
-import { IconAlertTriangle } from "./icons";
+import { AuthLayout, AuthFeature } from "./AuthLayout";
+import { IconAlertTriangle, IconBox, IconCart, IconChart, IconUsers } from "./icons";
 import { inputClass } from "./attendance/formControls";
 
 type ModuleKey = "estoque";
+
+const STOCK_FEATURES: AuthFeature[] = [
+  { title: "Materiais e estoque mínimo", text: "Quantidade, local e alerta quando algo está acabando.", icon: IconBox },
+  { title: "Retiradas registradas", text: "Quem retirou, quanto e quando, com histórico completo.", icon: IconCart },
+  { title: "Relatórios", text: "Consumo por categoria e por período.", icon: IconChart },
+];
 
 const COPY: Record<ModuleKey, { label: string; description: string; envVar: string }> = {
   estoque: {
@@ -59,22 +65,9 @@ export function ModuleLoginForm({ module, next, configured }: ModuleLoginFormPro
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
-      <div className="w-full max-w-sm rounded-[16px] border border-border bg-surface p-6 shadow-[0_24px_64px_rgba(0,0,0,0.25)]">
-        <div className="mb-5 flex items-center gap-2.5">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]"
-            style={{ background: "linear-gradient(135deg, #9b7bfb 0%, #6d4bde 100%)" }}
-          >
-            <span className="font-display text-sm font-bold text-white">C</span>
-          </div>
-          <span className="font-display text-sm font-bold tracking-tight text-ink">cffgroup · {copy.label}</span>
-        </div>
-
-        <h1 className="font-display text-2xl font-bold text-ink">Acesso restrito</h1>
+    <AuthLayout headline="O estoque da CFFGROUP sob controle." features={STOCK_FEATURES}>
+      <div className="flex flex-col">
+        <h2 className="font-display text-[26px] font-bold text-ink">Entrar no Estoque</h2>
         <p className="mt-1 text-sm text-muted">{copy.description}</p>
 
         {configured ? (
@@ -108,14 +101,20 @@ export function ModuleLoginForm({ module, next, configured }: ModuleLoginFormPro
           </div>
         )}
 
+        <div className="mt-6 flex items-center gap-3 text-[11.5px] text-muted">
+          <span className="h-px flex-1 bg-border" />
+          outro módulo
+          <span className="h-px flex-1 bg-border" />
+        </div>
         <Link
           href="/frequencia"
           prefetch={false}
-          className="mt-5 inline-block text-sm text-muted underline-offset-2 hover:text-ink hover:underline"
+          className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[12px] border border-border-strong text-sm font-bold text-ink transition hover:bg-surface-2"
         >
-          Ir para o RHGroup →
+          <IconUsers className="h-[17px] w-[17px] text-muted" />
+          Ir para o RHGroup
         </Link>
       </div>
-    </main>
+    </AuthLayout>
   );
 }

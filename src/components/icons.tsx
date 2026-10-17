@@ -237,3 +237,29 @@ export function IconPaperclip({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Ícone de traço a partir de um caminho SVG (24×24). */
+function strokeIcon(d: string) {
+  return function StrokeIcon({ className }: IconProps) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+        <path d={d} stroke="currentColor" strokeWidth={base} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  };
+}
+
+export const IconCalendarX = strokeIcon(
+  "M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM10 12l4 4M14 12l-4 4"
+);
+export const IconUserPlus = strokeIcon(
+  "M15 20v-1.5A3.5 3.5 0 0 0 11.5 15h-5A3.5 3.5 0 0 0 3 18.5V20M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19 8v6M22 11h-6"
+);
+export const IconChart = strokeIcon("M4 20V10M10 20V4M16 20v-7M22 20H2");
+export const IconKey = strokeIcon("M15 7a4 4 0 1 1-3.9 4.9L3 20v-3h3v-3h3l1.1-1.1A4 4 0 0 1 15 7z");
+export const IconLogout = strokeIcon("M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4");
+export const IconFile = strokeIcon("M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5");
+export const IconCheckCircle = strokeIcon("M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12.5l2.5 2.5L16 9.5");
+export const IconLink = strokeIcon("M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1");
+export const IconLock = strokeIcon("M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3");
+export const IconShield = strokeIcon("M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z");

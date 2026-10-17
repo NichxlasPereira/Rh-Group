@@ -3,10 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Header } from "@/components/Header";
-import { Tabs, TabItem } from "@/components/Tabs";
 import { Button } from "@/components/Button";
-import { IconCalendarPlus, IconPlus } from "@/components/icons";
+import {
+  IconCalendarPlus,
+  IconCalendarX,
+  IconChart,
+  IconKey,
+  IconPlus,
+  IconSearch,
+  IconUserPlus,
+  IconUsers,
+} from "@/components/icons";
+import { RhShell, RhSection } from "@/components/attendance/RhShell";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey } from "@/components/attendance/AttendanceFilters";
 import { OccurrencesTable } from "@/components/attendance/OccurrencesTable";
@@ -35,6 +43,7 @@ import { formatDateBR } from "@/lib/format";
 import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionClient";
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
+import { AdmissionInfo, admissionProgress, fieldsProgress } from "@/lib/admission";
 
 interface SessionUser {
   id: string;
@@ -44,16 +53,16 @@ interface SessionUser {
   pendingRequests: number;
 }
 
-const ATTENDANCE_TABS: TabItem<AttendanceTabKey>[] = [
-  { key: "ocorrencias", label: "ocorrências" },
-  { key: "colaboradores", label: "colaboradores" },
-  { key: "relatorios", label: "relatórios" },
-  { key: "admissoes", label: "onboarding" },
-];
-
-function adminTabs(pendingRequests: number): TabItem<AttendanceTabKey>[] {
-  return [...ATTENDANCE_TABS, { key: "acessos", label: pendingRequests > 0 ? `acessos · ${pendingRequests}` : "acessos" }];
-}
+const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: string }> = {
+  ocorrencias: { title: "Ocorrências", description: "Faltas, atestados e folgas da equipe, com anexos e saldo de folgas." },
+  colaboradores: { title: "Colaboradores", description: "Cadastro da equipe: setores, cargos e saldo de folgas de cada pessoa." },
+  relatorios: { title: "Relatórios", description: "Indicadores do mês por tipo de ocorrência e por setor." },
+  admissoes: {
+    title: "Onboarding",
+    description: "Admissões digitais: dados, documentos e termos assinados pelo candidato.",
+  },
+  acessos: { title: "Acessos", description: "Quem pode entrar no RHGroup e os pedidos de cadastro aguardando aprovação." },
+};
 
 /** Sessão da frequência expirou (12h): volta para a tela de senha. */
 function sessionExpired(res: Response): boolean {
@@ -97,6 +106,10 @@ export default function FrequenciaPage() {
   const [occurrencePreselect, setOccurrencePreselect] = useState<Employee | null>(null);
   const [deletingOccurrence, setDeletingOccurrence] = useState<Occurrence | null>(null);
 
+  const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
+  const [admissionSearch, setAdmissionSearch] = useState("");
+  const [createSignal, setCreateSignal] = useState(0);
+
   const fetchEmployees = useCallback(async () => {
     const res = await fetch("/api/employees");
     if (sessionExpired(res)) return;
@@ -115,11 +128,61 @@ export default function FrequenciaPage() {
     setOccurrences(await res.json());
   }, []);
 
+  const fetchAdmissions = useCallback(async () => {
+    const res = await fetch("/api/admissions");
+    if (sessionExpired(res) || !res.ok) return;
+    setAdmissions(await res.json());
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchEmployees(), fetchOccurrences(), fetchMe()]).finally(() => setLoading(false));
+    Promise.all([fetchEmployees(), fetchOccurrences(), fetchMe(), fetchAdmissions()]).finally(() => setLoading(false));
     endOtherModuleSession("frequencia");
-  }, [fetchEmployees, fetchOccurrences, fetchMe]);
+  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions]);
+
+  // Onboardings: indicador do topo e contador de documentos para analisar na barra lateral.
+  const onboardingSummary = useMemo(() => {
+    if (!admissions) return null;
+    const open = admissions.filter((a) => a.status === "em_andamento");
+    const ready = open.filter((a) => {
+      const p = admissionProgress(a.documents);
+      const d = fieldsProgress(a.fields);
+      return p.approved >= p.required && d.filled >= d.required && !!a.candidateName;
+    }).length;
+    const toReview = open.reduce((n, a) => n + admissionProgress(a.documents).inReview, 0);
+    return { open: open.length, ready, toReview };
+  }, [admissions]);
+
+  const sections = useMemo<RhSection<AttendanceTabKey>[]>(() => {
+    const list: RhSection<AttendanceTabKey>[] = [
+      { key: "ocorrencias", label: "Ocorrências", icon: IconCalendarX },
+      { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
+      { key: "admissoes", label: "Onboarding", icon: IconUserPlus, badge: onboardingSummary?.toReview },
+      { key: "relatorios", label: "Relatórios", icon: IconChart },
+    ];
+    if (me?.role === "admin") list.push({ key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests });
+    return list;
+  }, [me, onboardingSummary]);
+
+  const recentOccurrences = useMemo(
+    () =>
+      [...occurrences]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 4)
+        .map((o) => ({
+          id: o.id,
+          type: OCCURRENCE_LABEL[o.type],
+          who: o.employeeName,
+          note: [
+            o.employeeDepartment,
+            o.type === "folga" ? (o.approvedBy ? `concedida por ${o.approvedBy}` : null) : o.justified ? "justificada" : "sem justificativa",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          when: formatDateBR(o.date).slice(0, 5),
+        })),
+    [occurrences]
+  );
 
   const months = useMemo(() => availableMonths(occurrences), [occurrences]);
   const allPeriod = month === ALL_MONTHS;
@@ -335,70 +398,74 @@ export default function FrequenciaPage() {
     URL.revokeObjectURL(url);
   }
 
+  const copy = SECTION_COPY[tab];
+  const actions =
+    tab === "admissoes" ? (
+      <>
+        <label className="flex h-10 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-muted focus-within:border-accent">
+          <IconSearch className="h-4 w-4 shrink-0" />
+          <input
+            type="search"
+            value={admissionSearch}
+            onChange={(e) => setAdmissionSearch(e.target.value)}
+            placeholder="Buscar candidato, empresa ou cargo"
+            aria-label="Buscar onboarding"
+            className="w-56 bg-transparent text-[13px] text-ink placeholder:text-muted focus:outline-none"
+          />
+        </label>
+        <Button onClick={() => setCreateSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconPlus className="h-4 w-4" />
+          Novo onboarding
+        </Button>
+      </>
+    ) : tab === "acessos" ? null : (
+      <>
+        <Button variant="ghost" onClick={openNewEmployee} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconPlus className="h-4 w-4" />
+          Novo colaborador
+        </Button>
+        <Button onClick={() => openNewOccurrence(null)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconCalendarPlus className="h-4 w-4" />
+          Registrar ocorrência
+        </Button>
+      </>
+    );
+
   return (
     <>
-      <Header
-        module="frequencia"
-        title={
-          <>
-            quem faltou,
-            <br />
-            quem folgou,
-            <br />
-            quem justificou —
-          </>
-        }
-        description="Registre faltas, atestados e folgas da equipe CFFGROUP e acompanhe a frequência de cada colaborador mês a mês."
-        actions={
-          <>
-            <Button variant="ghost" onClick={openNewEmployee} className="!px-4 !py-2 text-xs">
-              <IconPlus className="h-3.5 w-3.5" />
-              Novo colaborador
-            </Button>
-            <Button variant="dark" onClick={() => openNewOccurrence(null)} className="!px-4 !py-2 text-xs">
-              <IconCalendarPlus className="h-3.5 w-3.5" />
-              registrar ocorrência
-            </Button>
-            {me && (
-              <span className="flex items-center gap-2 text-xs text-muted">
-                <span className="hidden font-semibold text-ink sm:inline">{me.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setChangingPassword(true)}
-                  className="font-semibold underline-offset-2 transition hover:text-ink hover:underline"
-                >
-                  minha senha
-                </button>
-                ·
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="font-semibold underline-offset-2 transition hover:text-ink hover:underline"
-                >
-                  sair
-                </button>
-              </span>
-            )}
-          </>
-        }
-        tabs={
-          <Tabs tabs={me?.role === "admin" ? adminTabs(me.pendingRequests) : ATTENDANCE_TABS} active={tab} onChange={setTab} />
-        }
-      />
-
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <RhShell
+        sections={sections}
+        active={tab}
+        onChange={setTab}
+        user={me}
+        onChangePassword={() => setChangingPassword(true)}
+        onLogout={logout}
+        title={copy.title}
+        description={copy.description}
+        actions={actions}
+      >
         <AttendanceStats
           activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
           totals={totals}
           periodLabel={periodLabel}
+          onboardings={onboardingSummary}
         />
 
         {tab === "acessos" && me?.role === "admin" ? (
           <AccessPanel currentUserId={me.id} onChanged={fetchMe} />
         ) : tab === "admissoes" ? (
-          <AdmissionsPanel departments={departments} isAdmin={me?.role === "admin"} onEmployeesChanged={fetchEmployees} />
+          <AdmissionsPanel
+            departments={departments}
+            isAdmin={me?.role === "admin"}
+            onEmployeesChanged={fetchEmployees}
+            search={admissionSearch}
+            createSignal={createSignal}
+            onAdmissionsChange={setAdmissions}
+            recentOccurrences={recentOccurrences}
+            onSeeOccurrences={() => setTab("ocorrencias")}
+          />
         ) : (
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="flex flex-col gap-4">
             <AttendanceFilters
               tab={tab}
               months={months}
@@ -417,7 +484,7 @@ export default function FrequenciaPage() {
               exportDisabled={filteredOccurrences.length === 0}
             />
 
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               {loading ? (
                 <div className="rounded-[14px] border border-border bg-surface px-6 py-16 text-center text-sm text-muted">
                   Carregando...
@@ -453,7 +520,7 @@ export default function FrequenciaPage() {
             </div>
           </div>
         )}
-      </main>
+      </RhShell>
 
       <ChangeOwnPasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
 

@@ -26,16 +26,17 @@ interface AttendanceFiltersProps {
 }
 
 const selectClass =
-  "w-full rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none";
+  "h-10 w-full rounded-[10px] border border-border bg-surface-2 px-3 text-sm text-ink focus:border-accent focus:outline-none";
 
 export function AttendanceFilters(props: AttendanceFiltersProps) {
   const { tab } = props;
 
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-4 rounded-[14px] border border-border bg-surface p-4 lg:w-64">
-      <h2 className="font-display text-base font-semibold text-ink">Filtrar</h2>
-
-      <Field label="Mês">
+    <section
+      aria-label="Filtros"
+      className="flex flex-wrap items-end gap-3 rounded-[14px] border border-border bg-surface px-4 py-3"
+    >
+      <Field label="Mês" className="w-full sm:w-44">
         <select value={props.month} onChange={(e) => props.onMonthChange(e.target.value)} className={selectClass}>
           {tab !== "relatorios" && <option value={ALL_MONTHS}>Todo o período</option>}
           {props.months.map((m) => (
@@ -47,21 +48,21 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
       </Field>
 
       {tab !== "relatorios" && (
-        <Field label="Buscar">
+        <Field label="Buscar" className="w-full sm:w-64">
           <div className="relative">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               placeholder={tab === "ocorrencias" ? "Colaborador ou observação" : "Nome ou cargo"}
-              className="w-full rounded-[10px] border border-border bg-surface-2 py-2 pl-9 pr-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-[10px] border border-border bg-surface-2 pl-9 pr-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
         </Field>
       )}
 
       {tab === "ocorrencias" && (
-        <Field label="Tipo">
+        <Field label="Tipo" className="w-full sm:w-40">
           <select
             value={props.type}
             onChange={(e) => props.onTypeChange(e.target.value as OccurrenceType | "")}
@@ -77,7 +78,7 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
         </Field>
       )}
 
-      <Field label="Setor">
+      <Field label="Setor" className="w-full sm:w-44">
         <select
           value={props.department}
           onChange={(e) => props.onDepartmentChange(e.target.value)}
@@ -93,7 +94,7 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
       </Field>
 
       {tab === "colaboradores" && (
-        <label className="flex items-center gap-2 text-sm text-muted">
+        <label className="flex h-10 items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
             checked={props.showInactive}
@@ -109,19 +110,19 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
           type="button"
           onClick={props.onExport}
           disabled={props.exportDisabled}
-          className="rounded-full border border-border-strong px-4 py-2 text-xs font-semibold text-ink transition hover:bg-ink hover:text-bg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink"
+          className="h-10 rounded-[10px] border border-border-strong px-4 text-xs font-semibold text-ink transition hover:bg-ink hover:text-bg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink sm:ml-auto"
         >
           Exportar CSV
         </button>
       )}
-    </aside>
+    </section>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-muted">{label}</span>
+    <label className={`flex flex-col gap-1.5 text-sm ${className}`}>
+      <span className="text-xs font-semibold text-muted">{label}</span>
       {children}
     </label>
   );

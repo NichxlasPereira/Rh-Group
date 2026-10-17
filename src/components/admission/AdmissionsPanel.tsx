@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "../Button";
 import { Modal } from "../Modal";
-import { IconPaperclip, IconPlus, IconTrash, IconUsers } from "../icons";
+import { IconCheckCircle, IconFile, IconLink, IconPaperclip, IconPlus, IconTrash, IconUsers } from "../icons";
 import { EmptyState, Field, inputClass } from "../attendance/formControls";
 import {
   ADMISSION_STATUS_LABEL,
@@ -55,10 +55,76 @@ interface AdmissionsPanelProps {
   isAdmin: boolean;
   /** Concluir cria um colaborador: a página recarrega a lista dela. */
   onEmployeesChanged: () => void;
+  /** Busca do cabeçalho da página (nome, empresa ou cargo). */
+  search: string;
+  /** Cada vez que muda, cria um onboarding (botão "Novo onboarding" do cabeçalho). */
+  createSignal: number;
+  /** Lista atualizada: a página usa nos indicadores e no contador da barra lateral. */
+  onAdmissionsChange?: (admissions: AdmissionInfo[]) => void;
+  /** Últimas ocorrências, mostradas ao lado da lista. */
+  recentOccurrences: { id: string; type: string; who: string; note: string; when: string }[];
+  onSeeOccurrences: () => void;
 }
 
-/** Aba "admissões": admissão 100% digital, do envio dos documentos à aprovação. */
-export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: AdmissionsPanelProps) {
+type Tone = "ok" | "warn" | "accent" | "muted";
+
+const TONE_PILL: Record<Tone, string> = {
+  ok: "bg-ok-soft text-ok",
+  warn: "bg-warn-soft text-warn",
+  accent: "bg-accent-soft text-accent-strong",
+  muted: "border border-border-strong text-muted",
+};
+const TONE_DOT: Record<Tone, string> = { ok: "bg-ok", warn: "bg-warn", accent: "bg-accent", muted: "bg-border-strong" };
+
+/** Pode concluir: dados obrigatórios preenchidos e documentos obrigatórios aprovados. */
+function readyToConclude(a: AdmissionInfo): boolean {
+  const p = admissionProgress(a.documents);
+  const d = fieldsProgress(a.fields);
+  return a.status === "em_andamento" && p.approved >= p.required && d.filled >= d.required && !!a.candidateName;
+}
+
+/** Situação resumida de um onboarding, para a lista. */
+function admissionSituation(a: AdmissionInfo): { label: string; tone: Tone } {
+  if (a.status === "concluida") return { label: "Concluído", tone: "ok" };
+  if (a.status === "cancelada") return { label: "Cancelado", tone: "muted" };
+  const p = admissionProgress(a.documents);
+  const d = fieldsProgress(a.fields);
+  if (readyToConclude(a)) return { label: "Pronto para concluir", tone: "ok" };
+  if (p.inReview > 0) return { label: "Para analisar", tone: "warn" };
+  if (p.refused > 0) return { label: "Aguardando reenvio", tone: "warn" };
+  if (d.filled === 0 && a.documents.every((doc) => doc.files.length === 0)) return { label: "Link enviado", tone: "accent" };
+  return { label: "Preenchendo", tone: "accent" };
+}
+
+/** Situação dos termos gerados (acordo, uso de imagem). */
+function termsSituation(a: AdmissionInfo): { label: string; tone: Tone } {
+  const terms = a.documents.filter((d) => isGeneratedDocument(d.kind));
+  if (terms.length === 0) return { label: "Sem termos", tone: "muted" };
+  if (terms.every((d) => d.status === "aprovado")) return { label: "Aprovados", tone: "ok" };
+  if (terms.every((d) => d.status === "enviado" || d.status === "aprovado")) return { label: "Assinados", tone: "ok" };
+  if (terms.some((d) => d.status === "recusado")) return { label: "Para reenviar", tone: "warn" };
+  return { label: "Com o candidato", tone: "warn" };
+}
+
+function initialsOf(name: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
+const DAY = 86_400_000;
+
+/** Aba "onboarding": admissão 100% digital, do envio dos documentos à aprovação. */
+export function AdmissionsPanel({
+  departments,
+  isAdmin,
+  onEmployeesChanged,
+  search,
+  createSignal,
+  onAdmissionsChange,
+  recentOccurrences,
+  onSeeOccurrences,
+}: AdmissionsPanelProps) {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
   const [termsSettings, setTermsSettings] = useState(false);
   const [choosingCompany, setChoosingCompany] = useState(false);
@@ -71,11 +137,13 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
 
   const load = useCallback(async () => {
     try {
-      setAdmissions(await send("/api/admissions", "GET"));
+      const list: AdmissionInfo[] = await send("/api/admissions", "GET");
+      setAdmissions(list);
+      onAdmissionsChange?.(list);
     } catch (err) {
       errorToast(err);
     }
-  }, []);
+  }, [onAdmissionsChange]);
 
   const loadCompanies = useCallback(async () => {
     try {
@@ -90,12 +158,78 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
     loadCompanies();
   }, [load, loadCompanies]);
 
-  const visible = useMemo(
-    () => (admissions ?? []).filter((a) => !statusFilter || a.status === statusFilter),
-    [admissions, statusFilter]
+  const companyName = useCallback(
+    (id: string | null) => companies.find((c) => c.id === id)?.name ?? "—",
+    [companies]
   );
+  const visible = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (admissions ?? []).filter(
+      (a) =>
+        (!statusFilter || a.status === statusFilter) &&
+        (!term ||
+          [a.candidateName, a.role, a.department, companyName(a.contractingCompanyId)]
+            .filter(Boolean)
+            .some((v) => v!.toLowerCase().includes(term)))
+    );
+  }, [admissions, statusFilter, search, companyName]);
   const selected = admissions?.find((a) => a.id === selectedId) ?? null;
   const count = (status: AdmissionStatus) => (admissions ?? []).filter((a) => a.status === status).length;
+
+  // Pendências do RH, a partir dos onboardings em andamento.
+  const todo = useMemo(() => {
+    const open = (admissions ?? []).filter((a) => a.status === "em_andamento");
+    const items: { key: string; icon: (p: { className?: string }) => React.ReactNode; title: string; detail: string; action: string; target: string }[] = [];
+    const toReview = open.filter((a) => admissionProgress(a.documents).inReview > 0);
+    if (toReview.length) {
+      const docs = toReview.reduce((n, a) => n + admissionProgress(a.documents).inReview, 0);
+      items.push({
+        key: "analisar",
+        icon: IconFile,
+        title: docs === 1 ? "1 documento para analisar" : `${docs} documentos para analisar`,
+        detail: toReview.map((a) => displayName(a)).slice(0, 2).join(", ") + (toReview.length > 2 ? ` e mais ${toReview.length - 2}` : ""),
+        action: "Analisar",
+        target: toReview[0].id,
+      });
+    }
+    const ready = open.filter(readyToConclude);
+    if (ready.length) {
+      items.push({
+        key: "concluir",
+        icon: IconCheckCircle,
+        title: ready.length === 1 ? "1 onboarding pronto para concluir" : `${ready.length} onboardings prontos para concluir`,
+        detail: ready.map((a) => displayName(a)).slice(0, 2).join(", "),
+        action: "Concluir",
+        target: ready[0].id,
+      });
+    }
+    const expiring = open.filter((a) => {
+      const left = new Date(a.tokenExpiresAt).getTime() - Date.now();
+      return left < 5 * DAY;
+    });
+    for (const a of expiring.slice(0, 2)) {
+      const days = Math.max(0, Math.ceil((new Date(a.tokenExpiresAt).getTime() - Date.now()) / DAY));
+      items.push({
+        key: `link-${a.id}`,
+        icon: IconLink,
+        title: days === 0 ? "Link do candidato expirado" : `Link expira em ${days} dia(s)`,
+        detail: displayName(a),
+        action: "Gerar novo",
+        target: a.id,
+      });
+    }
+    return items;
+  }, [admissions]);
+
+  // O botão "Novo onboarding" fica no cabeçalho da página.
+  const lastSignal = useRef(createSignal);
+  useEffect(() => {
+    if (createSignal === lastSignal.current) return;
+    lastSignal.current = createSignal;
+    setSelectedId(null);
+    create();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createSignal]);
 
   // Um clique: cria com os dados e documentos padrão e já mostra o link. Com
   // mais de uma empresa, antes pergunta com qual serão os termos (confidencialidade e imagem).
@@ -132,99 +266,178 @@ export function AdmissionsPanel({ departments, isAdmin, onEmployeesChanged }: Ad
     );
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border bg-surface px-4 py-3">
-        <p className="max-w-xl text-sm text-muted">
-          Crie o onboarding, envie o link para o candidato e acompanhe aqui cada documento: em análise, aprovado ou
-          recusado. Ao concluir, a pessoa entra como colaborador ativo.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {isAdmin && (
-            <Button variant="ghost" onClick={() => setTermsSettings(true)} className="!px-4 !py-2 text-xs">
-              Termos do onboarding
-            </Button>
-          )}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as AdmissionStatus | "")}
-            className="rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none"
-            aria-label="Filtrar por situação"
-          >
-            <option value="">Todos ({admissions?.length ?? 0})</option>
-            <option value="em_andamento">Em andamento ({count("em_andamento")})</option>
-            <option value="concluida">Concluídos ({count("concluida")})</option>
-            <option value="cancelada">Cancelados ({count("cancelada")})</option>
-          </select>
-          <Button onClick={() => create()} disabled={creating} className="!px-4 !py-2 text-xs">
-            <IconPlus className="h-3.5 w-3.5" />
-            {creating ? "Gerando link..." : "Novo onboarding"}
-          </Button>
-        </div>
-      </div>
+  const filters: { value: AdmissionStatus | ""; label: string; n: number }[] = [
+    { value: "", label: "Todos", n: admissions?.length ?? 0 },
+    { value: "em_andamento", label: "Em andamento", n: count("em_andamento") },
+    { value: "concluida", label: "Concluídos", n: count("concluida") },
+    { value: "cancelada", label: "Cancelados", n: count("cancelada") },
+  ];
 
-      <div className="rounded-[14px] border border-border bg-surface">
+  return (
+    <div className="flex flex-wrap items-start gap-4">
+      <section aria-label="Onboardings" className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-[16px] border border-border bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por situação">
+            {filters.map((f) => (
+              <button
+                key={f.value || "todos"}
+                type="button"
+                onClick={() => setStatusFilter(f.value)}
+                aria-pressed={statusFilter === f.value}
+                className={`rounded-full px-3 py-1.5 text-[12.5px] transition ${
+                  statusFilter === f.value
+                    ? "bg-ink font-bold text-bg"
+                    : "border border-border-strong font-semibold text-muted hover:text-ink"
+                }`}
+              >
+                {f.label} · <span className="tabular-nums">{f.n}</span>
+              </button>
+            ))}
+          </div>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setTermsSettings(true)}
+              className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
+            >
+              Empresas e termos
+            </button>
+          )}
+        </div>
+
         {admissions === null ? (
           <p className="px-6 py-16 text-center text-sm text-muted">Carregando...</p>
         ) : visible.length === 0 ? (
           <EmptyState
             icon={<IconUsers className="h-6 w-6" />}
-            title={admissions.length === 0 ? "Nenhum onboarding ainda" : "Nenhum onboarding nesta situação"}
+            title={admissions.length === 0 ? "Nenhum onboarding ainda" : "Nenhum onboarding encontrado"}
             text={
               admissions.length === 0
-                ? "Clique em “Novo onboarding” para gerar o link de envio de documentos do candidato."
-                : "Troque o filtro para ver as outras."
+                ? "Clique em “Novo onboarding” para gerar o link do candidato."
+                : "Troque o filtro ou a busca para ver os outros."
             }
           />
         ) : (
-          <ul>
-            {visible.map((a) => {
-              const p = admissionProgress(a.documents);
-              const pct = p.required ? Math.round((p.approved / p.required) * 100) : 0;
-              return (
-                <li key={a.id} className="border-b border-border last:border-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(a.id)}
-                    className="flex w-full flex-wrap items-center gap-4 px-4 py-3 text-left transition hover:bg-surface-2/40"
-                  >
-                    <div className="min-w-[12rem] flex-1">
-                      <p className={`font-medium ${a.candidateName ? "text-ink" : "italic text-muted"}`}>{displayName(a)}</p>
-                      <p className="text-xs text-muted">
-                        {[a.role, a.department].filter(Boolean).join(" · ") || "Cargo não informado"}
-                        {a.startDate && ` · início ${formatDateBR(a.startDate)}`}
-                        {(() => {
-                          const d = fieldsProgress(a.fields);
-                          return d.required > 0 ? ` · dados ${d.filled}/${d.required}` : "";
-                        })()}
-                      </p>
-                    </div>
-                    <div className="w-44">
-                      <div className="mb-1 flex justify-between text-xs text-muted">
+          <div className="overflow-x-auto">
+            <div className="min-w-[780px]">
+              <div className="grid grid-cols-[2.1fr_1.5fr_1.6fr_1.3fr_0.8fr_1.2fr] gap-3 border-b border-border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
+                <span>Candidato</span>
+                <span>Empresa</span>
+                <span>Progresso</span>
+                <span>Termos</span>
+                <span>Início</span>
+                <span>Situação</span>
+              </div>
+              <ul>
+                {visible.map((a) => {
+                  const p = admissionProgress(a.documents);
+                  const d = fieldsProgress(a.fields);
+                  const sent = p.approved + p.inReview;
+                  const situation = admissionSituation(a);
+                  const terms = termsSituation(a);
+                  return (
+                    <li key={a.id} className="border-b border-border last:border-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(a.id)}
+                        className="grid w-full grid-cols-[2.1fr_1.5fr_1.6fr_1.3fr_0.8fr_1.2fr] items-center gap-3 px-4 py-3.5 text-left transition hover:bg-surface-2/50"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-extrabold text-accent-strong">
+                            {initialsOf(a.candidateName)}
+                          </span>
+                          <span className="flex min-w-0 flex-col leading-snug">
+                            <span className={`truncate font-bold ${a.candidateName ? "text-ink" : "italic text-muted"}`}>
+                              {a.candidateName ?? "Novo candidato"}
+                            </span>
+                            <span className="truncate text-xs text-muted">{a.role || "Cargo não informado"}</span>
+                          </span>
+                        </span>
+                        <span className="text-[12.5px] leading-snug text-ink/80">{companyName(a.contractingCompanyId)}</span>
+                        <span className="flex flex-col gap-1.5 text-[11.5px] text-muted">
+                          <ProgressLine label="Dados" value={d.filled} total={d.required} barClass="bg-accent" />
+                          <ProgressLine label="Docs" value={sent} total={p.required} barClass="bg-ok" />
+                        </span>
+                        <span className="flex items-center gap-2 text-[12.5px] text-ink/80">
+                          <span className={`h-2 w-2 shrink-0 rounded-full ${TONE_DOT[terms.tone]}`} aria-hidden="true" />
+                          {terms.label}
+                        </span>
+                        <span className="font-mono text-xs text-ink/80">
+                          {a.startDate ? formatDateBR(a.startDate).slice(0, 5) : "—"}
+                        </span>
                         <span>
-                          {p.inReview > 0 ? (
-                            <span className="font-semibold text-warn">{p.inReview} para analisar</span>
-                          ) : (
-                            "aprovados"
-                          )}
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${TONE_PILL[situation.tone]}`}>
+                            {situation.label}
+                          </span>
                         </span>
-                        <span className="font-mono tabular-nums">
-                          {p.approved}/{p.required}
-                        </span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-                        <div className="h-full rounded-full bg-ok" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[a.status]}`}>
-                      {ADMISSION_STATUS_LABEL[a.status]}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
         )}
+      </section>
+
+      <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
+        <section aria-label="Pendências" className="flex flex-col gap-3 rounded-[16px] border border-border bg-surface p-4">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-[17px] font-bold text-ink">Pendências</h2>
+            <span className="text-xs text-muted">{todo.length === 0 ? "nada agora" : `${todo.length} ${todo.length === 1 ? "item" : "itens"}`}</span>
+          </div>
+          {todo.length === 0 ? (
+            <p className="rounded-[12px] bg-surface-2 px-3 py-4 text-center text-sm text-muted">Tudo em dia por aqui.</p>
+          ) : (
+            todo.map((t) => (
+              <div key={t.key} className="flex items-start gap-3 rounded-[12px] bg-surface-2 p-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-warn-soft text-warn">
+                  <t.icon className="h-4 w-4" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-snug">
+                  <span className="text-[13px] font-bold text-ink">{t.title}</span>
+                  <span className="truncate text-xs text-muted">{t.detail}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(t.target)}
+                  className="whitespace-nowrap text-[12.5px] font-bold text-accent-strong underline-offset-2 hover:underline"
+                >
+                  {t.action}
+                </button>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section aria-label="Ocorrências recentes" className="flex flex-col rounded-[16px] border border-border bg-surface p-4">
+          <div className="flex items-baseline justify-between pb-2">
+            <h2 className="font-display text-[17px] font-bold text-ink">Ocorrências recentes</h2>
+            <button
+              type="button"
+              onClick={onSeeOccurrences}
+              className="text-[12.5px] font-bold text-accent-strong underline-offset-2 hover:underline"
+            >
+              Ver todas
+            </button>
+          </div>
+          {recentOccurrences.length === 0 ? (
+            <p className="py-3 text-sm text-muted">Nenhuma ocorrência registrada.</p>
+          ) : (
+            recentOccurrences.map((o) => (
+              <div key={o.id} className="flex items-center gap-2.5 border-t border-border py-2.5">
+                <span className="w-[74px] shrink-0 rounded-[6px] bg-surface-2 py-0.5 text-center text-[11.5px] font-bold text-ink/80">
+                  {o.type}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col leading-snug">
+                  <span className="truncate text-[13px] font-semibold text-ink">{o.who}</span>
+                  <span className="truncate text-[11.5px] text-muted">{o.note}</span>
+                </span>
+                <span className="font-mono text-[11.5px] text-muted">{o.when}</span>
+              </div>
+            ))
+          )}
+        </section>
       </div>
 
       {link && <LinkModal link={link} onClose={() => setLink(null)} />}
@@ -1028,5 +1241,20 @@ function NdaCompanyCard({
         <span className="text-sm text-ink">{company?.name ?? "Sem termos"}</span>
       )}
     </section>
+  );
+}
+
+function ProgressLine({ label, value, total, barClass }: { label: string; value: number; total: number; barClass: string }) {
+  const pct = total ? Math.round((Math.min(value, total) / total) * 100) : 0;
+  return (
+    <span className="flex items-center gap-2">
+      <span className="w-[38px]">{label}</span>
+      <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-surface-2">
+        <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${pct}%` }} />
+      </span>
+      <span className="font-mono text-[11px] tabular-nums text-ink/80">
+        {value}/{total}
+      </span>
+    </span>
   );
 }

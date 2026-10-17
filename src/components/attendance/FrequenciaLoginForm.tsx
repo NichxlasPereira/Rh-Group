@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { Button } from "../Button";
-import { ThemeToggle } from "../ThemeToggle";
-import { IconAlertTriangle } from "../icons";
+import { AuthLayout, AuthFeature } from "../AuthLayout";
+import { IconAlertTriangle, IconBox, IconCalendarX, IconKey, IconUserPlus } from "../icons";
 import { Field, inputClass } from "./formControls";
 
 interface FrequenciaLoginFormProps {
@@ -15,6 +15,12 @@ interface FrequenciaLoginFormProps {
 }
 
 type Mode = "login" | "register";
+
+const RH_FEATURES: AuthFeature[] = [
+  { title: "Faltas, atestados e folgas", text: "Saldo de folgas e atestados com anexo, mês a mês.", icon: IconCalendarX },
+  { title: "Onboarding 100% digital", text: "Documentos e termos assinados no gov.br pelo candidato.", icon: IconUserPlus },
+  { title: "Acesso individual", text: "Cada pessoa com o próprio login, liberado pelo administrador.", icon: IconKey },
+];
 
 export function FrequenciaLoginForm({ next, needsSetup, setupConfigured }: FrequenciaLoginFormProps) {
   const [values, setValues] = useState({ setupKey: "", name: "", email: "", password: "", confirm: "" });
@@ -96,30 +102,17 @@ export function FrequenciaLoginForm({ next, needsSetup, setupConfigured }: Frequ
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
-      <div className="w-full max-w-sm rounded-[16px] border border-border bg-surface p-6 shadow-[0_24px_64px_rgba(0,0,0,0.25)]">
-        <div className="mb-5 flex items-center gap-2.5">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]"
-            style={{ background: "linear-gradient(135deg, #9b7bfb 0%, #6d4bde 100%)" }}
-          >
-            <span className="font-display text-sm font-bold text-white">C</span>
-          </div>
-          <span className="font-display text-sm font-bold tracking-tight text-ink">cffgroup · RHGroup</span>
-        </div>
-
-        <h1 className="font-display text-2xl font-bold text-ink">
-          {needsSetup ? "Primeiro acesso" : mode === "register" ? "Solicitar cadastro" : "Acesso restrito"}
-        </h1>
+    <AuthLayout headline="O RH da CFFGROUP em um só lugar." features={RH_FEATURES}>
+      <div className="flex flex-col">
+        <h2 className="font-display text-[26px] font-bold text-ink">
+          {needsSetup ? "Primeiro acesso" : mode === "register" ? "Solicitar cadastro" : "Entrar no RHGroup"}
+        </h2>
         <p className="mt-1 text-sm text-muted">
           {needsSetup
             ? "Crie a conta de administrador. Depois, é você quem libera o acesso de outras pessoas."
             : mode === "register"
               ? "Preencha seus dados. Você poderá entrar assim que um administrador aprovar o cadastro."
-              : "Área de uso exclusivo do RH. Entre com o seu e-mail e senha."}
+              : "Use o e-mail e a senha do seu acesso."}
         </p>
 
         {requestSent && (
@@ -232,10 +225,20 @@ export function FrequenciaLoginForm({ next, needsSetup, setupConfigured }: Frequ
           </form>
         )}
 
-        <Link href="/" prefetch={false} className="mt-5 inline-block text-sm text-muted underline-offset-2 hover:text-ink hover:underline">
-          ← Voltar para o estoque
+        <div className="mt-6 flex items-center gap-3 text-[11.5px] text-muted">
+          <span className="h-px flex-1 bg-border" />
+          outro módulo
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <Link
+          href="/"
+          prefetch={false}
+          className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[12px] border border-border-strong text-sm font-bold text-ink transition hover:bg-surface-2"
+        >
+          <IconBox className="h-[17px] w-[17px] text-muted" />
+          Ir para o Estoque
         </Link>
       </div>
-    </main>
+    </AuthLayout>
   );
 }
