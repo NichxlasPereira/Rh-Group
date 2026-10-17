@@ -289,7 +289,7 @@ function Shell({ children, companyName }: { children: React.ReactNode; companyNa
         data-theme="dark"
         className="brand-band relative flex flex-col gap-5 overflow-clip rounded-[18px] px-5 py-5 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)]"
       >
-        <BrandArt className="pointer-events-none absolute -right-8 top-0 h-full w-[200px] text-white/[0.13]" />
+        <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 h-full w-[230px] text-white/[0.12]" />
         <div className="relative flex items-center justify-between gap-3">
           <CffLogo className="h-9 w-auto text-white" />
           <ThemeToggle />

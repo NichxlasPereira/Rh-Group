@@ -34,29 +34,44 @@ export function CffLogo({ className, title = "CFF Group" }: { className?: string
 /**
  * Formas de contorno do lado direito do cartão: o "C" grande, os cantos e
  * "GROUP" na vertical. Decorativo; fica atrás do conteúdo.
+ * - "tall" (painéis altos, como a tela de entrada): a composição inteira,
+ *   sempre visível, ancorada no canto inferior direito.
+ * - "band" (faixas baixas): só as linhas, que podem ser recortadas sem perder nada.
  */
-export function BrandArt({ className }: { className?: string }) {
+export function BrandArt({ className, variant = "tall" }: { className?: string; variant?: "tall" | "band" }) {
+  if (variant === "band") {
+    return (
+      <svg viewBox="0 0 520 220" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
+        <g fill="none" stroke="currentColor" strokeWidth="18">
+          <path d="M540 196H170Q110 196 110 136V-20" />
+          <path d="M540 96H290V-20" />
+        </g>
+        <circle cx="468" cy="44" r="11" fill="var(--brand)" opacity="0.6" />
+      </svg>
+    );
+  }
   return (
-    <svg viewBox="0 0 420 820" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
+    <svg viewBox="0 0 400 860" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMax meet">
       <g fill="none" stroke="currentColor" strokeWidth="24">
-        <path d="M84 -20V700Q84 788 172 788H440" />
-        <path d="M440 214H232V-20" />
-        <path d="M440 470H232V290" />
+        {/* "C" grande: desce pela esquerda, curva embaixo e segue até a borda */}
+        <path d="M70 0V732Q70 818 156 818H400" />
+        {/* Cantos internos, como no cartão */}
+        <path d="M400 300H234V0" />
+        <path d="M400 640H234V392" />
       </g>
       <text
         x="0"
         y="0"
-        transform="translate(52 236) rotate(-90)"
+        transform="translate(186 352) rotate(-90)"
         fill="currentColor"
         fontFamily="var(--font-barlow), 'Segoe UI', sans-serif"
-        fontSize="58"
+        fontSize="64"
         fontWeight="400"
-        letterSpacing="8"
-        opacity="0.8"
+        letterSpacing="10"
       >
         GROUP
       </text>
-      <circle cx="372" cy="62" r="22" fill="var(--brand)" opacity="0.55" />
+      <circle cx="334" cy="78" r="20" fill="var(--brand)" opacity="0.7" />
     </svg>
   );
 }
