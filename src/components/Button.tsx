@@ -7,8 +7,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
+  // Botão principal na cor de ação do tema: claro sobre o grafite, grafite sobre o claro.
   primary:
-    "bg-gradient-to-b from-[#8d6ef7] to-[#6d4bde] text-accent-ink shadow-[0_8px_24px_rgba(124,92,240,0.35)] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100",
+    "bg-accent text-accent-ink shadow-[0_6px_20px_rgba(0,0,0,0.28)] hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100",
   ghost:
     "bg-transparent text-ink border border-border-strong hover:bg-ink hover:text-bg hover:border-ink disabled:opacity-50 disabled:cursor-not-allowed",
   // Solid ink-on-bg pill — inverts with the theme (near-black on light, near-white on dark), for the hero CTA.

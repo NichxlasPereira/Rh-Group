@@ -102,7 +102,7 @@ export function FrequenciaLoginForm({ next, needsSetup, setupConfigured }: Frequ
   }
 
   return (
-    <AuthLayout headline="O RH da CFFGROUP em um só lugar." features={RH_FEATURES}>
+    <AuthLayout moduleName="Recursos Humanos" headline="O RH da CFF em um só lugar" features={RH_FEATURES}>
       <div className="flex flex-col">
         <h2 className="font-display text-[26px] font-bold text-ink">
           {needsSetup ? "Primeiro acesso" : mode === "register" ? "Solicitar cadastro" : "Entrar no RHGroup"}

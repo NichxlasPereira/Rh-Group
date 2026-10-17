@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { DoodleScribble } from "./DoodleScribble";
+import { CffLogo } from "./brand";
 
 export type ModuleKey = "estoque" | "frequencia";
 
@@ -38,15 +39,7 @@ export function Header({ module, title, description, actions, tabs, showFrequenc
       <div className="relative mx-auto flex max-w-7xl flex-col gap-10 px-6 py-6 sm:px-10 sm:py-8 lg:py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]"
-                style={{ background: "linear-gradient(135deg, #9b7bfb 0%, #6d4bde 100%)" }}
-              >
-                <span className="font-display text-sm font-bold text-white">C</span>
-              </div>
-              <span className="font-display text-sm font-bold tracking-tight text-ink">cffgroup</span>
-            </div>
+            <CffLogo className="h-9 w-auto text-ink" />
             {modules.length > 1 && (
               <nav
                 aria-label="Módulos"

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Manrope, JetBrains_Mono } from "next/font/google";
+import { Barlow, Manrope, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+// Títulos: geométrica em maiúsculas, como o cartão da CFFGROUP.
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
-  weight: ["500", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const manrope = Manrope({
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${spaceGrotesk.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${barlow.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-ink font-sans">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
@@ -42,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               background: "var(--surface)",
               color: "var(--ink)",
               border: "1px solid var(--border)",
-              borderLeft: "3px solid var(--accent)",
+              borderLeft: "3px solid var(--brand)",
               borderRadius: "12px",
               fontFamily: "var(--font-manrope)",
               fontSize: "14px",

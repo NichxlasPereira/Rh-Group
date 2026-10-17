@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "../ThemeToggle";
+import { CffLogo } from "../brand";
 
 /** Agradecimento depois que o candidato envia tudo o que era obrigatório. */
 export function AdmissionThanks({ token }: { token: string }) {
@@ -18,15 +19,7 @@ export function AdmissionThanks({ token }: { token: string }) {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8 sm:py-12">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]"
-            style={{ background: "linear-gradient(135deg, #9b7bfb 0%, #6d4bde 100%)" }}
-          >
-            <span className="font-display text-sm font-bold text-white">C</span>
-          </div>
-          <span className="font-display text-sm font-bold tracking-tight text-ink">cffgroup · onboarding</span>
-        </div>
+        <CffLogo className="h-9 w-auto text-ink" />
         <ThemeToggle />
       </div>
 

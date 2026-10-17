@@ -65,7 +65,7 @@ export function ModuleLoginForm({ module, next, configured }: ModuleLoginFormPro
   }
 
   return (
-    <AuthLayout headline="O estoque da CFFGROUP sob controle." features={STOCK_FEATURES}>
+    <AuthLayout moduleName="Estoque" headline="Materiais sob controle" features={STOCK_FEATURES}>
       <div className="flex flex-col">
         <h2 className="font-display text-[26px] font-bold text-ink">Entrar no Estoque</h2>
         <p className="mt-1 text-sm text-muted">{copy.description}</p>

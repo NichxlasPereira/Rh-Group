@@ -9,6 +9,7 @@ import { formatDateBR } from "@/lib/format";
 import { ThemeToggle } from "../ThemeToggle";
 import { IconAlertTriangle, IconShield, IconPaperclip, IconX } from "../icons";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
+import { BrandArt, BrandDot, CffLogo } from "../brand";
 
 interface PortalDocument {
   id: string;
@@ -131,7 +132,10 @@ export function AdmissionPortal({ token }: { token: string }) {
   return (
     <Shell companyName={data.companyName}>
       <div className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-bold leading-tight text-ink">Olá{firstName ? `, ${firstName}` : ""}!</h1>
+        <h1 className="font-display text-[32px] font-semibold uppercase leading-tight tracking-[0.01em] text-ink">
+          Olá{firstName ? `, ${firstName}` : ""}
+          <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
+        </h1>
         <p className="text-sm text-muted">
           Este é o seu onboarding digital na {data.companyName ?? "CFFGROUP"}{data.role ? ` para ${data.role}` : ""}
           {data.startDate ? `, com início previsto em ${formatDateBR(data.startDate)}` : ""}. Preencha seus dados e
@@ -279,26 +283,31 @@ function DocumentCard({
 
 function Shell({ children, companyName }: { children: React.ReactNode; companyName?: string | null }) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 py-8 sm:py-12">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-accent font-display text-sm font-bold text-accent-ink">
-            C
-          </span>
-          <span className="font-display text-sm font-bold tracking-tight text-ink">cffgroup</span>
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 py-6 sm:py-10">
+      {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
+      <header
+        data-theme="dark"
+        className="brand-band relative flex flex-col gap-5 overflow-clip rounded-[18px] px-5 py-5 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)]"
+      >
+        <BrandArt className="pointer-events-none absolute -right-8 top-0 h-full w-[200px] text-white/[0.13]" />
+        <div className="relative flex items-center justify-between gap-3">
+          <CffLogo className="h-9 w-auto text-white" />
+          <ThemeToggle />
         </div>
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="relative flex flex-wrap items-center justify-between gap-2">
+          <span className="font-display text-[12px] font-medium uppercase tracking-[0.22em] text-white/80">
+            Onboarding digital
+          </span>
           {companyName && (
             <span
-              className="truncate rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-bold text-accent-strong"
+              className="max-w-full truncate rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white"
               title={`Empresa: ${companyName}`}
             >
               {companyName}
             </span>
           )}
-          <ThemeToggle />
         </div>
-      </div>
+      </header>
       {children}
     </main>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "./ThemeToggle";
+import { BrandArt, BrandDot, CffLogo } from "./brand";
 
 export interface AuthFeature {
   title: string;
@@ -9,50 +10,64 @@ export interface AuthFeature {
 }
 
 interface AuthLayoutProps {
-  /** Frase de apresentação do módulo, no painel da esquerda. */
+  /** Nome do módulo, em destaque no painel da marca (ex.: "Recursos Humanos"). */
+  moduleName: string;
+  /** Frase de apresentação do módulo. */
   headline: string;
   features: AuthFeature[];
   children: React.ReactNode;
 }
 
-/** Tela de entrada dos módulos: apresentação à esquerda, formulário à direita. */
-export function AuthLayout({ headline, features, children }: AuthLayoutProps) {
+/** Tela de entrada dos módulos: painel com a identidade da CFFGROUP à esquerda, formulário à direita. */
+export function AuthLayout({ moduleName, headline, features, children }: AuthLayoutProps) {
   return (
     <main className="flex flex-1 flex-col lg:flex-row">
-      <section className="flex flex-col justify-between gap-8 border-b border-border bg-surface px-6 py-6 sm:px-10 lg:w-[46%] lg:border-b-0 lg:border-r lg:px-14 lg:py-12">
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-accent font-display text-base font-bold text-accent-ink">
-              C
-            </span>
-            <span className="font-display text-base font-bold text-ink">cffgroup</span>
-          </span>
-          <ThemeToggle />
+      {/* Painel da marca: o grafite metálico do cartão, sempre no tema escuro. */}
+      <section
+        data-theme="dark"
+        className="brand-band relative flex flex-col justify-between gap-8 overflow-clip px-6 py-6 text-ink sm:px-10 lg:w-[48%] lg:px-14 lg:py-12"
+      >
+        <BrandArt className="pointer-events-none absolute -right-16 top-0 h-full w-[300px] text-white/[0.09] lg:w-[360px]" />
+
+        <div className="relative flex items-center justify-between gap-3">
+          <CffLogo className="h-11 w-auto text-white lg:h-14" />
+          <div className="lg:hidden">
+            <ThemeToggle />
+          </div>
         </div>
 
-        <div className="hidden max-w-[470px] flex-col gap-7 lg:flex">
-          <h1 className="font-display text-[44px] font-bold leading-[1.05] tracking-tight text-ink">{headline}</h1>
-          <ul className="flex flex-col gap-[18px]">
+        <div className="relative hidden max-w-[480px] flex-col gap-8 lg:flex">
+          <div className="flex flex-col gap-3">
+            <span className="font-display text-sm font-light uppercase tracking-[0.24em] text-white/80">{moduleName}</span>
+            <h1 className="font-display text-[46px] font-semibold uppercase leading-[1.02] tracking-[0.01em] text-white">
+              {headline}
+              <BrandDot className="ml-1.5 h-3 w-3 align-baseline" />
+            </h1>
+          </div>
+          <ul className="flex flex-col gap-5">
             {features.map((f) => (
               <li key={f.title} className="flex items-start gap-3.5">
-                <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[11px] bg-accent-soft text-accent-strong">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] border border-white/25 bg-white/10 text-white">
                   <f.icon className="h-[18px] w-[18px]" />
                 </span>
                 <span className="flex flex-col gap-0.5 leading-snug">
-                  <span className="font-extrabold text-ink">{f.title}</span>
-                  <span className="text-[13px] text-muted">{f.text}</span>
+                  <span className="font-bold text-white">{f.title}</span>
+                  <span className="text-[13px] text-white/80">{f.text}</span>
                 </span>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="hidden text-xs text-muted lg:block">
-          Acesso restrito à equipe autorizada da CFFGROUP.
+        <p className="relative hidden font-display text-xs uppercase tracking-[0.16em] text-white/70 lg:block">
+          Acesso restrito · cffgroup.com.br
         </p>
       </section>
 
-      <section className="flex flex-1 items-center justify-center px-6 py-10 sm:px-8">
+      <section className="relative flex flex-1 items-center justify-center px-6 py-10 sm:px-8">
+        <div className="absolute right-5 top-5 hidden lg:block">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-[380px]">{children}</div>
       </section>
     </main>

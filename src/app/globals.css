@@ -2,17 +2,21 @@
 
 :root,
 [data-theme="dark"] {
-  --bg: #0d0d0d;
-  --surface: #171717;
-  --surface-2: #212121;
-  --border: #2c2c2c;
-  --border-strong: #454545;
-  --ink: #f4f3f1;
-  --muted: #9a9994;
-  --accent: #7c5cf0;
-  --accent-strong: #b7a6fb;
-  --accent-ink: #ffffff;
-  --accent-soft: #241f38;
+  /* Grafite do cartão CFFGROUP: cinzas levemente frios, branco e o vermelho do ponto. */
+  --bg: #141517;
+  --surface: #1c1d20;
+  --surface-2: #26272b;
+  --border: #2f3135;
+  --border-strong: #4a4c51;
+  --ink: #f4f4f3;
+  --muted: #a3a5a9;
+  /* Ação principal: botão claro sobre o grafite, como o texto do cartão. */
+  --accent: #ededee;
+  --accent-strong: #ffffff;
+  --accent-ink: #17181a;
+  --accent-soft: #2f3136;
+  --brand: #e3262f;
+  --brand-soft: #3a1c1f;
   --ok: #3ddc97;
   --ok-soft: #12271f;
   --warn: #f2a93c;
@@ -30,17 +34,19 @@
 }
 
 [data-theme="light"] {
-  --bg: #f4f3f1;
+  --bg: #ebeced;
   --surface: #ffffff;
-  --surface-2: #ececea;
-  --border: #dedcd8;
-  --border-strong: #b8b6b1;
-  --ink: #111111;
-  --muted: #6b6a67;
-  --accent: #7c5cf0;
-  --accent-strong: #5b3fd6;
+  --surface-2: #f0f1f2;
+  --border: #dcdee1;
+  --border-strong: #b4b7bc;
+  --ink: #17181a;
+  --muted: #5f6267;
+  --accent: #26272b;
+  --accent-strong: #17181a;
   --accent-ink: #ffffff;
-  --accent-soft: #ede9fc;
+  --accent-soft: #e3e4e7;
+  --brand: #d21f28;
+  --brand-soft: #fbe6e7;
   --ok: #1f9d6c;
   --ok-soft: #e3f7ee;
   --warn: #b9760a;
@@ -55,6 +61,13 @@
   --series-6: #008300;
   --series-7: #4a3aa7;
   color-scheme: light;
+}
+
+/* Faixa de marca: o degradê metálico do cartão, sempre grafite. */
+.brand-band {
+  background:
+    radial-gradient(120% 140% at 18% 30%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(115deg, #4b4d51 0%, #6a6c70 38%, #3a3b3f 72%, #2a2b2e 100%);
 }
 
 @theme inline {
@@ -75,8 +88,10 @@
   --color-warn-soft: var(--warn-soft);
   --color-critical: var(--critical);
   --color-critical-soft: var(--critical-soft);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
 
-  --font-display: var(--font-space-grotesk);
+  --font-display: var(--font-barlow);
   --font-sans: var(--font-manrope);
   --font-mono: var(--font-jetbrains-mono);
 }

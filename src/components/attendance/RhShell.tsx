@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "../ThemeToggle";
 import { IconBox, IconKey, IconLogout } from "../icons";
+import { BrandArt, BrandDot, CffLogo } from "../brand";
 
 export interface RhSection<K extends string> {
   key: K;
@@ -47,13 +48,10 @@ export function RhShell<K extends string>({
     <div className="flex flex-1 flex-col lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-4 border-b border-border bg-surface px-3 py-4 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:gap-6 lg:border-b-0 lg:border-r lg:py-5">
         <div className="flex items-center justify-between gap-3 px-2">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-accent font-display text-base font-bold text-accent-ink">
-              C
-            </span>
-            <span className="flex flex-col leading-tight">
-              <span className="font-display text-[15px] font-bold text-ink">RHGroup</span>
-              <span className="text-[11px] tracking-wide text-muted">CFFGROUP</span>
+          <div className="flex items-center gap-3">
+            <CffLogo className="h-8 w-auto text-ink" />
+            <span className="border-l border-border-strong pl-3 font-display text-[13px] font-medium uppercase tracking-[0.18em] text-muted">
+              RH
             </span>
           </div>
           <div className="lg:hidden">
@@ -78,13 +76,11 @@ export function RhShell<K extends string>({
                     current ? "bg-accent-soft font-bold text-ink" : "font-semibold text-muted hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
-                  <s.icon className={`h-[18px] w-[18px] shrink-0 ${current ? "text-accent-strong" : ""}`} />
+                  <s.icon className={`h-[18px] w-[18px] shrink-0 ${current ? "text-ink" : ""}`} />
                   <span className="lg:flex-1">{s.label}</span>
                   {!!s.badge && (
                     <span
-                      className={`min-w-5 rounded-full px-1.5 py-px text-center text-[11px] font-bold tabular-nums ${
-                        current ? "bg-accent text-accent-ink" : "bg-accent-soft text-accent-strong"
-                      }`}
+                      className="min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white"
                     >
                       {s.badge}
                     </span>
@@ -140,15 +136,23 @@ export function RhShell<K extends string>({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted">
-              RHGroup <span className="text-border-strong">/</span> {title}
+        {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
+        <header
+          data-theme="dark"
+          className="brand-band relative flex flex-wrap items-end justify-between gap-4 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7"
+        >
+          <BrandArt className="pointer-events-none absolute -right-6 top-0 hidden h-full w-[300px] text-white/[0.13] sm:block" />
+          <div className="relative flex flex-col gap-2">
+            <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/75">
+              CFF Group · RH
             </span>
-            <h1 className="font-display text-[28px] font-bold leading-tight tracking-tight text-ink sm:text-[30px]">{title}</h1>
-            <p className="max-w-[62ch] text-sm text-muted">{description}</p>
+            <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
+              {title}
+              <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
+            </h1>
+            <p className="max-w-[62ch] text-sm text-white/85">{description}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative flex flex-wrap items-center gap-2.5">
             <div className="hidden lg:block">
               <ThemeToggle />
             </div>
