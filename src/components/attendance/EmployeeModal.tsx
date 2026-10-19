@@ -12,9 +12,23 @@ export interface EmployeeFormValues {
   role: string;
   active: boolean;
   folgaAllowance: string;
+  startDate: string;
+  contractType: string;
+  contractEnd: string;
 }
 
-const EMPTY: EmployeeFormValues = { name: "", department: "", role: "", active: true, folgaAllowance: "0" };
+const EMPTY: EmployeeFormValues = {
+  name: "",
+  department: "",
+  role: "",
+  active: true,
+  folgaAllowance: "0",
+  startDate: "",
+  contractType: "",
+  contractEnd: "",
+};
+
+const CONTRACT_OPTIONS = ["PJ", "CLT", "Estágio", "Outro"];
 
 interface EmployeeModalProps {
   open: boolean;
@@ -40,6 +54,9 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             role: employee.role ?? "",
             active: employee.active,
             folgaAllowance: String(employee.folgaAllowance),
+            startDate: employee.startDate?.slice(0, 10) ?? "",
+            contractType: employee.contractType ?? "",
+            contractEnd: employee.contractEnd?.slice(0, 10) ?? "",
           }
         : EMPTY
     );
@@ -137,6 +154,43 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             }}
             className={inputClass(!!allowanceError) + " font-mono tabular-nums sm:max-w-40"}
             placeholder="0"
+          />
+        </Field>
+
+        <Field label="Data de entrada">
+          <input
+            type="date"
+            value={values.startDate}
+            onChange={(e) => setValues((v) => ({ ...v, startDate: e.target.value }))}
+            className={inputClass(false) + " font-mono"}
+          />
+        </Field>
+
+        <Field label="Tipo de contrato">
+          <select
+            value={values.contractType}
+            onChange={(e) => setValues((v) => ({ ...v, contractType: e.target.value }))}
+            className={inputClass(false)}
+          >
+            <option value="">Não informado</option>
+            {CONTRACT_OPTIONS.map((c) => (
+              <option key={c} value={c}>
+                {c === "PJ" ? "PJ (prestação de serviços)" : c}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field
+          label="Fim do contrato (opcional)"
+          hint="A ficha avisa quando faltar menos de 30 dias para a renovação."
+          className="sm:col-span-2"
+        >
+          <input
+            type="date"
+            value={values.contractEnd}
+            onChange={(e) => setValues((v) => ({ ...v, contractEnd: e.target.value }))}
+            className={inputClass(false) + " font-mono sm:max-w-52"}
           />
         </Field>
 

@@ -13,6 +13,8 @@ interface EmployeesTableProps {
   onRegister: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
   onDelete: (employee: Employee) => void;
+  /** Abre a ficha do colaborador. */
+  onOpen: (employee: Employee) => void;
 }
 
 export function EmployeesTable({
@@ -24,6 +26,7 @@ export function EmployeesTable({
   onRegister,
   onEdit,
   onDelete,
+  onOpen,
 }: EmployeesTableProps) {
   return (
     <div className="rounded-[14px] border border-border bg-surface">
@@ -60,7 +63,14 @@ export function EmployeesTable({
                   >
                     <td className="px-4 py-3">
                       <p className="font-medium text-ink">
-                        {emp.name}
+                        <button
+                          type="button"
+                          onClick={() => onOpen(emp)}
+                          className="text-left font-semibold text-ink underline-offset-4 hover:underline"
+                          title="Abrir ficha"
+                        >
+                          {emp.name}
+                        </button>
                         {!emp.active && (
                           <span className="ml-2 rounded-full border border-border-strong px-2 py-0.5 text-[11px] font-medium text-muted">
                             inativo

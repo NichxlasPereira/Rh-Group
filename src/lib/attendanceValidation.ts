@@ -6,6 +6,21 @@ export interface EmployeeInput {
   role: string | null;
   active: boolean;
   folgaAllowance: number;
+  // Ficha: só entram quando vêm no pedido (ausentes = não mexe).
+  startDate?: Date | null;
+  contractType?: string | null;
+  contractEnd?: Date | null;
+}
+
+export const CONTRACT_TYPES = ["PJ", "CLT", "Estágio", "Outro"] as const;
+
+/** "AAAA-MM-DD" → data; "" ou null → null; ausente → undefined; inválida → erro. */
+function optionalDate(value: unknown): Date | null | undefined | "invalid" {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "invalid";
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? "invalid" : date;
 }
 
 export function validateEmployeeInput(body: unknown): { data: EmployeeInput } | { error: string } {
@@ -29,7 +44,30 @@ export function validateEmployeeInput(body: unknown): { data: EmployeeInput } | 
     return { error: "O total de folgas deve ser um número inteiro entre 0 e 365." };
   }
 
-  return { data: { name, department, role, active, folgaAllowance } };
+  const startDate = optionalDate(b.startDate);
+  if (startDate === "invalid") return { error: "Data de entrada inválida." };
+  const contractEnd = optionalDate(b.contractEnd);
+  if (contractEnd === "invalid") return { error: "Fim do contrato inválido." };
+  let contractType: string | null | undefined;
+  if (b.contractType !== undefined) {
+    contractType = typeof b.contractType === "string" && b.contractType ? b.contractType : null;
+    if (contractType && !(CONTRACT_TYPES as readonly string[]).includes(contractType)) {
+      return { error: "Tipo de contrato inválido." };
+    }
+  }
+
+  return {
+    data: {
+      name,
+      department,
+      role,
+      active,
+      folgaAllowance,
+      ...(startDate !== undefined ? { startDate } : {}),
+      ...(contractType !== undefined ? { contractType } : {}),
+      ...(contractEnd !== undefined ? { contractEnd } : {}),
+    },
+  };
 }
 
 export interface OccurrenceInput {

@@ -23,6 +23,8 @@ interface RhShellProps<K extends string> {
   title: string;
   description: string;
   actions?: React.ReactNode;
+  /** Esconde o cabeçalho da seção (a ficha do colaborador tem o seu). */
+  hideHeader?: boolean;
   children: React.ReactNode;
 }
 
@@ -42,6 +44,7 @@ export function RhShell<K extends string>({
   title,
   description,
   actions,
+  hideHeader = false,
   children,
 }: RhShellProps<K>) {
   return (
@@ -136,6 +139,8 @@ export function RhShell<K extends string>({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
+        {!hideHeader && (
+          <>
         {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
         <header
           data-theme="dark"
@@ -159,6 +164,8 @@ export function RhShell<K extends string>({
             {actions}
           </div>
         </header>
+          </>
+        )}
         {children}
       </main>
     </div>

@@ -81,9 +81,14 @@ export async function PATCH(
                 department: admission.department,
                 role: admission.role,
                 active: true,
+                startDate: admission.startDate,
               },
             })
           ).id;
+      // A data de início do onboarding vira a data de entrada da ficha (se ainda não houver).
+      if (admission.startDate) {
+        await tx.employee.updateMany({ where: { id: employeeId, startDate: null }, data: { startDate: admission.startDate } });
+      }
       return tx.admission.update({ where: { id }, data: { status: "concluida", employeeId } });
     });
     // Copia os documentos aprovados para o Google Drive. Se falhar, a conclusão

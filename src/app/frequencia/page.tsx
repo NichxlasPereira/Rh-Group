@@ -43,6 +43,7 @@ import { formatDateBR } from "@/lib/format";
 import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionClient";
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
+import { EmployeeProfile } from "@/components/attendance/EmployeeProfile";
 import { AdmissionInfo, admissionProgress, fieldsProgress } from "@/lib/admission";
 
 interface SessionUser {
@@ -100,6 +101,9 @@ export default function FrequenciaPage() {
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  // Ficha aberta (aba Colaboradores) e o desligamento aguardando confirmação.
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [togglingEmployee, setTogglingEmployee] = useState<Employee | null>(null);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -279,6 +283,9 @@ export default function FrequenciaPage() {
             role: values.role.trim() || null,
             active: values.active,
             folgaAllowance: Number(values.folgaAllowance || 0),
+            startDate: values.startDate || null,
+            contractType: values.contractType || null,
+            contractEnd: values.contractEnd || null,
           }),
         },
         "Não foi possível salvar o colaborador."
@@ -368,6 +375,32 @@ export default function FrequenciaPage() {
     }
   }
 
+  async function handleToggleActive() {
+    const emp = togglingEmployee;
+    if (!emp) return;
+    try {
+      await requestJson(
+        `/api/employees/${emp.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: emp.name,
+            department: emp.department,
+            role: emp.role,
+            active: !emp.active,
+            folgaAllowance: emp.folgaAllowance,
+          }),
+        },
+        "Não foi possível atualizar o colaborador."
+      );
+      await fetchEmployees();
+      setTogglingEmployee(null);
+      toast.success(emp.active ? `${emp.name} foi desligado(a). O histórico continua na ficha.` : `${emp.name} foi reativado(a).`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro inesperado.");
+    }
+  }
+
   async function logout() {
     await fetch("/api/frequencia/logout", { method: "POST" }).catch(() => undefined);
     router.push("/");
@@ -436,22 +469,48 @@ export default function FrequenciaPage() {
       <RhShell
         sections={sections}
         active={tab}
-        onChange={setTab}
+        onChange={(next) => {
+          setTab(next);
+          setProfileId(null);
+        }}
         user={me}
         onChangePassword={() => setChangingPassword(true)}
         onLogout={logout}
         title={copy.title}
         description={copy.description}
         actions={actions}
+        hideHeader={tab === "colaboradores" && !!profileId}
       >
-        <AttendanceStats
-          activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
-          totals={totals}
-          periodLabel={periodLabel}
-          onboardings={onboardingSummary}
-        />
+        {!(tab === "colaboradores" && profileId) && (
+          <AttendanceStats
+            activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
+            totals={totals}
+            periodLabel={periodLabel}
+            onboardings={onboardingSummary}
+          />
+        )}
 
-        {tab === "acessos" && me?.role === "admin" ? (
+        {tab === "colaboradores" && profileId ? (
+          <EmployeeProfile
+            employeeId={profileId}
+            occurrences={occurrences}
+            employees={employees}
+            folgaRemaining={folgaRemaining.get(profileId) ?? 0}
+            onBack={() => setProfileId(null)}
+            onEdit={(e) => {
+              setEditingEmployee(e);
+              setEmployeeModalOpen(true);
+            }}
+            onRegister={(e) => openNewOccurrence(e)}
+            onToggleActive={setTogglingEmployee}
+            onEditOccurrence={(o) => {
+              setEditingOccurrence(o);
+              setOccurrencePreselect(null);
+              setOccurrenceModalOpen(true);
+            }}
+            onDeleteOccurrence={setDeletingOccurrence}
+          />
+        ) : tab === "acessos" && me?.role === "admin" ? (
           <AccessPanel currentUserId={me.id} onChanged={fetchMe} />
         ) : tab === "admissoes" ? (
           <AdmissionsPanel
@@ -513,6 +572,7 @@ export default function FrequenciaPage() {
                     setEmployeeModalOpen(true);
                   }}
                   onDelete={setDeletingEmployee}
+                  onOpen={(e) => setProfileId(e.id)}
                 />
               ) : (
                 <AttendanceReports occurrences={reportOccurrences} month={reportMonth} months={months} />
@@ -540,6 +600,24 @@ export default function FrequenciaPage() {
         occurrences={occurrences}
         occurrence={editingOccurrence}
         preselectedEmployee={occurrencePreselect}
+      />
+
+      <ConfirmDeleteModal
+        open={!!togglingEmployee}
+        title={togglingEmployee?.active ? "Desligar colaborador" : "Reativar colaborador"}
+        confirmLabel={togglingEmployee?.active ? "Desligar" : "Reativar"}
+        message={
+          <>
+            {togglingEmployee?.active ? "Desligar" : "Reativar"} <strong>{togglingEmployee?.name}</strong>?
+          </>
+        }
+        detail={
+          togglingEmployee?.active
+            ? "A pessoa sai da lista de ativos e não aparece mais ao registrar ocorrências. A ficha e o histórico continuam guardados."
+            : "A pessoa volta para a lista de colaboradores ativos."
+        }
+        onClose={() => setTogglingEmployee(null)}
+        onConfirm={handleToggleActive}
       />
 
       <ConfirmDeleteModal

@@ -32,6 +32,9 @@ export interface Employee {
   role: string | null;
   active: boolean;
   folgaAllowance: number;
+  startDate: string | null;
+  contractType: string | null;
+  contractEnd: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -46,6 +46,17 @@ Tudo fica atrás da autenticação geral do site (`BASIC_AUTH_USER` / `BASIC_AUT
 
 Senhas são guardadas só como hash (scrypt); sessões duram 12 horas e ficam registradas no banco (o navegador guarda só um token aleatório). A verificação de acesso é feita em cada rota da API, não só no proxy.
 
+## Ficha do colaborador
+
+Na aba **Colaboradores**, clicar no nome abre a ficha da pessoa:
+
+- **Cabeçalho:** foto para crachá enviada no onboarding (ou as iniciais), cargo, setor, tempo de casa, situação (ativo ou desligado), tipo de contrato e empresa contratante. Tem os botões **Editar ficha**, **Desligar**/**Reativar** e **Registrar ocorrência**.
+- **Dados pessoais** do onboarding digital: CPF, RG, telefone, chave Pix e endereço aparecem mascarados. **Mostrar dados completos** revela os dados e registra quem viu e quando (LGPD); a ficha mostra o último acesso.
+- **Ocorrências do ano** mês a mês (faltas, atestados e folgas), com a taxa de absenteísmo da pessoa (dias de falta e atestado sobre os dias úteis, seg. a sex., sem descontar feriados) e a média da empresa.
+- **Saldo de folgas**, **linha do tempo** (onboarding, admissão, ocorrências), **documentos** do onboarding com a situação de cada um e **contrato**: data de entrada, tipo (PJ, CLT, estágio, outro) e fim da vigência. Faltando 30 dias ou menos para o fim, a ficha avisa "Renova em N dias".
+
+A data de entrada vem do início previsto do onboarding ao concluir (e foi preenchida assim para quem já tinha entrado pelo onboarding); para os demais, informe em **Editar ficha**. **Desligar** tira a pessoa da lista de ativos e mantém a ficha e o histórico.
+
 ## Onboarding (admissão digital)
 
 Na frequência (RH), a aba **onboarding** controla a admissão 100% digital:
@@ -133,7 +144,7 @@ Configuração (usa a mesma conta de serviço do Drive):
 
 - **Admissão**: dados do candidato, situação, hash do link e validade; cada **documento pedido** tem situação, motivo da recusa e quem avaliou, e pode ter vários **arquivos**. Os documentos do tipo `nda` (acordo de confidencialidade) e `imagem` (termo de uso de imagem) são gerados com a **empresa contratante** do onboarding, que guarda CNPJ, natureza jurídica e endereço da sede.
 - **Acesso à frequência**: nome, e-mail, hash da senha, perfil (administrador ou acesso), se está ativo e último acesso; mais as sessões abertas.
-- **Colaborador**: nome, setor, cargo, total de folgas a que tem direito e se está ativo (inativos somem da lista ao registrar novas ocorrências, mas o histórico continua).
+- **Colaborador**: nome, setor, cargo, total de folgas a que tem direito, data de entrada, tipo e fim do contrato e se está ativo; cada pedido para ver os dados pessoais completos fica registrado (quem e quando) (inativos somem da lista ao registrar novas ocorrências, mas o histórico continua).
 - **Ocorrência**: tipo (`falta`, `atestado` ou `folga`), data inicial e final (atestados e folgas podem cobrir vários dias), se foi justificada, gestor que concedeu (folga) e observações. O saldo de folgas é o total do colaborador menos os dias de folga já lançados; a API recusa folgas acima do saldo. Guarda uma cópia do nome e setor do colaborador, como as retiradas fazem com o material.
 
 Excluir um material não apaga o histórico de retiradas associado a ele; excluir um colaborador também preserva suas ocorrências.

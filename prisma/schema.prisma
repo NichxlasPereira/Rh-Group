@@ -51,12 +51,28 @@ model Employee {
   // Total de dias de folga a que o colaborador tem direito. O saldo restante
   // é este total menos os dias já lançados como ocorrência do tipo "folga".
   folgaAllowance Int  @default(0)
+  // Ficha: entrada na empresa e contrato (para lembrar da renovação).
+  startDate    DateTime?
+  contractType String? // "PJ" | "CLT" | "Estágio" | "Outro"
+  contractEnd  DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   occurrences AttendanceOccurrence[]
+  dataViews   EmployeeDataView[]
 
   @@index([name])
+}
+
+/** Quem pediu para ver os dados pessoais completos de um colaborador (LGPD). */
+model EmployeeDataView {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  viewedBy   String
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
 }
 
 // Ocorrência de frequência: atraso, falta ou atestado. Guarda uma cópia do
