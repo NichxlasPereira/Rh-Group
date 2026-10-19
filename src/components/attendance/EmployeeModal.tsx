@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Modal } from "../Modal";
 import { Button } from "../Button";
-import { DEPARTAMENTOS_SUGERIDOS, Employee } from "@/lib/attendance";
+import { Employee } from "@/lib/attendance";
 import { Field, inputClass } from "./formControls";
 
 export interface EmployeeFormValues {
@@ -83,7 +83,6 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
     }
   }
 
-  const departmentOptions = Array.from(new Set([...DEPARTAMENTOS_SUGERIDOS, ...existingDepartments]));
 
   return (
     <Modal
@@ -112,19 +111,23 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
           />
         </Field>
 
-        <Field label="Setor (opcional)">
-          <input
+        <Field label="Setor (empresa)" hint="Empresas com CNPJ cadastrado no onboarding.">
+          <select
             value={values.department}
             onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))}
             className={inputClass(false)}
-            placeholder="Selecione ou digite"
-            list="departamentos-sugeridos"
-          />
-          <datalist id="departamentos-sugeridos">
-            {departmentOptions.map((d) => (
-              <option key={d} value={d} />
+          >
+            <option value="">Sem setor</option>
+            {/* Valor antigo fora da lista continua visível até o RH trocar. */}
+            {values.department && !existingDepartments.includes(values.department) && (
+              <option value={values.department}>{values.department} (fora da lista)</option>
+            )}
+            {existingDepartments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
             ))}
-          </datalist>
+          </select>
         </Field>
 
         <Field label="Cargo (opcional)">

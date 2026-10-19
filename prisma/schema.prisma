@@ -261,6 +261,8 @@ model AppSetting {
 model ContractingCompany {
   id            String   @id @default(cuid())
   name          String
+  // Nome curto que aparece como setor dos colaboradores (ex.: "TOKITE").
+  shortName     String?
   qualification String // parágrafo de qualificação, como aparece no acordo
   signerName    String // quem assina pela empresa
   signerRole    String // ex.: Sócio administrador

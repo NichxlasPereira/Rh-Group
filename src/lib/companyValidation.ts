@@ -2,6 +2,7 @@ import { normalizeFieldValue } from "./admission";
 
 export interface CompanyInput {
   name: string;
+  shortName: string | null;
   qualification: string;
   signerName: string;
   signerRole: string;
@@ -53,6 +54,7 @@ export function parseCompany(body: unknown): { data: CompanyInput } | { error: s
   return {
     data: {
       ...data,
+      shortName: optional(b.shortName, 40)?.toUpperCase() ?? null,
       cnpj,
       legalNature: optional(b.legalNature, 120),
       address: optional(b.address, 300),

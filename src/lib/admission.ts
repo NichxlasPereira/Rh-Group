@@ -214,6 +214,8 @@ export const LINK_VALID_DAYS = 30;
 export interface ContractingCompanyInfo {
   id: string;
   name: string;
+  /** Nome curto que aparece como setor dos colaboradores. */
+  shortName: string | null;
   qualification: string;
   signerName: string;
   signerRole: string;
@@ -230,3 +232,12 @@ export interface ContractingCompanyInfo {
 /** Termos que o sistema gera preenchidos e o candidato assina no gov.br. */
 export const GENERATED_DOCUMENT_KINDS = ["nda", "imagem"] as const;
 export const isGeneratedDocument = (kind: string) => (GENERATED_DOCUMENT_KINDS as readonly string[]).includes(kind);
+
+/**
+ * Setores da lista de escolha: o nome curto de cada empresa com CNPJ
+ * cadastrado no onboarding (o setor dos colaboradores é a empresa).
+ */
+export function companySectors(companies: Pick<ContractingCompanyInfo, "name" | "shortName" | "cnpj">[]): string[] {
+  const names = companies.filter((c) => c.cnpj).map((c) => (c.shortName || c.name).trim());
+  return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}

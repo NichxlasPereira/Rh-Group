@@ -44,7 +44,13 @@ import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionCl
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
 import { EmployeeProfile } from "@/components/attendance/EmployeeProfile";
-import { AdmissionInfo, admissionProgress, fieldsProgress } from "@/lib/admission";
+import {
+  AdmissionInfo,
+  ContractingCompanyInfo,
+  admissionProgress,
+  companySectors,
+  fieldsProgress,
+} from "@/lib/admission";
 
 interface SessionUser {
   id: string;
@@ -111,6 +117,7 @@ export default function FrequenciaPage() {
   const [deletingOccurrence, setDeletingOccurrence] = useState<Occurrence | null>(null);
 
   const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
+  const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
   const [admissionSearch, setAdmissionSearch] = useState("");
   const [createSignal, setCreateSignal] = useState(0);
 
@@ -138,11 +145,20 @@ export default function FrequenciaPage() {
     setAdmissions(await res.json());
   }, []);
 
+  // Setores = empresas com CNPJ no onboarding (nome curto).
+  const fetchCompanies = useCallback(async () => {
+    const res = await fetch("/api/frequencia/companies");
+    if (sessionExpired(res) || !res.ok) return;
+    setCompanies(await res.json());
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchEmployees(), fetchOccurrences(), fetchMe(), fetchAdmissions()]).finally(() => setLoading(false));
+    Promise.all([fetchEmployees(), fetchOccurrences(), fetchMe(), fetchAdmissions(), fetchCompanies()]).finally(() =>
+      setLoading(false)
+    );
     endOtherModuleSession("frequencia");
-  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions]);
+  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies]);
 
   // Onboardings: indicador do topo e contador de documentos para analisar na barra lateral.
   const onboardingSummary = useMemo(() => {
@@ -194,12 +210,8 @@ export default function FrequenciaPage() {
   const reportMonth = allPeriod ? currentMonthKey() : month;
   const periodLabel = allPeriod ? "todo o período" : monthKeyLabel(month);
 
-  const departments = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of employees) if (e.department) set.add(e.department);
-    for (const o of occurrences) if (o.employeeDepartment) set.add(o.employeeDepartment);
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [employees, occurrences]);
+  // Só as empresas com CNPJ cadastrado no onboarding aparecem como setor.
+  const departments = useMemo(() => companySectors(companies), [companies]);
 
   const periodSummaries = useMemo(
     () => summarizeByEmployee(occurrences, allPeriod ? undefined : month),

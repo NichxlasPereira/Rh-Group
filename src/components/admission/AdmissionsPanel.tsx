@@ -1079,18 +1079,23 @@ function InternalInfoCard({
       <Field label="Cargo">
         <input value={values.role} onChange={(e) => set("role", e.target.value)} className={inputClass(false)} autoFocus />
       </Field>
-      <Field label="Setor">
-        <input
+      <Field label="Setor (empresa)">
+        <select
           value={values.department}
           onChange={(e) => set("department", e.target.value)}
           className={inputClass(false)}
-          list="admission-departments"
-        />
-        <datalist id="admission-departments">
+        >
+          <option value="">Sem setor</option>
+          {/* Valor antigo fora da lista continua visível até o RH trocar. */}
+          {values.department && !departments.includes(values.department) && (
+            <option value={values.department}>{values.department} (fora da lista)</option>
+          )}
           {departments.map((dep) => (
-            <option key={dep} value={dep} />
+            <option key={dep} value={dep}>
+              {dep}
+            </option>
           ))}
-        </datalist>
+        </select>
       </Field>
       <Field label="Início previsto">
         <input

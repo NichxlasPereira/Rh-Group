@@ -15,16 +15,6 @@ export function isMultiDay(type: OccurrenceType): boolean {
   return type === "atestado" || type === "folga";
 }
 
-export const DEPARTAMENTOS_SUGERIDOS = [
-  "Administrativo",
-  "Financeiro",
-  "Comercial",
-  "Operações",
-  "RH",
-  "TI",
-  "Logística",
-] as const;
-
 export interface Employee {
   id: string;
   name: string;

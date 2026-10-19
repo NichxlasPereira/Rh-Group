@@ -24,6 +24,7 @@ const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.mess
 type CompanyForm = { [K in keyof Omit<ContractingCompanyInfo, "id">]: string };
 const EMPTY_COMPANY: CompanyForm = {
   name: "",
+  shortName: "",
   qualification: "",
   signerName: "",
   signerRole: "",
@@ -206,7 +207,14 @@ export function TermsSettingsModal({
               {companies.map((c) => (
                 <li key={c.id} className="flex items-start justify-between gap-3 rounded-[10px] border border-border p-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-ink">{c.name}</p>
+                    <p className="font-medium text-ink">
+                      {c.name}
+                      {c.shortName && (
+                        <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-muted">
+                          Setor: {c.shortName}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted">
                       {c.cnpj ? `CNPJ ${c.cnpj} · ` : ""}Assina: {c.signerName} · {c.signerRole}
                     </p>
@@ -261,8 +269,16 @@ export function TermsSettingsModal({
               {lookingUp ? "Buscando..." : "Buscar pelo CNPJ"}
             </Button>
           </div>
-          <Field label="Razão social" className="sm:col-span-6">
+          <Field label="Razão social" className="sm:col-span-4">
             <input value={form.name} onChange={(e) => set("name", e.target.value)} className={inputClass(false)} required />
+          </Field>
+          <Field label="Nome curto (setor)" hint="Aparece como setor dos colaboradores." className="sm:col-span-2">
+            <input
+              value={form.shortName}
+              onChange={(e) => set("shortName", e.target.value.toUpperCase())}
+              placeholder="Ex.: TOKITE"
+              className={inputClass(false)}
+            />
           </Field>
           <Field label="Natureza jurídica" className="sm:col-span-3">
             <input
