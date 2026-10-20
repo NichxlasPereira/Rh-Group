@@ -7,6 +7,13 @@ export type AttendanceTabKey = "ocorrencias" | "colaboradores" | "relatorios" | 
 
 export const ALL_MONTHS = "todos";
 
+export type TeamView = "lista" | "organograma";
+
+const TEAM_VIEWS: { key: TeamView; label: string }[] = [
+  { key: "lista", label: "Lista" },
+  { key: "organograma", label: "Organograma" },
+];
+
 interface AttendanceFiltersProps {
   tab: AttendanceTabKey;
   months: string[];
@@ -21,6 +28,8 @@ interface AttendanceFiltersProps {
   onDepartmentChange: (value: string) => void;
   showInactive: boolean;
   onShowInactiveChange: (value: boolean) => void;
+  teamView: TeamView;
+  onTeamViewChange: (value: TeamView) => void;
   onExport: () => void;
   exportDisabled: boolean;
 }
@@ -103,6 +112,28 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
           />
           Mostrar inativos
         </label>
+      )}
+
+      {tab === "colaboradores" && (
+        <div
+          role="group"
+          aria-label="Forma de ver a equipe"
+          className="flex h-10 items-center rounded-[10px] border border-border bg-surface-2 p-1 sm:ml-auto"
+        >
+          {TEAM_VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              aria-pressed={props.teamView === v.key}
+              onClick={() => props.onTeamViewChange(v.key)}
+              className={`h-full rounded-[7px] px-3 text-[13px] font-semibold transition ${
+                props.teamView === v.key ? "bg-accent text-accent-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {tab === "ocorrencias" && (

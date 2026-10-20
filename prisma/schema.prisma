@@ -55,6 +55,10 @@ model Employee {
   startDate    DateTime?
   contractType String? // "PJ" | "CLT" | "Estágio" | "Outro"
   contractEnd  DateTime?
+  // Organograma: área dentro da empresa (setor) e se a pessoa responde por ela.
+  areaId       String?
+  area         CompanyArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  areaLead     Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -279,4 +283,18 @@ model ContractingCompany {
   updatedAt     DateTime @updatedAt
 
   admissions Admission[]
+  areas      CompanyArea[]
+}
+
+/** Áreas de uma empresa (Tecnologia, Comercial...), usadas no organograma. */
+model CompanyArea {
+  id        String             @id @default(cuid())
+  companyId String
+  company   ContractingCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime           @default(now())
+
+  employees Employee[]
+
+  @@unique([companyId, name])
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { validateEmployeeInput } from "@/lib/attendanceValidation";
+import { resolveEmployeeArea } from "@/lib/companyAreas";
 
 export async function PATCH(
   request: NextRequest,
@@ -20,10 +21,13 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: "Colaborador não encontrado." }, { status: 404 });
   }
+  // Trocar de setor tira a pessoa de uma área da empresa anterior.
+  const area = await resolveEmployeeArea(prisma, result.data.department, result.data, existing);
+  if ("error" in area) return NextResponse.json({ error: area.error }, { status: 400 });
 
   // Mantém a cópia de nome/setor das ocorrências em dia com o cadastro.
   const employee = await prisma.$transaction(async (tx) => {
-    const updated = await tx.employee.update({ where: { id }, data: result.data });
+    const updated = await tx.employee.update({ where: { id }, data: { ...result.data, ...area } });
     await tx.attendanceOccurrence.updateMany({
       where: { employeeId: id },
       data: { employeeName: updated.name, employeeDepartment: updated.department },

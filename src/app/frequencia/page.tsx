@@ -16,14 +16,17 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection } from "@/components/attendance/RhShell";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
-import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey } from "@/components/attendance/AttendanceFilters";
+import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/components/attendance/AttendanceFilters";
 import { OccurrencesTable } from "@/components/attendance/OccurrencesTable";
 import { EmployeesTable } from "@/components/attendance/EmployeesTable";
+import { OrgChart } from "@/components/attendance/OrgChart";
+import { AreasModal } from "@/components/attendance/AreasModal";
 import { AttendanceReports } from "@/components/attendance/AttendanceReports";
 import { EmployeeModal, EmployeeFormValues } from "@/components/attendance/EmployeeModal";
 import { AttachmentChanges, OccurrenceModal, OccurrenceFormValues } from "@/components/attendance/OccurrenceModal";
 import { ConfirmDeleteModal } from "@/components/attendance/ConfirmDeleteModal";
 import {
+  CompanyArea,
   Employee,
   OCCURRENCE_LABEL,
   Occurrence,
@@ -50,6 +53,7 @@ import {
   admissionProgress,
   companySectors,
   fieldsProgress,
+  sectorName,
 } from "@/lib/admission";
 
 interface SessionUser {
@@ -110,6 +114,10 @@ export default function FrequenciaPage() {
   // Ficha aberta (aba Colaboradores) e o desligamento aguardando confirmação.
   const [profileId, setProfileId] = useState<string | null>(null);
   const [togglingEmployee, setTogglingEmployee] = useState<Employee | null>(null);
+  // Aba Colaboradores: lista ou organograma, e a empresa com as áreas em edição.
+  const [teamView, setTeamView] = useState<TeamView>("lista");
+  const [areas, setAreas] = useState<CompanyArea[]>([]);
+  const [areasCompany, setAreasCompany] = useState<ContractingCompanyInfo | null>(null);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -152,13 +160,24 @@ export default function FrequenciaPage() {
     setCompanies(await res.json());
   }, []);
 
+  const fetchAreas = useCallback(async () => {
+    const res = await fetch("/api/frequencia/areas");
+    if (sessionExpired(res) || !res.ok) return;
+    setAreas(await res.json());
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchEmployees(), fetchOccurrences(), fetchMe(), fetchAdmissions(), fetchCompanies()]).finally(() =>
-      setLoading(false)
-    );
+    Promise.all([
+      fetchEmployees(),
+      fetchOccurrences(),
+      fetchMe(),
+      fetchAdmissions(),
+      fetchCompanies(),
+      fetchAreas(),
+    ]).finally(() => setLoading(false));
     endOtherModuleSession("frequencia");
-  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies]);
+  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies, fetchAreas]);
 
   // Onboardings: indicador do topo e contador de documentos para analisar na barra lateral.
   const onboardingSummary = useMemo(() => {
@@ -212,6 +231,21 @@ export default function FrequenciaPage() {
 
   // Só as empresas com CNPJ cadastrado no onboarding aparecem como setor.
   const departments = useMemo(() => companySectors(companies), [companies]);
+
+  const areasBySector = useMemo(() => {
+    const map = new Map<string, CompanyArea[]>();
+    for (const c of companies) {
+      const sector = sectorName(c);
+      if (!c.cnpj || map.has(sector)) continue;
+      map.set(
+        sector,
+        areas.filter((a) => a.companyId === c.id).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+      );
+    }
+    return map;
+  }, [companies, areas]);
+
+  const areaNameById = useMemo(() => new Map(areas.map((a) => [a.id, a.name])), [areas]);
 
   const periodSummaries = useMemo(
     () => summarizeByEmployee(occurrences, allPeriod ? undefined : month),
@@ -298,6 +332,8 @@ export default function FrequenciaPage() {
             startDate: values.startDate || null,
             contractType: values.contractType || null,
             contractEnd: values.contractEnd || null,
+            areaId: values.areaId || null,
+            areaLead: values.areaLead,
           }),
         },
         "Não foi possível salvar o colaborador."
@@ -508,6 +544,7 @@ export default function FrequenciaPage() {
             occurrences={occurrences}
             employees={employees}
             folgaRemaining={folgaRemaining.get(profileId) ?? 0}
+            areaNameById={areaNameById}
             onBack={() => setProfileId(null)}
             onEdit={(e) => {
               setEditingEmployee(e);
@@ -551,6 +588,8 @@ export default function FrequenciaPage() {
               onDepartmentChange={setDepartment}
               showInactive={showInactive}
               onShowInactiveChange={setShowInactive}
+              teamView={teamView}
+              onTeamViewChange={setTeamView}
               onExport={exportCsv}
               exportDisabled={filteredOccurrences.length === 0}
             />
@@ -570,6 +609,16 @@ export default function FrequenciaPage() {
                     setOccurrenceModalOpen(true);
                   }}
                   onDelete={setDeletingOccurrence}
+                />
+              ) : tab === "colaboradores" && teamView === "organograma" ? (
+                <OrgChart
+                  employees={filteredEmployees}
+                  companies={companies}
+                  areas={areas}
+                  occurrences={occurrences}
+                  focus={department}
+                  onOpen={(e) => setProfileId(e.id)}
+                  onManageAreas={setAreasCompany}
                 />
               ) : tab === "colaboradores" ? (
                 <EmployeesTable
@@ -602,6 +651,17 @@ export default function FrequenciaPage() {
         onSubmit={handleEmployeeSubmit}
         employee={editingEmployee}
         existingDepartments={departments}
+        areasBySector={areasBySector}
+      />
+
+      <AreasModal
+        company={areasCompany}
+        areas={areas}
+        employees={employees}
+        onClose={() => setAreasCompany(null)}
+        onChanged={async () => {
+          await Promise.all([fetchAreas(), fetchEmployees()]);
+        }}
       />
 
       <OccurrenceModal

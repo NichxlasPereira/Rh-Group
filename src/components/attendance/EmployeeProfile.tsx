@@ -111,6 +111,8 @@ interface EmployeeProfileProps {
   occurrences: Occurrence[];
   employees: Employee[];
   folgaRemaining: number;
+  /** Nome das áreas (organograma), para mostrar a da pessoa. */
+  areaNameById: Map<string, string>;
   onBack: () => void;
   onEdit: (employee: Employee) => void;
   onRegister: (employee: Employee) => void;
@@ -125,6 +127,7 @@ export function EmployeeProfile({
   occurrences,
   employees,
   folgaRemaining,
+  areaNameById,
   onBack,
   onEdit,
   onRegister,
@@ -307,6 +310,9 @@ export function EmployeeProfile({
           <div className="flex min-w-0 flex-col gap-2">
             <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/80">
               Colaborador{employee.department ? ` · ${employee.department}` : ""}
+              {employee.areaId && areaNameById.has(employee.areaId)
+                ? ` · ${areaNameById.get(employee.areaId)}${employee.areaLead ? " (responsável)" : ""}`
+                : ""}
             </span>
             <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
               {employee.name}

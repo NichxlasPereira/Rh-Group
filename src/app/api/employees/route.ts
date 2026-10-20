@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { validateEmployeeInput } from "@/lib/attendanceValidation";
+import { resolveEmployeeArea } from "@/lib/companyAreas";
 
 export async function GET() {
   const auth = await requireFrequenciaUser();
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  const employee = await prisma.employee.create({ data: result.data });
+  const area = await resolveEmployeeArea(prisma, result.data.department, result.data);
+  if ("error" in area) return NextResponse.json({ error: area.error }, { status: 400 });
+
+  const employee = await prisma.employee.create({ data: { ...result.data, ...area } });
   return NextResponse.json(employee, { status: 201 });
 }

@@ -229,6 +229,11 @@ export interface ContractingCompanyInfo {
   cep: string | null;
 }
 
+/** Nome com que a empresa aparece como setor dos colaboradores. */
+export function sectorName(company: Pick<ContractingCompanyInfo, "name" | "shortName">): string {
+  return (company.shortName || company.name).trim();
+}
+
 /** Termos que o sistema gera preenchidos e o candidato assina no gov.br. */
 export const GENERATED_DOCUMENT_KINDS = ["nda", "imagem"] as const;
 export const isGeneratedDocument = (kind: string) => (GENERATED_DOCUMENT_KINDS as readonly string[]).includes(kind);
@@ -238,6 +243,6 @@ export const isGeneratedDocument = (kind: string) => (GENERATED_DOCUMENT_KINDS a
  * cadastrado no onboarding (o setor dos colaboradores é a empresa).
  */
 export function companySectors(companies: Pick<ContractingCompanyInfo, "name" | "shortName" | "cnpj">[]): string[] {
-  const names = companies.filter((c) => c.cnpj).map((c) => (c.shortName || c.name).trim());
+  const names = companies.filter((c) => c.cnpj).map(sectorName);
   return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b, "pt-BR"));
 }

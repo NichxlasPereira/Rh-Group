@@ -10,6 +10,9 @@ export interface EmployeeInput {
   startDate?: Date | null;
   contractType?: string | null;
   contractEnd?: Date | null;
+  // Organograma: idem (ausentes = não mexe).
+  areaId?: string | null;
+  areaLead?: boolean;
 }
 
 export const CONTRACT_TYPES = ["PJ", "CLT", "Estágio", "Outro"] as const;
@@ -56,6 +59,10 @@ export function validateEmployeeInput(body: unknown): { data: EmployeeInput } | 
     }
   }
 
+  let areaId: string | null | undefined;
+  if (b.areaId !== undefined) areaId = typeof b.areaId === "string" && b.areaId ? b.areaId : null;
+  const areaLead = b.areaLead === undefined ? undefined : b.areaLead === true;
+
   return {
     data: {
       name,
@@ -66,6 +73,8 @@ export function validateEmployeeInput(body: unknown): { data: EmployeeInput } | 
       ...(startDate !== undefined ? { startDate } : {}),
       ...(contractType !== undefined ? { contractType } : {}),
       ...(contractEnd !== undefined ? { contractEnd } : {}),
+      ...(areaId !== undefined ? { areaId } : {}),
+      ...(areaLead !== undefined ? { areaLead } : {}),
     },
   };
 }

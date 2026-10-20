@@ -25,8 +25,17 @@ export interface Employee {
   startDate: string | null;
   contractType: string | null;
   contractEnd: string | null;
+  areaId: string | null;
+  areaLead: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Área de uma empresa (setor) no organograma. */
+export interface CompanyArea {
+  id: string;
+  companyId: string;
+  name: string;
 }
 
 export interface Attachment {
