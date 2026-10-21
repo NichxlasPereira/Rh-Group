@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
-import { DISPLAYABLE_IMAGE, EMPLOYEE_DOCUMENT_SELECT, SENSITIVE_TYPES, maskFieldValue } from "@/lib/employeeProfile";
+import {
+  DISPLAYABLE_IMAGE,
+  EMPLOYEE_DOCUMENT_SELECT,
+  SENSITIVE_TYPES,
+  isPhotoDocument,
+  maskFieldValue,
+} from "@/lib/employeeProfile";
 
 /**
  * Ficha do colaborador: cadastro, dados do onboarding digital (se ele passou
@@ -47,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   });
 
   // Foto para crachá: a última imagem enviada no documento da foto.
-  const photoDoc = admission?.documents.find((d) => /foto/i.test(d.name));
+  const photoDoc = admission?.documents.find((d) => isPhotoDocument(d.name));
   const photo = photoDoc?.files.filter((f) => DISPLAYABLE_IMAGE.test(f.mimeType)).at(-1);
 
   return NextResponse.json({

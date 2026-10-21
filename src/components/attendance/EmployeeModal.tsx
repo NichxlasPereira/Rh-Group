@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Modal } from "../Modal";
 import { Button } from "../Button";
-import { CompanyArea, Employee } from "@/lib/attendance";
+import { CompanyArea, Employee, MAX_ATTACHMENT_MB } from "@/lib/attendance";
+import { DISPLAYABLE_IMAGE } from "@/lib/employeeProfile";
 import { Field, inputClass } from "./formControls";
 
 export interface EmployeeFormValues {
@@ -17,6 +18,8 @@ export interface EmployeeFormValues {
   contractEnd: string;
   areaId: string;
   areaLead: boolean;
+  /** Nova foto para crachá escolhida no formulário (enviada depois de salvar). */
+  photo: File | null;
 }
 
 const EMPTY: EmployeeFormValues = {
@@ -30,6 +33,7 @@ const EMPTY: EmployeeFormValues = {
   contractEnd: "",
   areaId: "",
   areaLead: false,
+  photo: null,
 };
 
 const CONTRACT_OPTIONS = ["PJ", "CLT", "Estágio", "Outro"];
@@ -49,6 +53,11 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
   const [error, setError] = useState<string>();
   const [allowanceError, setAllowanceError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  // Foto: prévia da nova escolhida e se a atual carregou (404 = sem foto).
+  const [preview, setPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string>();
+  const [hasCurrentPhoto, setHasCurrentPhoto] = useState(true);
+  const photoInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,12 +74,44 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             contractEnd: employee.contractEnd?.slice(0, 10) ?? "",
             areaId: employee.areaId ?? "",
             areaLead: employee.areaLead,
+            photo: null,
           }
         : EMPTY
     );
     setError(undefined);
     setAllowanceError(undefined);
+    setPhotoError(undefined);
+    setHasCurrentPhoto(true);
+    setPreview(null);
   }, [open, employee]);
+
+  // Libera a prévia anterior da memória.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  function choosePhoto(file: File | undefined) {
+    if (photoInput.current) photoInput.current.value = "";
+    if (!file) return;
+    if (!DISPLAYABLE_IMAGE.test(file.type)) {
+      setPhotoError("Envie a foto em JPG, PNG ou WEBP.");
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+      setPhotoError(`A foto passa do limite de ${MAX_ATTACHMENT_MB} MB.`);
+      return;
+    }
+    setPhotoError(undefined);
+    setValues((v) => ({ ...v, photo: file }));
+    setPreview(URL.createObjectURL(file));
+  }
+
+  function clearPhoto() {
+    setValues((v) => ({ ...v, photo: null }));
+    setPreview(null);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -110,6 +151,56 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
       }
     >
       <form id="employee-form" onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex items-center gap-4 sm:col-span-2">
+          {preview || (employee && hasCurrentPhoto) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview ?? `/api/employees/${employee!.id}/photo?v=${employee!.updatedAt}`}
+              alt={preview ? "Prévia da nova foto" : `Foto atual de ${employee!.name}`}
+              onError={() => !preview && setHasCurrentPhoto(false)}
+              className="h-[72px] w-[72px] shrink-0 rounded-[16px] border border-border object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[16px] border border-dashed border-border-strong text-[11px] font-semibold text-muted"
+            >
+              Sem foto
+            </div>
+          )}
+          <div className="flex min-w-0 flex-col gap-1.5 text-sm">
+            <span className="font-medium text-ink">Foto para crachá</span>
+            <div className="flex flex-wrap gap-2">
+              <label className="cursor-pointer rounded-[8px] border border-border-strong bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink transition hover:bg-surface-2 focus-within:ring-2 focus-within:ring-accent">
+                {preview || (employee && hasCurrentPhoto) ? "Trocar foto" : "Escolher foto"}
+                <input
+                  ref={photoInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => choosePhoto(e.target.files?.[0])}
+                  className="sr-only"
+                />
+              </label>
+              {preview && (
+                <button
+                  type="button"
+                  onClick={clearPhoto}
+                  className="rounded-[8px] px-3 py-1.5 text-[13px] font-semibold text-muted hover:text-ink"
+                >
+                  Desfazer
+                </button>
+              )}
+            </div>
+            {photoError ? (
+              <span className="text-xs text-critical">{photoError}</span>
+            ) : (
+              <span className="text-xs text-muted">
+                JPG, PNG ou WEBP, até {MAX_ATTACHMENT_MB} MB. Fica guardada nos documentos da ficha.
+              </span>
+            )}
+          </div>
+        </div>
+
         <Field label="Nome" error={error} className="sm:col-span-2">
           <input
             value={values.name}

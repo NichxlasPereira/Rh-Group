@@ -43,6 +43,7 @@ import {
   summarizeByEmployee,
 } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
+import { PHOTO_DOCUMENT_NAME } from "@/lib/employeeProfile";
 import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionClient";
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
@@ -319,7 +320,7 @@ export default function FrequenciaPage() {
   async function handleEmployeeSubmit(values: EmployeeFormValues) {
     const isEdit = !!editingEmployee;
     try {
-      await requestJson(
+      const saved: Employee = await requestJson(
         isEdit ? `/api/employees/${editingEmployee!.id}` : "/api/employees",
         {
           method: isEdit ? "PATCH" : "POST",
@@ -338,9 +339,19 @@ export default function FrequenciaPage() {
         },
         "Não foi possível salvar o colaborador."
       );
+      // A foto vai como documento da ficha ("Foto para crachá"), depois do cadastro salvo.
+      let photoFailure: string | null = null;
+      if (values.photo) {
+        const form = new FormData();
+        form.append("name", PHOTO_DOCUMENT_NAME);
+        form.append("file", values.photo);
+        const res = await fetch(`/api/employees/${saved.id}/documents`, { method: "POST", body: form });
+        if (!res.ok) photoFailure = (await res.json().catch(() => ({}))).error || "não foi possível enviar.";
+      }
       await Promise.all([fetchEmployees(), isEdit ? fetchOccurrences() : null]);
       setEmployeeModalOpen(false);
-      toast.success(isEdit ? "Colaborador atualizado." : "Colaborador cadastrado.");
+      if (photoFailure) toast.error(`Cadastro salvo, mas a foto não foi enviada: ${photoFailure}`, { duration: 8000 });
+      else toast.success(isEdit ? "Colaborador atualizado." : "Colaborador cadastrado.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro inesperado.");
     }

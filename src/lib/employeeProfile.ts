@@ -34,6 +34,12 @@ export const SENSITIVE_TYPES = new Set(["cpf", "rg", "tel", "cnpj", "textarea"])
 /** Foto que o navegador consegue mostrar (HEIC fica de fora: abre como arquivo). */
 export const DISPLAYABLE_IMAGE = /^image\/(jpeg|png|webp)$/;
 
+/** Documento que é a foto para crachá (onboarding ou ficha). */
+export const isPhotoDocument = (name: string) => /foto/i.test(name);
+
+/** Nome do documento criado ao trocar a foto pela edição do cadastro. */
+export const PHOTO_DOCUMENT_NAME = "Foto para crachá";
+
 /** Tipos sugeridos ao enviar um documento direto na ficha. */
 export const EMPLOYEE_DOCUMENT_TYPES = [
   "RG",

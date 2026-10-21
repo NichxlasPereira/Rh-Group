@@ -11,7 +11,7 @@ import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
 import { DocumentStatus } from "@/lib/admission";
 import { Employee, Occurrence, formatFileSize, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
-import { DISPLAYABLE_IMAGE } from "@/lib/employeeProfile";
+import { DISPLAYABLE_IMAGE, isPhotoDocument } from "@/lib/employeeProfile";
 
 interface FichaField {
   key: string;
@@ -226,13 +226,10 @@ export function EmployeeProfile({
   const age = birth ? ageFrom(birth) : null;
   const companyName = admission?.companyName ?? null;
   const uploaded = ficha.documents;
-  // Foto para crachá: a do onboarding ou, sem ela, a enviada na ficha.
-  const uploadedPhoto = uploaded.find((d) => /foto/i.test(d.name) && DISPLAYABLE_IMAGE.test(d.mimeType));
-  const photoUrl = admission?.photoFileId
-    ? `/api/admission-files/${admission.photoFileId}`
-    : uploadedPhoto
-      ? `/api/employee-documents/${uploadedPhoto.id}`
-      : null;
+  // Foto para crachá: a última enviada na ficha ou, sem ela, a do onboarding.
+  const uploadedPhoto = uploaded.find((d) => isPhotoDocument(d.name) && DISPLAYABLE_IMAGE.test(d.mimeType));
+  const photoKey = uploadedPhoto?.id ?? admission?.photoFileId ?? null;
+  const photoUrl = photoKey ? `/api/employees/${employee.id}/photo?v=${photoKey}` : null;
   const setUploaded = (documents: UploadedDocument[]) => setFicha((f) => (f ? { ...f, documents } : f));
   const contractDaysLeft = employee.contractEnd
     ? Math.ceil((new Date(employee.contractEnd).getTime() - Date.now()) / DAY)
