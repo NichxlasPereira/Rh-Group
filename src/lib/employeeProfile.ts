@@ -33,3 +33,28 @@ export const SENSITIVE_TYPES = new Set(["cpf", "rg", "tel", "cnpj", "textarea"])
 
 /** Foto que o navegador consegue mostrar (HEIC fica de fora: abre como arquivo). */
 export const DISPLAYABLE_IMAGE = /^image\/(jpeg|png|webp)$/;
+
+/** Tipos sugeridos ao enviar um documento direto na ficha. */
+export const EMPLOYEE_DOCUMENT_TYPES = [
+  "RG",
+  "CPF",
+  "CNH",
+  "Comprovante de residência",
+  "Contrato assinado",
+  "Acordo de confidencialidade (NDA)",
+  "Termo de uso de imagem",
+  "Foto para crachá",
+  "Certificado ou diploma",
+  "Dados bancários",
+] as const;
+
+/** Campos de um documento da ficha devolvidos pela API (sem o nome do arquivo no disco). */
+export const EMPLOYEE_DOCUMENT_SELECT = {
+  id: true,
+  name: true,
+  fileName: true,
+  mimeType: true,
+  size: true,
+  uploadedBy: true,
+  createdAt: true,
+} as const;

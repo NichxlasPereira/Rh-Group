@@ -7,9 +7,11 @@ import { IconCalendarPlus, IconFile, IconPaperclip } from "../icons";
 import { BrandArt, BrandDot } from "../brand";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { OccurrencesTable } from "./OccurrencesTable";
+import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
 import { DocumentStatus } from "@/lib/admission";
 import { Employee, Occurrence, formatFileSize, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
+import { DISPLAYABLE_IMAGE } from "@/lib/employeeProfile";
 
 interface FichaField {
   key: string;
@@ -32,6 +34,8 @@ interface FichaDocument {
 interface Ficha {
   employee: Employee;
   views: { viewedBy: string; createdAt: string }[];
+  /** Enviados pelo RH direto na ficha (mais recentes primeiro). */
+  documents: UploadedDocument[];
   admission: {
     id: string;
     status: string;
@@ -221,6 +225,15 @@ export function EmployeeProfile({
   const birth = field("nascimento");
   const age = birth ? ageFrom(birth) : null;
   const companyName = admission?.companyName ?? null;
+  const uploaded = ficha.documents;
+  // Foto para crachá: a do onboarding ou, sem ela, a enviada na ficha.
+  const uploadedPhoto = uploaded.find((d) => /foto/i.test(d.name) && DISPLAYABLE_IMAGE.test(d.mimeType));
+  const photoUrl = admission?.photoFileId
+    ? `/api/admission-files/${admission.photoFileId}`
+    : uploadedPhoto
+      ? `/api/employee-documents/${uploadedPhoto.id}`
+      : null;
+  const setUploaded = (documents: UploadedDocument[]) => setFicha((f) => (f ? { ...f, documents } : f));
   const contractDaysLeft = employee.contractEnd
     ? Math.ceil((new Date(employee.contractEnd).getTime() - Date.now()) / DAY)
     : null;
@@ -237,6 +250,11 @@ export function EmployeeProfile({
       ]
         .filter(Boolean)
         .join(" · "),
+    })),
+    ...uploaded.map((d) => ({
+      when: d.createdAt,
+      title: `${d.name} enviado na ficha`,
+      detail: d.uploadedBy ? `por ${d.uploadedBy}` : "",
     })),
     ...(admission
       ? [
@@ -264,7 +282,7 @@ export function EmployeeProfile({
 
   const tabs: { key: ProfileTab; label: string; count?: number }[] = [
     { key: "resumo", label: "Resumo" },
-    { key: "documentos", label: "Documentos", count: admission?.documents.length },
+    { key: "documentos", label: "Documentos", count: (admission?.documents.length ?? 0) + uploaded.length },
     { key: "ocorrencias", label: "Ocorrências", count: mine.length },
     { key: "historico", label: "Histórico" },
   ];
@@ -286,10 +304,10 @@ export function EmployeeProfile({
         <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[380px] text-white/[0.12] sm:block" />
         <div className="relative flex min-w-0 items-center gap-5">
           <div className="relative shrink-0">
-            {admission?.photoFileId ? (
+            {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`/api/admission-files/${admission.photoFileId}`}
+                src={photoUrl}
                 alt={`Foto para crachá de ${employee.name}`}
                 className="h-[104px] w-[104px] rounded-[22px] border-[3px] border-white/85 object-cover"
               />
@@ -544,11 +562,29 @@ export function EmployeeProfile({
               </button>
             </Card>
 
-            <Card title="Documentos" action={admission ? { label: "Ver todos", onClick: () => setTab("documentos") } : undefined}>
+            <Card
+              title="Documentos"
+              action={{ label: admission || uploaded.length ? "Ver todos" : "Enviar", onClick: () => setTab("documentos") }}
+            >
+              {uploaded.length > 0 && (
+                <ul className="flex flex-col gap-1.5">
+                  {uploaded.slice(0, 5).map((d) => (
+                    <li key={d.id} className="flex items-center gap-2.5 text-[13px] font-semibold text-ink">
+                      <IconFile className="h-4 w-4 shrink-0 text-muted" />
+                      <span className="truncate">{d.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {admission ? (
                 <DocumentList documents={admission.documents.slice(0, 5)} compact />
               ) : (
-                <p className="text-sm text-muted">Sem documentos do onboarding digital.</p>
+                uploaded.length === 0 && (
+                  <p className="text-sm text-muted">
+                    Sem documentos ainda. Quem entrou antes do onboarding digital pode ter os documentos enviados
+                    aqui pelo RH.
+                  </p>
+                )
               )}
             </Card>
           </div>
@@ -556,13 +592,18 @@ export function EmployeeProfile({
       )}
 
       {tab === "documentos" && (
-        <Card title="Documentos do onboarding">
-          {admission ? (
-            <DocumentList documents={admission.documents} />
-          ) : (
-            <p className="text-sm text-muted">Este colaborador não passou pelo onboarding digital.</p>
-          )}
-        </Card>
+        <div className="flex flex-col gap-4">
+          <Card title="Documentos enviados pelo RH">
+            <EmployeeDocuments employeeId={employee.id} documents={uploaded} onChange={setUploaded} />
+          </Card>
+          <Card title="Documentos do onboarding">
+            {admission ? (
+              <DocumentList documents={admission.documents} />
+            ) : (
+              <p className="text-sm text-muted">Este colaborador não passou pelo onboarding digital.</p>
+            )}
+          </Card>
+        </div>
       )}
 
       {tab === "ocorrencias" && (

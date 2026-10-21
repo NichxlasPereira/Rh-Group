@@ -64,11 +64,31 @@ model Employee {
 
   occurrences AttendanceOccurrence[]
   dataViews   EmployeeDataView[]
+  documents   EmployeeDocument[]
 
   @@index([name])
 }
 
 /** Quem pediu para ver os dados pessoais completos de um colaborador (LGPD). */
+/**
+ * Documento enviado pelo RH direto na ficha (ex.: de quem entrou antes do
+ * onboarding digital). O arquivo fica na pasta "colaboradores" do volume.
+ */
+model EmployeeDocument {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name       String // tipo do documento: RG, CPF, Contrato assinado...
+  fileName   String
+  mimeType   String
+  size       Int
+  storedName String   @unique
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
+}
+
 model EmployeeDataView {
   id         String   @id @default(cuid())
   employeeId String

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { validateEmployeeInput } from "@/lib/attendanceValidation";
 import { resolveEmployeeArea } from "@/lib/companyAreas";
+import { removeAttachmentFiles } from "@/lib/attachmentStorage";
 
 export async function PATCH(
   request: NextRequest,
@@ -50,6 +51,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Colaborador não encontrado." }, { status: 404 });
   }
 
+  // Os documentos da ficha saem junto (cascata); os arquivos são apagados do disco.
+  const docs = await prisma.employeeDocument.findMany({ where: { employeeId: id }, select: { storedName: true } });
   await prisma.employee.delete({ where: { id } });
+  await removeAttachmentFiles(docs.map((d) => d.storedName), "colaboradores");
   return NextResponse.json({ ok: true });
 }

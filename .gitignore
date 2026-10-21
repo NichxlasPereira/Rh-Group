@@ -47,3 +47,4 @@ next-env.d.ts
 # anexos de atestados (dados pessoais — nunca versionar)
 /prisma/atestados
 /prisma/admissoes
+/prisma/colaboradores
