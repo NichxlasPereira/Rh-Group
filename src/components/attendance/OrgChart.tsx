@@ -4,8 +4,10 @@ import { useState } from "react";
 import { CompanyArea, Employee, OCCURRENCE_LABEL, Occurrence, OccurrenceType } from "@/lib/attendance";
 import { ContractingCompanyInfo, sectorName } from "@/lib/admission";
 import { todayInputValue } from "@/lib/format";
+import { inkOn } from "@/lib/brandColors";
 import { CffLogo } from "../brand";
 import { IconEdit, IconUsers } from "../icons";
+import { brandStripe, companyLogoUrl } from "./CompanyBrandModal";
 import { EmptyState } from "./formControls";
 
 const NO_SECTOR = "Sem setor";
@@ -20,6 +22,8 @@ interface OrgChartProps {
   focus: string;
   onOpen: (employee: Employee) => void;
   onManageAreas: (company: ContractingCompanyInfo) => void;
+  /** Abre o logo e as cores da empresa. */
+  onBrand: (company: ContractingCompanyInfo) => void;
 }
 
 interface AreaGroup {
@@ -42,7 +46,7 @@ function shortName(name: string): string {
 const byName = (a: Employee, b: Employee) => a.name.localeCompare(b.name, "pt-BR");
 
 /** Organograma: o grupo, as empresas (setores) e, na empresa aberta, as áreas com responsáveis. */
-export function OrgChart({ employees, companies, areas, occurrences, focus, onOpen, onManageAreas }: OrgChartProps) {
+export function OrgChart({ employees, companies, areas, occurrences, focus, onOpen, onManageAreas, onBrand }: OrgChartProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const companyBySector = new Map<string, ContractingCompanyInfo>();
@@ -75,6 +79,9 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
   for (const o of occurrences) {
     if (o.employeeId && o.date.slice(0, 10) <= today && o.endDate.slice(0, 10) >= today) todayStatus.set(o.employeeId, o.type);
   }
+
+  const openBrand = open?.company?.brandColor ?? null;
+  const openLogo = open?.company ? companyLogoUrl(open.company) : null;
 
   let groups: AreaGroup[] = [];
   if (open) {
@@ -137,6 +144,8 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
         )}
         {sectors.map((s) => {
           const isOpen = s.name === openName;
+          const logo = s.company ? companyLogoUrl(s.company) : null;
+          const brand = s.company?.brandColor ?? null;
           return (
             <div key={s.name} className="relative flex flex-col">
               <span aria-hidden="true" className="-mt-[22px] hidden h-[22px] w-0.5 self-center bg-border-strong xl:block" />
@@ -144,18 +153,35 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
                 type="button"
                 onClick={() => setSelected(s.name)}
                 aria-pressed={isOpen}
-                className={`flex h-full flex-col gap-1.5 rounded-[14px] border bg-surface px-3 py-3 text-left transition hover:border-border-strong ${
+                aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
+                style={isOpen && brand ? { borderColor: brand, boxShadow: `0 0 0 1px ${brand}` } : undefined}
+                className={`flex h-full flex-col overflow-clip rounded-[14px] border bg-surface text-left transition hover:border-border-strong ${
                   isOpen ? "border-ink shadow-[0_0_0_1px_var(--ink)]" : "border-border"
                 } ${s.company ? "" : "border-dashed"}`}
               >
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
-                  <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
+                {brand && (
+                  <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
+                )}
+                <span className="flex flex-1 flex-col gap-1.5 px-3 py-3">
+                  <span className="flex items-center justify-between gap-2">
+                    {logo ? (
+                      // Logos são feitos para fundo claro: placa branca também no tema escuro.
+                      <span className="flex h-9 min-w-0 items-center rounded-[8px] bg-white px-2 py-1.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={logo} alt="" className="h-full w-auto max-w-full object-contain" />
+                      </span>
+                    ) : (
+                      <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
+                    )}
+                    <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
+                  </span>
+                  <span className="text-xs text-muted">
+                    {s.company
+                      ? `${logo ? `${s.name} · ` : ""}${s.areaCount} ${s.areaCount === 1 ? "área" : "áreas"}`
+                      : "sem empresa definida"}
+                  </span>
+                  {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
                 </span>
-                <span className="text-xs text-muted">
-                  {s.company ? `${s.areaCount} ${s.areaCount === 1 ? "área" : "áreas"}` : "sem empresa definida"}
-                </span>
-                {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
               </button>
             </div>
           );
@@ -166,24 +192,65 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
       {open && (
         <section
           aria-label={`Áreas de ${open.name}`}
-          className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-2/40 p-4 sm:p-5"
+          className="flex flex-col gap-4 overflow-clip rounded-[18px] border border-border bg-surface-2/40 p-4 sm:p-5"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">
-                {open.name} · {open.company ? "áreas" : "pessoas"}
-              </h2>
-              <p className="text-xs text-muted">Clique numa pessoa para abrir a ficha.</p>
+          {/* Cabeçalho da empresa aberta: logo e cores da marca dela. */}
+          <div
+            className="relative -mx-4 -mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-border px-4 pb-4 pt-5 sm:-mx-5 sm:-mt-5 sm:px-5"
+            style={
+              openBrand
+                ? { background: `linear-gradient(120deg, color-mix(in srgb, ${openBrand} 16%, transparent), transparent 65%)` }
+                : undefined
+            }
+          >
+            {openBrand && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-1.5"
+                style={{ background: brandStripe(openBrand, open.company?.accentColor) }}
+              />
+            )}
+            <div className="flex min-w-0 items-center gap-4">
+              {openLogo && (
+                <span className="flex h-14 shrink-0 items-center rounded-[12px] bg-white px-3 py-2 shadow-[0_6px_18px_-12px_rgba(0,0,0,0.5)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={openLogo} alt={`Logo da ${open.name}`} className="h-full w-auto max-w-[220px] object-contain" />
+                </span>
+              )}
+              <div className="min-w-0">
+                <h2 className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">
+                  {open.name} · {open.company ? "áreas" : "pessoas"}
+                </h2>
+                <p className="text-xs text-muted">
+                  {open.people.length} {open.people.length === 1 ? "pessoa" : "pessoas"}
+                  {open.company ? ` · ${open.areaCount} ${open.areaCount === 1 ? "área" : "áreas"}` : ""} · clique numa
+                  pessoa para abrir a ficha
+                </p>
+              </div>
             </div>
             {open.company && (
-              <button
-                type="button"
-                onClick={() => onManageAreas(open.company!)}
-                className="flex h-9 items-center gap-2 rounded-[10px] border border-border-strong px-3 text-xs font-semibold text-ink transition hover:bg-ink hover:text-bg"
-              >
-                <IconEdit className="h-4 w-4" />
-                Organizar áreas
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => onBrand(open.company!)}
+                  className="flex h-9 items-center gap-2 rounded-[10px] border border-border-strong bg-surface px-3 text-xs font-semibold text-ink transition hover:bg-ink hover:text-bg"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 rounded-full border border-border-strong"
+                    style={{ background: openBrand ? brandStripe(openBrand, open.company.accentColor) : "transparent" }}
+                  />
+                  Identidade visual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onManageAreas(open.company!)}
+                  className="flex h-9 items-center gap-2 rounded-[10px] border border-border-strong bg-surface px-3 text-xs font-semibold text-ink transition hover:bg-ink hover:text-bg"
+                >
+                  <IconEdit className="h-4 w-4" />
+                  Organizar áreas
+                </button>
+              </div>
             )}
           </div>
 
@@ -198,6 +265,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
               {groups.map((g) => (
                 <div
                   key={g.key}
+                  style={openBrand && g.key !== "sem-area" ? { borderTopColor: openBrand, borderTopWidth: 3 } : undefined}
                   className={`flex flex-col gap-3 rounded-[14px] border bg-surface p-3.5 ${
                     g.key === "sem-area" ? "border-dashed border-border-strong sm:col-span-full" : "border-border"
                   }`}
@@ -218,7 +286,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
                           onClick={() => onOpen(e)}
                           className="flex items-center gap-2.5 rounded-[10px] bg-surface-2 p-2 text-left transition hover:bg-border"
                         >
-                          <Avatar employee={e} status={todayStatus.get(e.id)} size="lg" />
+                          <Avatar employee={e} status={todayStatus.get(e.id)} size="lg" color={openBrand} />
                           <span className="flex min-w-0 flex-col leading-tight">
                             <span className="truncate text-[13px] font-bold text-ink">{e.name}</span>
                             <span className="text-[11px] text-muted">Responsável{e.role ? ` · ${e.role}` : ""}</span>
@@ -278,12 +346,24 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
   );
 }
 
-function Avatar({ employee, status, size = "sm" }: { employee: Employee; status?: OccurrenceType; size?: "sm" | "lg" }) {
+function Avatar({
+  employee,
+  status,
+  size = "sm",
+  color,
+}: {
+  employee: Employee;
+  status?: OccurrenceType;
+  size?: "sm" | "lg";
+  /** Cor da marca da empresa (responsáveis). */
+  color?: string | null;
+}) {
   const ring = status === "folga" ? "outline outline-2 outline-offset-1 outline-ok" : status ? "outline outline-2 outline-offset-1 outline-warn" : "";
   const dims = size === "lg" ? "h-8 w-8 rounded-[9px] text-[12.5px]" : "h-[26px] w-[26px] rounded-full text-[10.5px]";
   return (
     <span
       aria-hidden={!status}
+      style={color ? { background: color, color: inkOn(color) } : undefined}
       className={`flex shrink-0 items-center justify-center bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display font-semibold text-white ${dims} ${ring}`}
     >
       {initials(employee.name)}

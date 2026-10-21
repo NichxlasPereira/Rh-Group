@@ -48,3 +48,4 @@ next-env.d.ts
 /prisma/atestados
 /prisma/admissoes
 /prisma/colaboradores
+/prisma/empresas

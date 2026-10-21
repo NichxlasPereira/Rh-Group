@@ -21,6 +21,7 @@ import { OccurrencesTable } from "@/components/attendance/OccurrencesTable";
 import { EmployeesTable } from "@/components/attendance/EmployeesTable";
 import { OrgChart } from "@/components/attendance/OrgChart";
 import { AreasModal } from "@/components/attendance/AreasModal";
+import { CompanyBrandModal } from "@/components/attendance/CompanyBrandModal";
 import { AttendanceReports } from "@/components/attendance/AttendanceReports";
 import { EmployeeModal, EmployeeFormValues } from "@/components/attendance/EmployeeModal";
 import { AttachmentChanges, OccurrenceModal, OccurrenceFormValues } from "@/components/attendance/OccurrenceModal";
@@ -119,6 +120,7 @@ export default function FrequenciaPage() {
   const [teamView, setTeamView] = useState<TeamView>("lista");
   const [areas, setAreas] = useState<CompanyArea[]>([]);
   const [areasCompany, setAreasCompany] = useState<ContractingCompanyInfo | null>(null);
+  const [brandCompany, setBrandCompany] = useState<ContractingCompanyInfo | null>(null);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -630,6 +632,7 @@ export default function FrequenciaPage() {
                   focus={department}
                   onOpen={(e) => setProfileId(e.id)}
                   onManageAreas={setAreasCompany}
+                  onBrand={setBrandCompany}
                 />
               ) : tab === "colaboradores" ? (
                 <EmployeesTable
@@ -663,6 +666,16 @@ export default function FrequenciaPage() {
         employee={editingEmployee}
         existingDepartments={departments}
         areasBySector={areasBySector}
+      />
+
+      <CompanyBrandModal
+        key={brandCompany?.id ?? "nenhuma"}
+        company={brandCompany}
+        onClose={() => setBrandCompany(null)}
+        onChanged={(updated) => {
+          setCompanies((list) => list.map((c) => (c.id === updated.id ? updated : c)));
+          setBrandCompany(updated);
+        }}
       />
 
       <AreasModal

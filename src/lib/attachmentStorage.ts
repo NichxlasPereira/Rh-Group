@@ -13,8 +13,8 @@ const ALLOWED: Record<string, string> = {
   "image/heif": ".heif",
 };
 
-/** Pastas de arquivos: anexos de atestado, documentos de admissão e documentos da ficha. */
-export type StorageFolder = "atestados" | "admissoes" | "colaboradores";
+/** Pastas de arquivos: anexos de atestado, documentos de admissão e da ficha, logos das empresas. */
+export type StorageFolder = "atestados" | "admissoes" | "colaboradores" | "empresas";
 
 /**
  * Pasta dos arquivos: uma subpasta ao lado do arquivo SQLite. Assim, em

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { parseCompany } from "@/lib/companyValidation";
 import { syncAgreementDocuments } from "@/lib/admissionServer";
+import { removeAttachmentFiles } from "@/lib/attachmentStorage";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireFrequenciaUser({ admin: true });
@@ -22,7 +23,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const auth = await requireFrequenciaUser({ admin: true });
   if ("response" in auth) return auth.response;
   const { id } = await params;
-  if (!(await prisma.contractingCompany.findUnique({ where: { id } }))) {
+  const existing = await prisma.contractingCompany.findUnique({ where: { id }, select: { logoFile: true } });
+  if (!existing) {
     return NextResponse.json({ error: "Empresa não encontrada." }, { status: 404 });
   }
   await prisma.$transaction(async (tx) => {
@@ -31,5 +33,6 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     // Sem contratante não há termos: tira os itens da lista (se ainda não foram enviados).
     for (const a of admissions) await syncAgreementDocuments(tx, a.id, false);
   });
+  if (existing.logoFile) await removeAttachmentFiles([existing.logoFile], "empresas");
   return NextResponse.json({ ok: true });
 }

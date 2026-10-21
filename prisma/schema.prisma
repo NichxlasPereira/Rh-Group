@@ -299,6 +299,12 @@ model ContractingCompany {
   city          String?
   state         String?
   cep           String?
+  // Identidade visual (organograma): logo na pasta "empresas" do volume e cores da marca.
+  logoFile      String?
+  logoMime      String?
+  logoUpdatedAt DateTime?
+  brandColor    String? // #RRGGBB
+  accentColor   String? // #RRGGBB
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

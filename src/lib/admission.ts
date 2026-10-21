@@ -227,6 +227,10 @@ export interface ContractingCompanyInfo {
   city: string | null;
   state: string | null;
   cep: string | null;
+  /** Identidade visual no organograma. */
+  logoUpdatedAt?: string | null;
+  brandColor?: string | null;
+  accentColor?: string | null;
 }
 
 /** Nome com que a empresa aparece como setor dos colaboradores. */
