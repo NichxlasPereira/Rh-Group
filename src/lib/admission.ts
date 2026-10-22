@@ -233,6 +233,9 @@ export interface ContractingCompanyInfo {
   accentColor?: string | null;
 }
 
+/** A CFFGROUP fica no topo do organograma; as demais empresas do grupo, abaixo dela. */
+export const isGroupSector = (sector: string) => sector.replace(/[^a-z0-9]/gi, "").toUpperCase() === "CFFGROUP";
+
 /** Nome com que a empresa aparece como setor dos colaboradores. */
 export function sectorName(company: Pick<ContractingCompanyInfo, "name" | "shortName">): string {
   return (company.shortName || company.name).trim();

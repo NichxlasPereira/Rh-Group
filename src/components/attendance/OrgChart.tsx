@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CompanyArea, Employee, OCCURRENCE_LABEL, Occurrence, OccurrenceType } from "@/lib/attendance";
-import { ContractingCompanyInfo, sectorName } from "@/lib/admission";
+import { ContractingCompanyInfo, isGroupSector, sectorName } from "@/lib/admission";
 import { todayInputValue } from "@/lib/format";
 import { inkOn } from "@/lib/brandColors";
 import { CffLogo } from "../brand";
@@ -106,28 +106,43 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
     );
   }
 
-  const companyCount = sectors.filter((s) => s.company).length;
-  const n = sectors.length;
+  // A CFFGROUP é o próprio topo (clicável); as demais ficam lado a lado abaixo dela.
+  const holding = sectors.find((s) => s.company && isGroupSector(s.name)) ?? null;
+  const row = sectors.filter((s) => s !== holding);
+  const companyCount = row.filter((s) => s.company).length;
+  const n = row.length;
+  const holdingOpen = !!holding && holding.name === openName;
 
   return (
     <div className="flex flex-col gap-5">
       {/* Topo: o grupo */}
       <div className="flex flex-col items-center">
-        <div
+        <button
+          type="button"
           data-theme="dark"
-          className="brand-band flex items-center gap-4 rounded-[16px] px-6 py-4 text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)]"
+          disabled={!holding}
+          onClick={() => holding && setSelected(holdingOpen ? null : holding.name)}
+          aria-pressed={holding ? holdingOpen : undefined}
+          aria-label={holding ? `CFFGROUP: ${holding.people.length} pessoas` : undefined}
+          className={`brand-band flex items-center gap-4 rounded-[16px] px-6 py-4 text-left text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] transition enabled:hover:brightness-110 ${
+            holdingOpen ? "ring-2 ring-ink ring-offset-2 ring-offset-bg" : ""
+          }`}
         >
           <CffLogo className="h-[34px] w-auto text-white" />
           <span className="flex flex-col leading-tight">
             <span className="font-display text-lg font-semibold uppercase tracking-[0.06em]">
-              {employees.length} {employees.length === 1 ? "pessoa" : "pessoas"}
+              {holding
+                ? `${holding.people.length} ${holding.people.length === 1 ? "pessoa" : "pessoas"}`
+                : `${employees.length} ${employees.length === 1 ? "pessoa" : "pessoas"}`}
             </span>
             <span className="text-xs text-white/85">
-              {companyCount} {companyCount === 1 ? "empresa" : "empresas"}
+              {holding ? `${employees.length} no grupo · ` : ""}
+              {companyCount} {companyCount === 1 ? "empresa" : "empresas"} {holding ? "abaixo" : ""}
             </span>
+            {holdingOpen && <span className="mt-1 text-xs font-bold">▾ aberta abaixo</span>}
           </span>
-        </div>
-        <span aria-hidden="true" className="hidden h-[22px] w-0.5 bg-border-strong xl:block" />
+        </button>
+        {n > 0 && <span aria-hidden="true" className="hidden h-[22px] w-0.5 bg-border-strong xl:block" />}
       </div>
 
       {/* Nível das empresas */}
@@ -141,7 +156,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
               style={{ left: `calc(100% / ${2 * n})`, right: `calc(100% / ${2 * n})` }}
             />
           )}
-          {sectors.map((s) => {
+          {row.map((s) => {
             const isOpen = s.name === openName;
             const logo = s.company ? companyLogoUrl(s.company) : null;
             const brand = s.company?.brandColor ?? null;
@@ -190,7 +205,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
 
       {!open && (
         <p className="rounded-[14px] border border-dashed border-border-strong px-4 py-6 text-center text-sm text-muted">
-          Clique numa empresa para ver as áreas e as pessoas.
+          {holding ? "Clique na CFFGROUP ou numa empresa" : "Clique numa empresa"} para ver as áreas e as pessoas.
         </p>
       )}
 
@@ -217,11 +232,17 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
               />
             )}
             <div className="flex min-w-0 items-center gap-4">
-              {openLogo && (
+              {openLogo ? (
                 <span className="flex h-11 shrink-0 items-center rounded-[10px] bg-white px-2.5 py-1.5 shadow-[0_6px_18px_-12px_rgba(0,0,0,0.5)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={openLogo} alt={`Logo da ${open.name}`} className="h-full w-auto max-w-[180px] object-contain" />
                 </span>
+              ) : (
+                open === holding && (
+                  <span className="flex h-11 shrink-0 items-center rounded-[10px] bg-white px-2.5 py-1.5 shadow-[0_6px_18px_-12px_rgba(0,0,0,0.5)]">
+                    <CffLogo className="h-full w-auto text-[#17181a]" />
+                  </span>
+                )
               )}
               <div className="min-w-0">
                 <h2 className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">
