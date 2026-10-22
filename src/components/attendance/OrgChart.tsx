@@ -66,11 +66,8 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
     areaCount: areas.filter((a) => a.companyId === companyBySector.get(name)?.id).length,
   }));
 
-  // Abre a maior empresa (o grupo "Sem setor" só se não houver nenhuma).
-  const biggest =
-    [...sectors].sort((a, b) => Number(!!b.company) - Number(!!a.company) || b.people.length - a.people.length)[0]?.name ??
-    null;
-  const openName = (focus && bySector.has(focus) ? focus : null) ?? (selected && bySector.has(selected) ? selected : biggest);
+  // Nenhuma empresa em destaque: abre a do filtro de setor ou a que o RH clicar.
+  const openName = (focus && bySector.has(focus) ? focus : null) ?? (selected && bySector.has(selected) ? selected : null);
   const open = sectors.find((s) => s.name === openName) ?? null;
 
   // Quem está fora hoje (folga, atestado ou falta).
@@ -134,59 +131,68 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
       </div>
 
       {/* Nível das empresas */}
-      <div className="relative grid grid-cols-2 gap-3 sm:grid-cols-4 xl:-mt-5 xl:grid-flow-col xl:auto-cols-fr xl:grid-cols-none xl:pt-[22px]">
-        {n > 1 && (
-          <span
-            aria-hidden="true"
-            className="absolute top-0 hidden h-0.5 bg-border-strong xl:block"
-            style={{ left: `calc(100% / ${2 * n})`, right: `calc(100% / ${2 * n})` }}
-          />
-        )}
-        {sectors.map((s) => {
-          const isOpen = s.name === openName;
-          const logo = s.company ? companyLogoUrl(s.company) : null;
-          const brand = s.company?.brandColor ?? null;
-          return (
-            <div key={s.name} className="relative flex flex-col">
-              <span aria-hidden="true" className="-mt-[22px] hidden h-[22px] w-0.5 self-center bg-border-strong xl:block" />
-              <button
-                type="button"
-                onClick={() => setSelected(s.name)}
-                aria-pressed={isOpen}
-                aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
-                style={isOpen && brand ? { borderColor: brand, boxShadow: `0 0 0 1px ${brand}` } : undefined}
-                className={`flex h-full flex-col overflow-clip rounded-[14px] border bg-surface text-left transition hover:border-border-strong ${
-                  isOpen ? "border-ink shadow-[0_0_0_1px_var(--ink)]" : "border-border"
-                } ${s.company ? "" : "border-dashed"}`}
-              >
-                {brand && (
-                  <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
-                )}
-                <span className="flex flex-1 flex-col gap-1.5 px-3 py-3">
-                  <span className="flex items-center justify-between gap-2">
-                    {logo ? (
-                      // Logos são feitos para fundo claro: placa branca também no tema escuro.
-                      <span className="flex h-9 min-w-0 items-center rounded-[8px] bg-white px-2 py-1.5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={logo} alt="" className="h-full w-auto max-w-full object-contain" />
-                      </span>
-                    ) : (
-                      <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
-                    )}
-                    <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
+      {/* Cartões de largura fixa, centralizados: uma empresa não ocupa a linha toda. */}
+      <div className="flex justify-center xl:-mt-5">
+        <div className="relative grid w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:w-auto xl:grid-flow-col xl:auto-cols-[200px] xl:grid-cols-none xl:pt-[22px]">
+          {n > 1 && (
+            <span
+              aria-hidden="true"
+              className="absolute top-0 hidden h-0.5 bg-border-strong xl:block"
+              style={{ left: `calc(100% / ${2 * n})`, right: `calc(100% / ${2 * n})` }}
+            />
+          )}
+          {sectors.map((s) => {
+            const isOpen = s.name === openName;
+            const logo = s.company ? companyLogoUrl(s.company) : null;
+            const brand = s.company?.brandColor ?? null;
+            return (
+              <div key={s.name} className="relative flex flex-col">
+                <span aria-hidden="true" className="-mt-[22px] hidden h-[22px] w-0.5 self-center bg-border-strong xl:block" />
+                <button
+                  type="button"
+                  onClick={() => setSelected(isOpen ? null : s.name)}
+                  aria-pressed={isOpen}
+                  aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
+                  style={isOpen && brand ? { borderColor: brand, boxShadow: `0 0 0 1px ${brand}` } : undefined}
+                  className={`flex h-full flex-col overflow-clip rounded-[14px] border bg-surface text-left transition hover:border-border-strong ${
+                    isOpen ? "border-ink shadow-[0_0_0_1px_var(--ink)]" : "border-border"
+                  } ${s.company ? "" : "border-dashed"}`}
+                >
+                  {brand && (
+                    <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
+                  )}
+                  <span className="flex flex-1 flex-col gap-1.5 px-3 py-3">
+                    <span className="flex items-center justify-between gap-2">
+                      {logo ? (
+                        // Logos são feitos para fundo claro: placa branca também no tema escuro.
+                        <span className="flex h-9 min-w-0 items-center rounded-[8px] bg-white px-2 py-1.5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={logo} alt="" className="h-full w-auto max-w-full object-contain" />
+                        </span>
+                      ) : (
+                        <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
+                      )}
+                      <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
+                    </span>
+                    <span className="text-xs text-muted">
+                      {s.company
+                        ? `${logo ? `${s.name} · ` : ""}${s.areaCount} ${s.areaCount === 1 ? "área" : "áreas"}`
+                        : "sem empresa definida"}
+                    </span>
+                    {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
                   </span>
-                  <span className="text-xs text-muted">
-                    {s.company
-                      ? `${logo ? `${s.name} · ` : ""}${s.areaCount} ${s.areaCount === 1 ? "área" : "áreas"}`
-                      : "sem empresa definida"}
-                  </span>
-                  {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
-                </span>
-              </button>
-            </div>
-          );
-        })}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {!open && (
+        <p className="rounded-[14px] border border-dashed border-border-strong px-4 py-6 text-center text-sm text-muted">
+          Clique numa empresa para ver as áreas e as pessoas.
+        </p>
+      )}
 
       {/* Empresa aberta: áreas */}
       {open && (
@@ -212,9 +218,9 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
             )}
             <div className="flex min-w-0 items-center gap-4">
               {openLogo && (
-                <span className="flex h-14 shrink-0 items-center rounded-[12px] bg-white px-3 py-2 shadow-[0_6px_18px_-12px_rgba(0,0,0,0.5)]">
+                <span className="flex h-11 shrink-0 items-center rounded-[10px] bg-white px-2.5 py-1.5 shadow-[0_6px_18px_-12px_rgba(0,0,0,0.5)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={openLogo} alt={`Logo da ${open.name}`} className="h-full w-auto max-w-[220px] object-contain" />
+                  <img src={openLogo} alt={`Logo da ${open.name}`} className="h-full w-auto max-w-[180px] object-contain" />
                 </span>
               )}
               <div className="min-w-0">
