@@ -43,7 +43,6 @@ const EMPTY: EmployeeFormValues = {
 };
 
 const PLACEHOLDER: Partial<Record<RecordFieldKey, string>> = {
-  registration: "Ex.: 0042",
   jobFunction: "Ex.: Analista de cobrança",
   corporateEmail: "nome@empresa.com.br",
   cpf: "000.000.000-00",

@@ -70,7 +70,6 @@ model Employee {
   corporateEmail   String?
   address          String?
   cep              String?
-  registration     String? // registro (matrícula) do colaborador
   jobFunction      String? // função (o cargo fica em role)
   pixKeys          String? // dados bancários / chaves Pix
   createdAt  DateTime @default(now())

@@ -13,7 +13,6 @@ export type RecordFieldKey =
   | "corporateEmail"
   | "address"
   | "cep"
-  | "registration"
   | "jobFunction"
   | "pixKeys";
 
@@ -27,7 +26,6 @@ export interface RecordField {
 }
 
 export const RECORD_FIELDS: RecordField[] = [
-  { key: "registration", label: "Registro do colaborador", type: "text" },
   { key: "jobFunction", label: "Função", type: "text" },
   { key: "corporateEmail", label: "E-mail corporativo", type: "email" },
   { key: "birthDate", label: "Data de nascimento", type: "date", onboarding: "nascimento" },
@@ -95,7 +93,6 @@ const HEADER_ALIASES: [ImportColumn, string[]][] = [
   ["corporateEmail", ["emailcorporativo"]],
   ["address", ["endereco", "enderecocompleto"]],
   ["cep", ["cep"]],
-  ["registration", ["registrocolaborador", "registro", "matricula", "registrodocolaborador"]],
   ["company", ["empresa", "setor"]],
   ["role", ["cargo"]],
   ["jobFunction", ["funcao"]],
