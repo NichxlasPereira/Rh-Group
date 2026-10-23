@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { CompanyArea, Employee, OCCURRENCE_LABEL, Occurrence, OccurrenceType } from "@/lib/attendance";
 import { ContractingCompanyInfo, isGroupSector, sectorName } from "@/lib/admission";
 import { todayInputValue } from "@/lib/format";
@@ -45,9 +45,42 @@ function shortName(name: string): string {
 
 const byName = (a: Employee, b: Employee) => a.name.localeCompare(b.name, "pt-BR");
 
+const GAP = 12; // espaço entre cartões (gap-3)
+const ROW_GAP = 18; // entre fileiras
+const CARD_MIN = 150;
+const CARD_MAX = 200;
+
+/**
+ * Distribui os cartões das empresas: uma fileira se couberem; senão, fileiras com
+ * número par de cartões (a última pode ter menos), todas do mesmo tamanho.
+ */
+function layoutRows<T>(items: T[], width: number): { rows: T[][]; cardSize: number } {
+  const n = items.length;
+  if (n === 0 || width <= 0) return { rows: n ? [items] : [], cardSize: CARD_MAX };
+  const fit = Math.max(1, Math.floor((width + GAP) / (CARD_MIN + GAP)));
+  let perRow = n;
+  if (n > fit) {
+    const evenFit = Math.max(2, fit - (fit % 2));
+    perRow = Math.ceil(n / Math.ceil(n / evenFit));
+    perRow = Math.min(evenFit, perRow + (perRow % 2));
+  }
+  const cardSize = Math.min(CARD_MAX, Math.floor((width - (perRow - 1) * GAP) / perRow));
+  const rows: T[][] = [];
+  for (let i = 0; i < n; i += perRow) rows.push(items.slice(i, i + perRow));
+  return { rows, cardSize };
+}
+
 /** Organograma: o grupo, as empresas (setores) e, na empresa aberta, as áreas com responsáveis. */
 export function OrgChart({ employees, companies, areas, occurrences, focus, onOpen, onManageAreas, onBrand }: OrgChartProps) {
   const [selected, setSelected] = useState<string | null>(null);
+  // Largura disponível para os cartões das empresas (muda com a janela).
+  const [rowWidth, setRowWidth] = useState(0);
+  const measureRow = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setRowWidth(entry.contentRect.width));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const companyBySector = new Map<string, ContractingCompanyInfo>();
   for (const c of companies) if (c.cnpj && !companyBySector.has(sectorName(c))) companyBySector.set(sectorName(c), c);
@@ -111,6 +144,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
   const companyCount = row.filter((s) => s.company).length;
   const n = row.length;
   const holdingOpen = !!holding && holding.name === openName;
+  const { rows, cardSize } = layoutRows(row, rowWidth);
 
   return (
     <div className="flex flex-col gap-5">
@@ -141,63 +175,81 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
             {holdingOpen && <span className="mt-1 text-xs font-bold">▾ aberta abaixo</span>}
           </span>
         </button>
-        {n > 0 && <span aria-hidden="true" className="hidden h-[22px] w-0.5 bg-border-strong xl:block" />}
+        {n > 0 && <span aria-hidden="true" className="h-[22px] w-0.5 bg-border-strong" />}
       </div>
 
-      {/* Nível das empresas */}
-      {/* Cartões de largura fixa, centralizados: uma empresa não ocupa a linha toda. */}
-      <div className="flex justify-center xl:-mt-5">
-        <div className="relative grid w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:w-auto xl:grid-flow-col xl:auto-cols-[200px] xl:grid-cols-none xl:pt-[22px]">
-          {n > 1 && (
-            <span
-              aria-hidden="true"
-              className="absolute top-0 hidden h-0.5 bg-border-strong xl:block"
-              // Do centro do primeiro cartão ao centro do último (descontando o espaço de 12px entre eles).
-              style={{ left: `calc((100% - ${(n - 1) * 12}px) / ${2 * n})`, right: `calc((100% - ${(n - 1) * 12}px) / ${2 * n})` }}
-            />
-          )}
-          {row.map((s) => {
-            const isOpen = s.name === openName;
-            const logo = s.company ? companyLogoUrl(s.company) : null;
-            const brand = s.company?.brandColor ?? null;
+      {/* Nível das empresas: os cartões dividem a largura e, se não couberem, quebram em fileiras
+          ligadas pelo tronco central (fileiras cheias têm número par: o tronco passa entre dois cartões). */}
+      <div ref={measureRow} className="-mt-5 w-full">
+        {rowWidth > 0 &&
+          rows.map((items, r) => {
+            const last = r === rows.length - 1;
             return (
-              <div key={s.name} className="relative flex flex-col">
-                <span aria-hidden="true" className="-mt-[22px] hidden h-[22px] w-0.5 self-center bg-border-strong xl:block" />
-                <button
-                  type="button"
-                  onClick={() => setSelected(isOpen ? null : s.name)}
-                  aria-pressed={isOpen}
-                  aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
-                  style={isOpen && brand ? { borderColor: brand, boxShadow: `0 0 0 1px ${brand}` } : undefined}
-                  className={`flex h-full flex-col overflow-clip rounded-[14px] border bg-surface text-left transition hover:border-border-strong ${
-                    isOpen ? "border-ink shadow-[0_0_0_1px_var(--ink)]" : "border-border"
-                  } ${s.company ? "" : "border-dashed"}`}
-                >
-                  {brand && (
-                    <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
-                  )}
-                  <span className="flex flex-1 flex-col gap-1.5 px-3 py-3">
-                    <span className="flex items-center justify-between gap-2">
-                      {logo ? (
-                        // Logos são feitos para fundo claro: placa branca também no tema escuro.
-                        <span className="flex h-9 min-w-0 items-center rounded-[8px] bg-white px-2 py-1.5">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={logo} alt="" className="h-full w-auto max-w-full object-contain" />
-                        </span>
-                      ) : (
-                        <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
+              <div
+                key={r}
+                className="relative mx-auto pt-[22px]"
+                style={{ width: items.length * cardSize + (items.length - 1) * GAP, marginBottom: last ? 0 : ROW_GAP }}
+              >
+                {items.length > 1 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0 h-0.5 bg-border-strong"
+                    style={{ left: cardSize / 2 - 1, right: cardSize / 2 - 1 }}
+                  />
+                )}
+                {!last && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-1/2 top-0 w-0.5 -translate-x-1/2 bg-border-strong"
+                    style={{ bottom: -ROW_GAP }}
+                  />
+                )}
+                <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${items.length}, ${cardSize}px)` }}>
+                  {items.map((s) => {
+                    const isOpen = s.name === openName;
+                    const logo = s.company ? companyLogoUrl(s.company) : null;
+                    const brand = s.company?.brandColor ?? null;
+                    return (
+                      <div key={s.name} className="relative flex min-w-0 flex-col">
+                        <span aria-hidden="true" className="-mt-[22px] h-[22px] w-0.5 self-center bg-border-strong" />
+                    <button
+                      type="button"
+                      onClick={() => setSelected(isOpen ? null : s.name)}
+                      aria-pressed={isOpen}
+                      aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
+                      style={isOpen && brand ? { borderColor: brand, boxShadow: `0 0 0 1px ${brand}` } : undefined}
+                      className={`flex h-full flex-col overflow-clip rounded-[14px] border bg-surface text-left transition hover:border-border-strong ${
+                        isOpen ? "border-ink shadow-[0_0_0_1px_var(--ink)]" : "border-border"
+                      } ${s.company ? "" : "border-dashed"}`}
+                    >
+                      {brand && (
+                        <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
                       )}
-                      <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
-                    </span>
-                    {/* Com logo, o nome do setor fica logo abaixo dele. */}
-                    {logo && <span className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">{s.name}</span>}
-                    {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
-                  </span>
-                </button>
+                      <span className="flex flex-1 flex-col gap-1.5 px-3 py-3">
+                        <span className="flex items-center justify-between gap-2">
+                          {logo ? (
+                            // Logos são feitos para fundo claro: placa branca também no tema escuro.
+                            <span className="flex h-9 min-w-0 items-center rounded-[8px] bg-white px-2 py-1.5">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={logo} alt="" className="h-full w-auto max-w-full object-contain" />
+                            </span>
+                          ) : (
+                            <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
+                          )}
+                          <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
+                        </span>
+                        {/* Com logo, o nome do setor fica logo abaixo dele. */}
+                        {logo && <span className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">{s.name}</span>}
+                        {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
+                      </span>
+                    </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
-        </div>
       </div>
 
       {!open && (
