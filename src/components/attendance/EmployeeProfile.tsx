@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "../Button";
-import { IconCalendarPlus, IconFile, IconPaperclip } from "../icons";
+import { IconCalendarPlus, IconChevronDown, IconFile, IconPaperclip } from "../icons";
 import { BrandArt, BrandDot } from "../brand";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { OccurrencesTable } from "./OccurrencesTable";
@@ -146,6 +146,25 @@ export function EmployeeProfile({
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [tab, setTab] = useState<ProfileTab>("resumo");
   const [revealing, setRevealing] = useState(false);
+  // Ficha cadastral recolhida ou aberta; a escolha fica guardada neste navegador.
+  const [recordOpen, setRecordOpen] = useState(() => {
+    try {
+      return localStorage.getItem(RECORD_OPEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  function toggleRecord() {
+    setRecordOpen((open) => {
+      try {
+        localStorage.setItem(RECORD_OPEN_KEY, open ? "0" : "1");
+      } catch {
+        // Sem armazenamento (aba anônima): só não lembra a escolha.
+      }
+      return !open;
+    });
+  }
 
   const load = useCallback(
     async (full = false) => {
@@ -413,7 +432,15 @@ export function EmployeeProfile({
       {tab === "resumo" && (
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
-            <Card title="Ficha cadastral">
+            <CollapsibleCard
+              title="Ficha cadastral"
+              open={recordOpen}
+              onToggle={toggleRecord}
+              summary={(() => {
+                const filled = ficha.record.filter((r) => r.value).length + onboardingExtras.length;
+                return filled ? `${filled} ${filled === 1 ? "campo preenchido" : "campos preenchidos"}` : "Ficha vazia";
+              })()}
+            >
               <div className="-mt-1 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-muted">
                   {ficha.record.some((r) => r.source === "onboarding")
@@ -475,7 +502,7 @@ export function EmployeeProfile({
                   </>
                 )}
               </p>
-            </Card>
+            </CollapsibleCard>
 
             <Card title={`Ocorrências em ${year}`}>
               <div className="-mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
@@ -635,6 +662,58 @@ export function EmployeeProfile({
         </Card>
       )}
     </div>
+  );
+}
+
+const RECORD_OPEN_KEY = "rh-ficha-cadastral-aberta";
+
+/** Cartão que recolhe para cima e abre para baixo (sanfona). */
+function CollapsibleCard({
+  title,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  summary: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const contentId = useId();
+  return (
+    <section aria-label={title} className="rounded-[16px] border border-border bg-surface">
+      <h2>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={contentId}
+          className="flex w-full items-center justify-between gap-3 rounded-[16px] p-5 text-left transition hover:bg-surface-2/40"
+        >
+          <span className="flex flex-col gap-0.5">
+            <span className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">{title}</span>
+            {!open && <span className="text-xs text-muted">{summary} · clique para ver</span>}
+          </span>
+          <IconChevronDown
+            className={`h-5 w-5 shrink-0 text-muted transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+      </h2>
+      {/* Altura animada: a linha da grade vai de 0fr (recolhido) a 1fr (aberto). */}
+      <div
+        id={contentId}
+        inert={!open}
+        className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="flex flex-col gap-3.5 px-5 pb-5 pt-1">{children}</div>
+        </div>
+      </div>
+    </section>
   );
 }
 
