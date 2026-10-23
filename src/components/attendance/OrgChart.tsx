@@ -212,37 +212,38 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
                     return (
                       <div key={s.name} className="relative flex min-w-0 flex-col">
                         <span aria-hidden="true" className="-mt-[22px] h-[22px] w-0.5 self-center bg-border-strong" />
-                    <button
-                      type="button"
-                      onClick={() => setSelected(isOpen ? null : s.name)}
-                      aria-pressed={isOpen}
-                      aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
-                      style={isOpen && brand ? { borderColor: brand, boxShadow: `0 0 0 1px ${brand}` } : undefined}
-                      className={`flex h-full flex-col overflow-clip rounded-[14px] border bg-surface text-left transition hover:border-border-strong ${
-                        isOpen ? "border-ink shadow-[0_0_0_1px_var(--ink)]" : "border-border"
-                      } ${s.company ? "" : "border-dashed"}`}
-                    >
-                      {brand && (
-                        <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
-                      )}
-                      <span className="flex flex-1 flex-col gap-1.5 px-3 py-3">
-                        <span className="flex items-center justify-between gap-2">
-                          {logo ? (
-                            // Logos são feitos para fundo claro: placa branca também no tema escuro.
-                            <span className="flex h-9 min-w-0 items-center rounded-[8px] bg-white px-2 py-1.5">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={logo} alt="" className="h-full w-auto max-w-full object-contain" />
-                            </span>
-                          ) : (
-                            <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelected(isOpen ? null : s.name)}
+                          aria-pressed={isOpen}
+                          aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
+                          // Aberto: anel separado do cartão pela cor da página, visível nos dois temas.
+                          style={isOpen && brand ? { boxShadow: `0 0 0 2px var(--bg), 0 0 0 4px ${brand}` } : undefined}
+                          className={`flex h-full flex-col overflow-clip rounded-[14px] border border-border bg-white text-left transition hover:border-border-strong ${
+                            isOpen && !brand ? "shadow-[0_0_0_2px_var(--bg),0_0_0_4px_var(--ink)]" : ""
+                          } ${s.company ? "" : "border-dashed"}`}
+                        >
+                          {brand && (
+                            <span aria-hidden="true" className="h-1.5 shrink-0" style={{ background: brandStripe(brand, s.company?.accentColor) }} />
                           )}
-                          <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
-                        </span>
-                        {/* Com logo, o nome do setor fica logo abaixo dele. */}
-                        {logo && <span className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">{s.name}</span>}
-                        {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
-                      </span>
-                    </button>
+                          {/* O cartão da empresa é sempre branco (os logos são feitos para fundo claro). */}
+                          <span data-theme="light" className="flex flex-1 flex-col gap-1.5 px-3 py-3">
+                            <span className="flex items-center justify-between gap-2">
+                              {logo ? (
+                                <span className="flex h-10 min-w-0 flex-1 items-center">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={logo} alt="" className="h-full w-auto max-w-full object-contain object-left" />
+                                </span>
+                              ) : (
+                                <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
+                              )}
+                              <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
+                            </span>
+                            {/* Com logo, o nome do setor fica logo abaixo dele. */}
+                            {logo && <span className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">{s.name}</span>}
+                            {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
+                          </span>
+                        </button>
                       </div>
                     );
                   })}
