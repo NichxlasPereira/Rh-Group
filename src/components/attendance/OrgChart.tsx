@@ -59,7 +59,6 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
     name,
     people,
     company: companyBySector.get(name) ?? null,
-    areaCount: areas.filter((a) => a.companyId === companyBySector.get(name)?.id).length,
   }));
 
   // Abre a maior empresa (o grupo "Sem setor" só se não houver nenhuma).
@@ -132,7 +131,8 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
           <span
             aria-hidden="true"
             className="absolute top-0 hidden h-0.5 bg-border-strong xl:block"
-            style={{ left: `calc(100% / ${2 * n})`, right: `calc(100% / ${2 * n})` }}
+            // Do centro do primeiro cartão ao centro do último (descontando o espaço de 12px entre eles).
+            style={{ left: `calc((100% - ${(n - 1) * 12}px) / ${2 * n})`, right: `calc((100% - ${(n - 1) * 12}px) / ${2 * n})` }}
           />
         )}
         {sectors.map((s) => {
@@ -152,9 +152,6 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
                   <span className="font-display text-base font-semibold uppercase tracking-[0.04em] text-ink">{s.name}</span>
                   <span className="font-display text-xl font-bold tabular-nums text-ink">{s.people.length}</span>
                 </span>
-                <span className="text-xs text-muted">
-                  {s.company ? `${s.areaCount} ${s.areaCount === 1 ? "área" : "áreas"}` : "sem empresa definida"}
-                </span>
                 {isOpen && <span className="text-xs font-bold text-ink">▾ aberta abaixo</span>}
               </button>
             </div>
@@ -171,7 +168,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">
-                {open.name} · {open.company ? "áreas" : "pessoas"}
+                {open.name}
               </h2>
               <p className="text-xs text-muted">Clique numa pessoa para abrir a ficha.</p>
             </div>
