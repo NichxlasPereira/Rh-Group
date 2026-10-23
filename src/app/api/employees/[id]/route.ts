@@ -4,6 +4,7 @@ import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { validateEmployeeInput } from "@/lib/attendanceValidation";
 import { resolveEmployeeArea } from "@/lib/companyAreas";
 import { removeAttachmentFiles } from "@/lib/attachmentStorage";
+import { PERSONAL_OMIT } from "@/lib/employeeRecordServer";
 
 export async function PATCH(
   request: NextRequest,
@@ -28,7 +29,7 @@ export async function PATCH(
 
   // Mantém a cópia de nome/setor das ocorrências em dia com o cadastro.
   const employee = await prisma.$transaction(async (tx) => {
-    const updated = await tx.employee.update({ where: { id }, data: { ...result.data, ...area } });
+    const updated = await tx.employee.update({ where: { id }, data: { ...result.data, ...area }, omit: PERSONAL_OMIT });
     await tx.attendanceOccurrence.updateMany({
       where: { employeeId: id },
       data: { employeeName: updated.name, employeeDepartment: updated.department },

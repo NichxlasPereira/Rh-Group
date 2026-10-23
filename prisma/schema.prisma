@@ -59,6 +59,20 @@ model Employee {
   areaId       String?
   area         CompanyArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
   areaLead     Boolean  @default(false)
+  // Ficha cadastral (preenchida pelo RH ou importada da planilha). Dados pessoais:
+  // a lista de colaboradores não devolve estes campos; a ficha os mostra mascarados.
+  birthDate        DateTime?
+  rg               String?
+  cpf              String?
+  phone            String?
+  emergencyContact String?
+  personalEmail    String?
+  corporateEmail   String?
+  address          String?
+  cep              String?
+  registration     String? // registro (matrícula) do colaborador
+  jobFunction      String? // função (o cargo fica em role)
+  pixKeys          String? // dados bancários / chaves Pix
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

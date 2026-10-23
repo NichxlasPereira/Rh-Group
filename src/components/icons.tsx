@@ -259,6 +259,7 @@ export const IconCalendarX = strokeIcon(
 export const IconUserPlus = strokeIcon(
   "M15 20v-1.5A3.5 3.5 0 0 0 11.5 15h-5A3.5 3.5 0 0 0 3 18.5V20M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19 8v6M22 11h-6"
 );
+export const IconArrowUpTray = strokeIcon("M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3");
 export const IconChart = strokeIcon("M4 20V10M10 20V4M16 20v-7M22 20H2");
 export const IconKey = strokeIcon("M15 7a4 4 0 1 1-3.9 4.9L3 20v-3h3v-3h3l1.1-1.1A4 4 0 0 1 15 7z");
 export const IconLogout = strokeIcon("M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4");

@@ -8,6 +8,7 @@ import {
   isPhotoDocument,
   maskFieldValue,
 } from "@/lib/employeeProfile";
+import { RECORD_FIELDS, RECORD_KEYS } from "@/lib/employeeRecord";
 
 /**
  * Ficha do colaborador: cadastro, dados do onboarding digital (se ele passou
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     },
   });
 
-  if (full && admission) {
+  if (full) {
     await prisma.employeeDataView.create({ data: { employeeId: id, viewedBy: auth.user.name } });
   }
   const views = await prisma.employeeDataView.findMany({
@@ -56,8 +57,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const photoDoc = admission?.documents.find((d) => isPhotoDocument(d.name));
   const photo = photoDoc?.files.filter((f) => DISPLAYABLE_IMAGE.test(f.mimeType)).at(-1);
 
+  // Ficha cadastral: o que o RH preencheu ou importou; vazio, cai no que veio do onboarding.
+  const onboarding = (key?: string) => (key ? (admission?.fields.find((f) => f.key === key)?.value ?? null) : null);
+  const record = RECORD_FIELDS.map((f) => {
+    const own = employee[f.key];
+    const ownValue = own instanceof Date ? own.toISOString().slice(0, 10) : own;
+    const fromOnboarding = onboarding(f.onboarding);
+    const value = ownValue || fromOnboarding || null;
+    return {
+      key: f.key,
+      label: f.label,
+      type: f.type,
+      sensitive: SENSITIVE_TYPES.has(f.type),
+      source: ownValue ? "ficha" : fromOnboarding ? "onboarding" : null,
+      value: full ? value : maskFieldValue(f.type, value),
+    };
+  });
+  const publicEmployee = Object.fromEntries(Object.entries(employee).filter(([k]) => !(RECORD_KEYS as string[]).includes(k)));
+
   return NextResponse.json({
-    employee,
+    employee: publicEmployee,
+    record,
+    recordMasked: !full,
     views,
     documents,
     admission: admission && {

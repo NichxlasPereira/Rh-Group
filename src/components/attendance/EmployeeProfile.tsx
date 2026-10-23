@@ -8,10 +8,12 @@ import { BrandArt, BrandDot } from "../brand";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { OccurrencesTable } from "./OccurrencesTable";
 import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
+import { EmployeeRecordModal, RecordEntry } from "./EmployeeRecordModal";
 import { DocumentStatus } from "@/lib/admission";
 import { Employee, Occurrence, formatFileSize, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { DISPLAYABLE_IMAGE, isPhotoDocument } from "@/lib/employeeProfile";
+import { RECORD_FIELDS } from "@/lib/employeeRecord";
 
 interface FichaField {
   key: string;
@@ -36,6 +38,9 @@ interface Ficha {
   views: { viewedBy: string; createdAt: string }[];
   /** Enviados pelo RH direto na ficha (mais recentes primeiro). */
   documents: UploadedDocument[];
+  /** Ficha cadastral (mascarada até o RH pedir os dados completos). */
+  record: RecordEntry[];
+  recordMasked: boolean;
   admission: {
     id: string;
     status: string;
@@ -142,6 +147,9 @@ export function EmployeeProfile({
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [tab, setTab] = useState<ProfileTab>("resumo");
   const [revealing, setRevealing] = useState(false);
+  // Edição da ficha cadastral: abre com os dados completos (acesso registrado).
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(false);
 
   const load = useCallback(
     async (full = false) => {
@@ -221,8 +229,10 @@ export function EmployeeProfile({
 
   const employee = listed;
   const admission = ficha.admission;
-  const field = (key: string) => admission?.fields.find((f) => f.key === key)?.value ?? null;
-  const birth = field("nascimento");
+  const birth = ficha.record.find((r) => r.key === "birthDate")?.value ?? null;
+  // Campos do onboarding que não estão na ficha cadastral (nacionalidade, estado civil...).
+  const onboardingExtras =
+    admission?.fields.filter((f) => f.value && f.key !== "nome" && !RECORD_FIELDS.some((r) => r.onboarding === f.key)) ?? [];
   const age = birth ? ageFrom(birth) : null;
   const companyName = admission?.companyName ?? null;
   const uploaded = ficha.documents;
@@ -275,6 +285,15 @@ export function EmployeeProfile({
     setRevealing(true);
     await load(true);
     setRevealing(false);
+  }
+
+  async function openRecordEditor() {
+    if (ficha?.recordMasked) {
+      setEditingRecord(true);
+      await load(true);
+      setEditingRecord(false);
+    }
+    setRecordOpen(true);
   }
 
   const tabs: { key: ProfileTab; label: string; count?: number }[] = [
@@ -407,52 +426,71 @@ export function EmployeeProfile({
       {tab === "resumo" && (
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
-            <Card title="Dados pessoais">
-              {admission ? (
-                <>
-                  <div className="-mt-1 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-muted">Do onboarding digital.</p>
-                    {admission.masked && admission.fields.some((f) => f.sensitive && f.value) && (
-                      <button
-                        type="button"
-                        onClick={revealData}
-                        disabled={revealing}
-                        className="text-[12.5px] font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
-                      >
-                        {revealing ? "Abrindo..." : "Mostrar dados completos"}
-                      </button>
-                    )}
-                  </div>
-                  <dl className="grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2">
-                    {admission.fields
-                      .filter((f) => f.value)
-                      .map((f) => (
-                        <div key={f.key} className="flex min-w-0 flex-col gap-0.5">
-                          <dt className="text-[11.5px] font-semibold text-muted">{f.label.replace(/\s*\(.*\)$/, "")}</dt>
-                          <dd className="break-words text-sm text-ink">
-                            {f.type === "date" && f.value ? formatDateBR(f.value) : f.value}
-                            {f.key === "nascimento" && age !== null ? ` · ${age} anos` : ""}
-                          </dd>
-                        </div>
-                      ))}
-                  </dl>
-                  <p className="text-xs text-muted">
-                    {admission.masked
-                      ? "CPF, RG, telefone, chave Pix e endereço aparecem mascarados. Ver completos fica registrado com o seu nome (LGPD)."
-                      : "Dados completos à vista: este acesso foi registrado com o seu nome."}
-                    {ficha.views.length > 0 && (
-                      <>
-                        {" "}
-                        Último acesso: {ficha.views[0].viewedBy} em {formatDateBR(ficha.views[0].createdAt)}.
-                      </>
-                    )}
-                  </p>
-                </>
+            <Card
+              title="Ficha cadastral"
+              action={{ label: editingRecord ? "Abrindo..." : "Editar", onClick: openRecordEditor }}
+            >
+              <div className="-mt-1 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted">
+                  {ficha.record.some((r) => r.source === "onboarding")
+                    ? "Dados da ficha; os marcados com • vieram do onboarding digital."
+                    : "Preenchida pelo RH ou importada da planilha."}
+                </p>
+                {ficha.recordMasked && ficha.record.some((r) => r.sensitive && r.value) && (
+                  <button
+                    type="button"
+                    onClick={revealData}
+                    disabled={revealing}
+                    className="text-[12.5px] font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
+                  >
+                    {revealing ? "Abrindo..." : "Mostrar dados completos"}
+                  </button>
+                )}
+              </div>
+              {ficha.record.some((r) => r.value) || onboardingExtras.length > 0 ? (
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2">
+                  {ficha.record
+                    .filter((r) => r.value)
+                    .map((r) => (
+                      <div key={r.key} className="flex min-w-0 flex-col gap-0.5">
+                        <dt className="text-[11.5px] font-semibold text-muted">
+                          {r.label}
+                          {r.source === "onboarding" && <span title="Do onboarding digital"> •</span>}
+                        </dt>
+                        <dd className="whitespace-pre-line break-words text-sm text-ink">
+                          {r.type === "date" && r.value ? formatDateBR(r.value) : r.value}
+                          {r.key === "birthDate" && age !== null ? ` · ${age} anos` : ""}
+                        </dd>
+                      </div>
+                    ))}
+                  {onboardingExtras.map((f) => (
+                    <div key={f.key} className="flex min-w-0 flex-col gap-0.5">
+                      <dt className="text-[11.5px] font-semibold text-muted">
+                        {f.label.replace(/\s*\(.*\)$/, "")}
+                        <span title="Do onboarding digital"> •</span>
+                      </dt>
+                      <dd className="break-words text-sm text-ink">
+                        {f.type === "date" && f.value ? formatDateBR(f.value) : f.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               ) : (
                 <p className="text-sm text-muted">
-                  Este colaborador não passou pelo onboarding digital, então a ficha ainda não tem os dados pessoais.
+                  Ficha ainda vazia. Clique em “Editar” para preencher ou importe a planilha em Colaboradores.
                 </p>
               )}
+              <p className="text-xs text-muted">
+                {ficha.recordMasked
+                  ? "CPF, RG, telefone, endereço, contato de emergência e dados bancários aparecem mascarados. Ver completos ou editar fica registrado com o seu nome (LGPD)."
+                  : "Dados completos à vista: este acesso foi registrado com o seu nome."}
+                {ficha.views.length > 0 && (
+                  <>
+                    {" "}
+                    Último acesso: {ficha.views[0].viewedBy} em {formatDateBR(ficha.views[0].createdAt)}.
+                  </>
+                )}
+              </p>
             </Card>
 
             <Card title={`Ocorrências em ${year}`}>
@@ -611,6 +649,19 @@ export function EmployeeProfile({
         <Card title="Histórico">
           <Timeline events={events} />
         </Card>
+      )}
+
+      {recordOpen && !ficha.recordMasked && (
+        <EmployeeRecordModal
+          employeeId={employee.id}
+          employeeName={employee.name}
+          record={ficha.record}
+          onClose={() => setRecordOpen(false)}
+          onSaved={() => {
+            setRecordOpen(false);
+            load();
+          }}
+        />
       )}
     </div>
   );

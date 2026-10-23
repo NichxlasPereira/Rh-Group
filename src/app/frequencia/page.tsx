@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import {
   IconCalendarPlus,
   IconCalendarX,
+  IconArrowUpTray,
   IconChart,
   IconKey,
   IconPlus,
@@ -22,6 +23,7 @@ import { EmployeesTable } from "@/components/attendance/EmployeesTable";
 import { OrgChart } from "@/components/attendance/OrgChart";
 import { AreasModal } from "@/components/attendance/AreasModal";
 import { CompanyBrandModal } from "@/components/attendance/CompanyBrandModal";
+import { EmployeeImportModal } from "@/components/attendance/EmployeeImportModal";
 import { AttendanceReports } from "@/components/attendance/AttendanceReports";
 import { EmployeeModal, EmployeeFormValues } from "@/components/attendance/EmployeeModal";
 import { AttachmentChanges, OccurrenceModal, OccurrenceFormValues } from "@/components/attendance/OccurrenceModal";
@@ -121,6 +123,7 @@ export default function FrequenciaPage() {
   const [areas, setAreas] = useState<CompanyArea[]>([]);
   const [areasCompany, setAreasCompany] = useState<ContractingCompanyInfo | null>(null);
   const [brandCompany, setBrandCompany] = useState<ContractingCompanyInfo | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -514,6 +517,12 @@ export default function FrequenciaPage() {
       </>
     ) : tab === "acessos" ? null : (
       <>
+        {tab === "colaboradores" && me?.role === "admin" && (
+          <Button variant="ghost" onClick={() => setImportOpen(true)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+            <IconArrowUpTray className="h-4 w-4" />
+            Importar planilha
+          </Button>
+        )}
         <Button variant="ghost" onClick={openNewEmployee} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
           <IconPlus className="h-4 w-4" />
           Novo colaborador
@@ -666,6 +675,14 @@ export default function FrequenciaPage() {
         employee={editingEmployee}
         existingDepartments={departments}
         areasBySector={areasBySector}
+      />
+
+      <EmployeeImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={async () => {
+          await Promise.all([fetchEmployees(), fetchAreas(), fetchOccurrences()]);
+        }}
       />
 
       <CompanyBrandModal
