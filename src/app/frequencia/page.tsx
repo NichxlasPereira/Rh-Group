@@ -324,7 +324,15 @@ export default function FrequenciaPage() {
 
   async function handleEmployeeSubmit(values: EmployeeFormValues) {
     const isEdit = !!editingEmployee;
+    const saveRecord = (id: string) =>
+      requestJson(
+        `/api/employees/${id}/cadastro`,
+        { method: "PATCH", body: JSON.stringify(values.record) },
+        "Não foi possível salvar a ficha cadastral."
+      );
     try {
+      // Na edição, a ficha cadastral vai primeiro: um CPF inválido segura o formulário aberto.
+      if (isEdit && values.recordDirty) await saveRecord(editingEmployee!.id);
       const saved: Employee = await requestJson(
         isEdit ? `/api/employees/${editingEmployee!.id}` : "/api/employees",
         {
@@ -344,6 +352,12 @@ export default function FrequenciaPage() {
         },
         "Não foi possível salvar o colaborador."
       );
+      let recordFailure: string | null = null;
+      if (!isEdit && values.recordDirty) {
+        await saveRecord(saved.id).catch((err) => {
+          recordFailure = err instanceof Error ? err.message : "erro inesperado.";
+        });
+      }
       // A foto vai como documento da ficha ("Foto para crachá"), depois do cadastro salvo.
       let photoFailure: string | null = null;
       if (values.photo) {
@@ -355,8 +369,9 @@ export default function FrequenciaPage() {
       }
       await Promise.all([fetchEmployees(), isEdit ? fetchOccurrences() : null]);
       setEmployeeModalOpen(false);
+      if (recordFailure) toast.error(`Colaborador cadastrado, mas a ficha cadastral não foi salva: ${recordFailure}`, { duration: 8000 });
       if (photoFailure) toast.error(`Cadastro salvo, mas a foto não foi enviada: ${photoFailure}`, { duration: 8000 });
-      else toast.success(isEdit ? "Colaborador atualizado." : "Colaborador cadastrado.");
+      if (!recordFailure && !photoFailure) toast.success(isEdit ? "Colaborador atualizado." : "Colaborador cadastrado.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro inesperado.");
     }

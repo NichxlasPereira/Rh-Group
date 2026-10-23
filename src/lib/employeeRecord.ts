@@ -43,6 +43,16 @@ export const RECORD_FIELDS: RecordField[] = [
 
 export const RECORD_KEYS = RECORD_FIELDS.map((f) => f.key);
 
+/** Campo da ficha cadastral como a API da ficha devolve (mascarado ou completo). */
+export interface RecordEntry {
+  key: RecordFieldKey;
+  label: string;
+  type: string;
+  sensitive: boolean;
+  source: "ficha" | "onboarding" | null;
+  value: string | null;
+}
+
 /** Colunas que a importação entende, além dos campos da ficha. */
 export type ImportColumn = RecordFieldKey | "name" | "company" | "role" | "startDate" | "area";
 

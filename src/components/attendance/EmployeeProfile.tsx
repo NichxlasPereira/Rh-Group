@@ -8,12 +8,11 @@ import { BrandArt, BrandDot } from "../brand";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { OccurrencesTable } from "./OccurrencesTable";
 import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
-import { EmployeeRecordModal, RecordEntry } from "./EmployeeRecordModal";
 import { DocumentStatus } from "@/lib/admission";
 import { Employee, Occurrence, formatFileSize, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { DISPLAYABLE_IMAGE, isPhotoDocument } from "@/lib/employeeProfile";
-import { RECORD_FIELDS } from "@/lib/employeeRecord";
+import { RECORD_FIELDS, RecordEntry } from "@/lib/employeeRecord";
 
 interface FichaField {
   key: string;
@@ -147,9 +146,6 @@ export function EmployeeProfile({
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [tab, setTab] = useState<ProfileTab>("resumo");
   const [revealing, setRevealing] = useState(false);
-  // Edição da ficha cadastral: abre com os dados completos (acesso registrado).
-  const [recordOpen, setRecordOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(false);
 
   const load = useCallback(
     async (full = false) => {
@@ -287,15 +283,6 @@ export function EmployeeProfile({
     setRevealing(false);
   }
 
-  async function openRecordEditor() {
-    if (ficha?.recordMasked) {
-      setEditingRecord(true);
-      await load(true);
-      setEditingRecord(false);
-    }
-    setRecordOpen(true);
-  }
-
   const tabs: { key: ProfileTab; label: string; count?: number }[] = [
     { key: "resumo", label: "Resumo" },
     { key: "documentos", label: "Documentos", count: (admission?.documents.length ?? 0) + uploaded.length },
@@ -426,24 +413,21 @@ export function EmployeeProfile({
       {tab === "resumo" && (
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
-            <Card
-              title="Ficha cadastral"
-              action={{ label: editingRecord ? "Abrindo..." : "Editar", onClick: openRecordEditor }}
-            >
+            <Card title="Ficha cadastral">
               <div className="-mt-1 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-muted">
                   {ficha.record.some((r) => r.source === "onboarding")
                     ? "Dados da ficha; os marcados com • vieram do onboarding digital."
                     : "Preenchida pelo RH ou importada da planilha."}
                 </p>
-                {ficha.recordMasked && ficha.record.some((r) => r.sensitive && r.value) && (
+                {ficha.record.some((r) => r.sensitive && r.value) && (
                   <button
                     type="button"
-                    onClick={revealData}
+                    onClick={ficha.recordMasked ? revealData : () => load()}
                     disabled={revealing}
                     className="text-[12.5px] font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
                   >
-                    {revealing ? "Abrindo..." : "Mostrar dados completos"}
+                    {revealing ? "Abrindo..." : ficha.recordMasked ? "Mostrar dados completos" : "Ocultar dados"}
                   </button>
                 )}
               </div>
@@ -477,7 +461,7 @@ export function EmployeeProfile({
                 </dl>
               ) : (
                 <p className="text-sm text-muted">
-                  Ficha ainda vazia. Clique em “Editar” para preencher ou importe a planilha em Colaboradores.
+                  Ficha ainda vazia. Preencha em “Editar ficha” ou importe a planilha em Colaboradores.
                 </p>
               )}
               <p className="text-xs text-muted">
@@ -649,19 +633,6 @@ export function EmployeeProfile({
         <Card title="Histórico">
           <Timeline events={events} />
         </Card>
-      )}
-
-      {recordOpen && !ficha.recordMasked && (
-        <EmployeeRecordModal
-          employeeId={employee.id}
-          employeeName={employee.name}
-          record={ficha.record}
-          onClose={() => setRecordOpen(false)}
-          onSaved={() => {
-            setRecordOpen(false);
-            load();
-          }}
-        />
       )}
     </div>
   );

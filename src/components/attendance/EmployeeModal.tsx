@@ -5,6 +5,7 @@ import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { CompanyArea, Employee, MAX_ATTACHMENT_MB } from "@/lib/attendance";
 import { DISPLAYABLE_IMAGE } from "@/lib/employeeProfile";
+import { RECORD_FIELDS, RecordEntry, RecordFieldKey } from "@/lib/employeeRecord";
 import { Field, inputClass } from "./formControls";
 
 export interface EmployeeFormValues {
@@ -20,6 +21,9 @@ export interface EmployeeFormValues {
   areaLead: boolean;
   /** Nova foto para crachá escolhida no formulário (enviada depois de salvar). */
   photo: File | null;
+  /** Ficha cadastral; só vai para o servidor se o RH mexeu (recordDirty). */
+  record: Partial<Record<RecordFieldKey, string>>;
+  recordDirty: boolean;
 }
 
 const EMPTY: EmployeeFormValues = {
@@ -34,6 +38,21 @@ const EMPTY: EmployeeFormValues = {
   areaId: "",
   areaLead: false,
   photo: null,
+  record: {},
+  recordDirty: false,
+};
+
+const PLACEHOLDER: Partial<Record<RecordFieldKey, string>> = {
+  registration: "Ex.: 0042",
+  jobFunction: "Ex.: Analista de cobrança",
+  corporateEmail: "nome@empresa.com.br",
+  cpf: "000.000.000-00",
+  phone: "(11) 90000-0000",
+  personalEmail: "nome@gmail.com",
+  emergencyContact: "Nome, parentesco e telefone",
+  address: "Rua, número, complemento, bairro, cidade/UF",
+  cep: "00000-000",
+  pixKeys: "Chaves Pix ou banco, agência e conta",
 };
 
 const CONTRACT_OPTIONS = ["PJ", "CLT", "Estágio", "Outro"];
@@ -58,6 +77,9 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
   const [photoError, setPhotoError] = useState<string>();
   const [hasCurrentPhoto, setHasCurrentPhoto] = useState(true);
   const photoInput = useRef<HTMLInputElement>(null);
+  // Ficha cadastral do colaborador em edição: carregada completa (o acesso fica registrado).
+  const [recordStatus, setRecordStatus] = useState<"loading" | "ready" | "error">("ready");
+  const [fromOnboarding, setFromOnboarding] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) return;
@@ -75,9 +97,27 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             areaId: employee.areaId ?? "",
             areaLead: employee.areaLead,
             photo: null,
+            record: {},
+            recordDirty: false,
           }
         : EMPTY
     );
+    setFromOnboarding(new Set());
+    setRecordStatus(employee ? "loading" : "ready");
+    if (!employee) return;
+    let cancelled = false;
+    fetch(`/api/employees/${employee.id}/ficha?completo=1`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((body: { record: RecordEntry[] }) => {
+        if (cancelled) return;
+        setValues((v) => ({ ...v, record: Object.fromEntries(body.record.map((r) => [r.key, r.value ?? ""])) }));
+        setFromOnboarding(new Set(body.record.filter((r) => r.source === "onboarding").map((r) => r.key)));
+        setRecordStatus("ready");
+      })
+      .catch(() => !cancelled && setRecordStatus("error"));
+    return () => {
+      cancelled = true;
+    };
     setError(undefined);
     setAllowanceError(undefined);
     setPhotoError(undefined);
@@ -126,7 +166,7 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
     }
     setSubmitting(true);
     try {
-      await onSubmit(values);
+      await onSubmit({ ...values, recordDirty: values.recordDirty && recordStatus === "ready" });
     } finally {
       setSubmitting(false);
     }
@@ -342,6 +382,51 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             className={inputClass(false) + " font-mono sm:max-w-52"}
           />
         </Field>
+
+        <div className="flex flex-col gap-1 border-t border-border pt-4 sm:col-span-2">
+          <span className="font-display text-[15px] font-semibold uppercase tracking-[0.06em] text-ink">Ficha cadastral</span>
+          <span className="text-xs text-muted">
+            {recordStatus === "loading"
+              ? "Carregando os dados..."
+              : recordStatus === "error"
+                ? "Não foi possível carregar a ficha cadastral. Feche e abra de novo para editar estes campos."
+                : "Dados pessoais e de contato. Abrir esta edição fica registrado com o seu nome (LGPD)."}
+          </span>
+        </div>
+        {recordStatus === "ready" &&
+          RECORD_FIELDS.map((f) => {
+            const set = (value: string) =>
+              setValues((v) => ({ ...v, record: { ...v.record, [f.key]: value }, recordDirty: true }));
+            return (
+              <Field
+                key={f.key}
+                label={f.label}
+                hint={fromOnboarding.has(f.key) ? "Preenchido com o dado do onboarding." : undefined}
+                className={f.type === "textarea" ? "sm:col-span-2" : ""}
+              >
+                {f.type === "textarea" ? (
+                  <textarea
+                    rows={2}
+                    value={values.record[f.key] ?? ""}
+                    onChange={(e) => set(e.target.value)}
+                    placeholder={PLACEHOLDER[f.key]}
+                    maxLength={600}
+                    className={inputClass(false) + " resize-y"}
+                  />
+                ) : (
+                  <input
+                    type={f.type === "date" ? "date" : f.type === "email" ? "email" : "text"}
+                    value={values.record[f.key] ?? ""}
+                    onChange={(e) => set(e.target.value)}
+                    placeholder={PLACEHOLDER[f.key]}
+                    maxLength={160}
+                    inputMode={f.type === "cpf" || f.key === "cep" ? "numeric" : f.type === "tel" ? "tel" : undefined}
+                    className={inputClass(false) + (f.type === "date" ? " font-mono" : "")}
+                  />
+                )}
+              </Field>
+            );
+          })}
 
         {employee && (
           <label className="flex items-start gap-3 rounded-[10px] border border-border bg-surface-2 px-3 py-2.5 text-sm sm:col-span-2">
