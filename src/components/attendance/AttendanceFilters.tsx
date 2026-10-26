@@ -3,16 +3,15 @@
 import { OCCURRENCE_LABEL, OCCURRENCE_TYPES, OccurrenceType, monthKeyLabel } from "@/lib/attendance";
 import { IconSearch } from "../icons";
 
-export type AttendanceTabKey = "ocorrencias" | "colaboradores" | "relatorios" | "admissoes" | "acessos";
+export type AttendanceTabKey = "ocorrencias" | "colaboradores" | "aniversariantes" | "relatorios" | "admissoes" | "acessos";
 
 export const ALL_MONTHS = "todos";
 
-export type TeamView = "lista" | "organograma" | "aniversariantes";
+export type TeamView = "lista" | "organograma";
 
 const TEAM_VIEWS: { key: TeamView; label: string }[] = [
   { key: "lista", label: "Lista" },
   { key: "organograma", label: "Organograma" },
-  { key: "aniversariantes", label: "Aniversariantes" },
 ];
 
 interface AttendanceFiltersProps {
@@ -46,16 +45,19 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
       aria-label="Filtros"
       className="flex flex-wrap items-end gap-3 rounded-[14px] border border-border bg-surface px-4 py-3"
     >
-      <Field label="Mês" className="w-full sm:w-44">
-        <select value={props.month} onChange={(e) => props.onMonthChange(e.target.value)} className={selectClass}>
-          {tab !== "relatorios" && <option value={ALL_MONTHS}>Todo o período</option>}
-          {props.months.map((m) => (
-            <option key={m} value={m}>
-              {monthKeyLabel(m)}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {/* Aniversariantes troca de mês no próprio cartão. */}
+      {tab !== "aniversariantes" && (
+        <Field label="Mês" className="w-full sm:w-44">
+          <select value={props.month} onChange={(e) => props.onMonthChange(e.target.value)} className={selectClass}>
+            {tab !== "relatorios" && <option value={ALL_MONTHS}>Todo o período</option>}
+            {props.months.map((m) => (
+              <option key={m} value={m}>
+                {monthKeyLabel(m)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       {tab !== "relatorios" && (
         <Field label="Buscar" className="w-full sm:w-64">

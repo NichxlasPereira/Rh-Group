@@ -122,6 +122,8 @@ interface EmployeeProfileProps {
   /** Nome das áreas (organograma), para mostrar a da pessoa. */
   areaNameById: Map<string, string>;
   onBack: () => void;
+  /** Seção para onde "voltar" leva (Colaboradores ou Aniversariantes). */
+  backLabel?: string;
   onEdit: (employee: Employee) => void;
   onRegister: (employee: Employee) => void;
   onToggleActive: (employee: Employee) => void;
@@ -137,6 +139,7 @@ export function EmployeeProfile({
   folgaRemaining,
   areaNameById,
   onBack,
+  backLabel = "Colaboradores",
   onEdit,
   onRegister,
   onToggleActive,
@@ -233,7 +236,7 @@ export function EmployeeProfile({
     return (
       <div className="flex flex-col gap-4">
         <button type="button" onClick={onBack} className="self-start text-sm text-muted hover:text-ink">
-          ← Colaboradores
+          ← {backLabel}
         </button>
         <div className="rounded-[16px] border border-border bg-surface px-6 py-16 text-center text-sm text-muted">
           Carregando a ficha...
@@ -315,7 +318,7 @@ export function EmployeeProfile({
   return (
     <div className="flex flex-col gap-5">
       <button type="button" onClick={onBack} className="self-start text-sm text-muted hover:text-ink">
-        ← Colaboradores
+        ← {backLabel}
       </button>
 
       {/* Cabeçalho da ficha: faixa grafite do cartão, sempre no tema escuro. */}

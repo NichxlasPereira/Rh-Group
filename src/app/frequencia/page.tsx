@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/Button";
 import {
+  IconCake,
   IconCalendarPlus,
   IconCalendarX,
   IconArrowUpTray,
@@ -48,7 +49,7 @@ import {
 } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { PHOTO_DOCUMENT_NAME } from "@/lib/employeeProfile";
-import { Birthday } from "@/lib/birthdays";
+import { Birthday, isBirthdayOn } from "@/lib/birthdays";
 import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionClient";
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
@@ -73,6 +74,10 @@ interface SessionUser {
 const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: string }> = {
   ocorrencias: { title: "Ocorrências", description: "Faltas, atestados e folgas da equipe, com anexos e saldo de folgas." },
   colaboradores: { title: "Colaboradores", description: "Cadastro da equipe: setores, cargos e saldo de folgas de cada pessoa." },
+  aniversariantes: {
+    title: "Aniversariantes",
+    description: "Quem faz aniversário em cada mês: só o dia e o mês, sem ano nem idade.",
+  },
   relatorios: { title: "Relatórios", description: "Indicadores do mês por tipo de ocorrência e por setor." },
   admissoes: {
     title: "Onboarding",
@@ -209,16 +214,24 @@ export default function FrequenciaPage() {
     return { open: open.length, ready, toReview };
   }, [admissions]);
 
+  // Aniversariantes de hoje (colaboradores ativos): contador na barra lateral.
+  const birthdaysToday = useMemo(() => {
+    const now = new Date();
+    const active = new Set(employees.filter((e) => e.active).map((e) => e.id));
+    return birthdays.filter((b) => active.has(b.employeeId) && isBirthdayOn(b, now)).length;
+  }, [birthdays, employees]);
+
   const sections = useMemo<RhSection<AttendanceTabKey>[]>(() => {
     const list: RhSection<AttendanceTabKey>[] = [
       { key: "ocorrencias", label: "Ocorrências", icon: IconCalendarX },
       { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
+      { key: "aniversariantes", label: "Aniversariantes", icon: IconCake, badge: birthdaysToday },
       { key: "admissoes", label: "Onboarding", icon: IconUserPlus, badge: onboardingSummary?.toReview },
       { key: "relatorios", label: "Relatórios", icon: IconChart },
     ];
     if (me?.role === "admin") list.push({ key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests });
     return list;
-  }, [me, onboardingSummary]);
+  }, [me, onboardingSummary, birthdaysToday]);
 
   const recentOccurrences = useMemo(
     () =>
@@ -522,6 +535,8 @@ export default function FrequenciaPage() {
     URL.revokeObjectURL(url);
   }
 
+  // A ficha abre por cima da aba Colaboradores ou Aniversariantes; "Voltar" retorna a ela.
+  const showingProfile = !!profileId && (tab === "colaboradores" || tab === "aniversariantes");
   const copy = SECTION_COPY[tab];
   const actions =
     tab === "admissoes" ? (
@@ -576,9 +591,9 @@ export default function FrequenciaPage() {
         title={copy.title}
         description={copy.description}
         actions={actions}
-        hideHeader={tab === "colaboradores" && !!profileId}
+        hideHeader={showingProfile}
       >
-        {!(tab === "colaboradores" && profileId) && (
+        {!showingProfile && tab !== "aniversariantes" && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -587,7 +602,7 @@ export default function FrequenciaPage() {
           />
         )}
 
-        {tab === "colaboradores" && profileId ? (
+        {showingProfile && profileId ? (
           <EmployeeProfile
             employeeId={profileId}
             occurrences={occurrences}
@@ -595,6 +610,7 @@ export default function FrequenciaPage() {
             folgaRemaining={folgaRemaining.get(profileId) ?? 0}
             areaNameById={areaNameById}
             onBack={() => setProfileId(null)}
+            backLabel={tab === "aniversariantes" ? "Aniversariantes" : "Colaboradores"}
             onEdit={(e) => {
               setEditingEmployee(e);
               setEmployeeModalOpen(true);
@@ -671,7 +687,7 @@ export default function FrequenciaPage() {
                   onManageAreas={setAreasCompany}
                   onBrand={setBrandCompany}
                 />
-              ) : tab === "colaboradores" && teamView === "aniversariantes" ? (
+              ) : tab === "aniversariantes" ? (
                 <BirthdaysPanel
                   employees={filteredEmployees}
                   birthdays={birthdays}
