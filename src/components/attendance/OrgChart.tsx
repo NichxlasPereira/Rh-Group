@@ -4,9 +4,10 @@ import { useCallback, useState } from "react";
 import { CompanyArea, Employee, OCCURRENCE_LABEL, Occurrence, OccurrenceType } from "@/lib/attendance";
 import { ContractingCompanyInfo, isGroupSector, sectorName } from "@/lib/admission";
 import { todayInputValue } from "@/lib/format";
+import { Birthday, isBirthdayOn } from "@/lib/birthdays";
 import { inkOn } from "@/lib/brandColors";
 import { CffLogo } from "../brand";
-import { IconEdit, IconUsers } from "../icons";
+import { IconCake, IconEdit, IconUsers } from "../icons";
 import { brandStripe, companyLogoUrl } from "./CompanyBrandModal";
 import { EmptyState } from "./formControls";
 
@@ -20,6 +21,8 @@ interface OrgChartProps {
   occurrences: Occurrence[];
   /** Setor escolhido no filtro: abre essa empresa. */
   focus: string;
+  /** Dia e mês de nascimento: bolinho em quem faz aniversário hoje. */
+  birthdays: Birthday[];
   onOpen: (employee: Employee) => void;
   onManageAreas: (company: ContractingCompanyInfo) => void;
   /** Abre o logo e as cores da empresa. */
@@ -71,7 +74,17 @@ function layoutRows<T>(items: T[], width: number): { rows: T[][]; cardSize: numb
 }
 
 /** Organograma: o grupo, as empresas (setores) e, na empresa aberta, as áreas com responsáveis. */
-export function OrgChart({ employees, companies, areas, occurrences, focus, onOpen, onManageAreas, onBrand }: OrgChartProps) {
+export function OrgChart({
+  employees,
+  companies,
+  areas,
+  occurrences,
+  focus,
+  birthdays,
+  onOpen,
+  onManageAreas,
+  onBrand,
+}: OrgChartProps) {
   const [selected, setSelected] = useState<string | null>(null);
   // Largura disponível para os cartões das empresas (muda com a janela).
   const [rowWidth, setRowWidth] = useState(0);
@@ -108,6 +121,8 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
   for (const o of occurrences) {
     if (o.employeeId && o.date.slice(0, 10) <= today && o.endDate.slice(0, 10) >= today) todayStatus.set(o.employeeId, o.type);
   }
+  const now = new Date();
+  const birthdayToday = new Set(birthdays.filter((b) => isBirthdayOn(b, now)).map((b) => b.employeeId));
 
   const openBrand = open?.company?.brandColor ?? null;
   const openLogo = open?.company ? companyLogoUrl(open.company) : null;
@@ -362,7 +377,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
                           onClick={() => onOpen(e)}
                           className="flex items-center gap-2.5 rounded-[10px] bg-surface-2 p-2 text-left transition hover:bg-border"
                         >
-                          <Avatar employee={e} status={todayStatus.get(e.id)} size="lg" color={openBrand} />
+                          <Avatar employee={e} status={todayStatus.get(e.id)} birthday={birthdayToday.has(e.id)} size="lg" color={openBrand} />
                           <span className="flex min-w-0 flex-col leading-tight">
                             <span className="truncate text-[13px] font-bold text-ink">{e.name}</span>
                             <span className="text-[11px] text-muted">Responsável{e.role ? ` · ${e.role}` : ""}</span>
@@ -393,7 +408,7 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
                               e.active ? "" : "opacity-60"
                             }`}
                           >
-                            <Avatar employee={e} status={todayStatus.get(e.id)} />
+                            <Avatar employee={e} status={todayStatus.get(e.id)} birthday={birthdayToday.has(e.id)} />
                             <span className="max-w-[65%] shrink-0 truncate">{shortName(e.name)}</span>
                             {e.role && <span className="ml-auto min-w-0 truncate text-[11px] text-muted">{e.role}</span>}
                           </button>
@@ -415,6 +430,10 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
               <span className="h-2.5 w-2.5 rounded-full outline outline-2 outline-offset-1 outline-warn" />
               atestado ou falta hoje
             </span>
+            <span className="flex items-center gap-1.5">
+              <IconCake className="h-3.5 w-3.5 text-warn" />
+              aniversário hoje
+            </span>
           </span>
         </section>
       )}
@@ -425,11 +444,14 @@ export function OrgChart({ employees, companies, areas, occurrences, focus, onOp
 function Avatar({
   employee,
   status,
+  birthday = false,
   size = "sm",
   color,
 }: {
   employee: Employee;
   status?: OccurrenceType;
+  /** Faz aniversário hoje. */
+  birthday?: boolean;
   size?: "sm" | "lg";
   /** Cor da marca da empresa (responsáveis). */
   color?: string | null;
@@ -438,12 +460,18 @@ function Avatar({
   const dims = size === "lg" ? "h-8 w-8 rounded-[9px] text-[12.5px]" : "h-[26px] w-[26px] rounded-full text-[10.5px]";
   return (
     <span
-      aria-hidden={!status}
+      aria-hidden={!status && !birthday}
       style={color ? { background: color, color: inkOn(color) } : undefined}
-      className={`flex shrink-0 items-center justify-center bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display font-semibold text-white ${dims} ${ring}`}
+      className={`relative flex shrink-0 items-center justify-center bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display font-semibold text-white ${dims} ${ring}`}
     >
       {initials(employee.name)}
       {status && <span className="sr-only"> ({OCCURRENCE_LABEL[status]} hoje)</span>}
+      {birthday && (
+        <span className="absolute -bottom-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-surface text-warn ring-1 ring-border">
+          <IconCake className="h-3 w-3" />
+          <span className="sr-only"> (aniversário hoje)</span>
+        </span>
+      )}
     </span>
   );
 }

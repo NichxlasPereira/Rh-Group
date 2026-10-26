@@ -268,3 +268,8 @@ export const IconCheckCircle = strokeIcon("M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z
 export const IconLink = strokeIcon("M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1");
 export const IconLock = strokeIcon("M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3");
 export const IconShield = strokeIcon("M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z");
+export const IconCake = strokeIcon(
+  "M4 21h16M5 21v-7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v7M5 16.5c1.2 0 1.6-1 2.3-1s1.1 1 2.3 1 1.6-1 2.4-1 1.2 1 2.4 1 1.6-1 2.3-1 1.1 1 2.3 1M12 13V9.5M12 7c.8 0 1.3-.6 1.3-1.3C13.3 4.8 12 3.5 12 3.5s-1.3 1.3-1.3 2.2c0 .7.5 1.3 1.3 1.3z"
+);
+export const IconChevronLeft = strokeIcon("M15 6l-6 6 6 6");
+export const IconCopy = strokeIcon("M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1zM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1");

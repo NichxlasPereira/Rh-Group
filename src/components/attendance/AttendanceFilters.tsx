@@ -7,11 +7,12 @@ export type AttendanceTabKey = "ocorrencias" | "colaboradores" | "relatorios" | 
 
 export const ALL_MONTHS = "todos";
 
-export type TeamView = "lista" | "organograma";
+export type TeamView = "lista" | "organograma" | "aniversariantes";
 
 const TEAM_VIEWS: { key: TeamView; label: string }[] = [
   { key: "lista", label: "Lista" },
   { key: "organograma", label: "Organograma" },
+  { key: "aniversariantes", label: "Aniversariantes" },
 ];
 
 interface AttendanceFiltersProps {

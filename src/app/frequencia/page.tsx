@@ -21,6 +21,7 @@ import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/com
 import { OccurrencesTable } from "@/components/attendance/OccurrencesTable";
 import { EmployeesTable } from "@/components/attendance/EmployeesTable";
 import { OrgChart } from "@/components/attendance/OrgChart";
+import { BirthdaysPanel } from "@/components/attendance/BirthdaysPanel";
 import { AreasModal } from "@/components/attendance/AreasModal";
 import { CompanyBrandModal } from "@/components/attendance/CompanyBrandModal";
 import { EmployeeImportModal } from "@/components/attendance/EmployeeImportModal";
@@ -47,6 +48,7 @@ import {
 } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { PHOTO_DOCUMENT_NAME } from "@/lib/employeeProfile";
+import { Birthday } from "@/lib/birthdays";
 import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionClient";
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
@@ -124,6 +126,7 @@ export default function FrequenciaPage() {
   const [areasCompany, setAreasCompany] = useState<ContractingCompanyInfo | null>(null);
   const [brandCompany, setBrandCompany] = useState<ContractingCompanyInfo | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [birthdays, setBirthdays] = useState<Birthday[]>([]);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -172,6 +175,13 @@ export default function FrequenciaPage() {
     setAreas(await res.json());
   }, []);
 
+  // Aniversariantes: só dia e mês de nascimento.
+  const fetchBirthdays = useCallback(async () => {
+    const res = await fetch("/api/employees/aniversarios");
+    if (sessionExpired(res) || !res.ok) return;
+    setBirthdays(await res.json());
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -181,9 +191,10 @@ export default function FrequenciaPage() {
       fetchAdmissions(),
       fetchCompanies(),
       fetchAreas(),
+      fetchBirthdays(),
     ]).finally(() => setLoading(false));
     endOtherModuleSession("frequencia");
-  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies, fetchAreas]);
+  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies, fetchAreas, fetchBirthdays]);
 
   // Onboardings: indicador do topo e contador de documentos para analisar na barra lateral.
   const onboardingSummary = useMemo(() => {
@@ -367,7 +378,8 @@ export default function FrequenciaPage() {
         const res = await fetch(`/api/employees/${saved.id}/documents`, { method: "POST", body: form });
         if (!res.ok) photoFailure = (await res.json().catch(() => ({}))).error || "não foi possível enviar.";
       }
-      await Promise.all([fetchEmployees(), isEdit ? fetchOccurrences() : null]);
+      // A data de nascimento e a foto podem ter mudado: atualiza os aniversariantes.
+      await Promise.all([fetchEmployees(), isEdit ? fetchOccurrences() : null, fetchBirthdays()]);
       setEmployeeModalOpen(false);
       if (recordFailure) toast.error(`Colaborador cadastrado, mas a ficha cadastral não foi salva: ${recordFailure}`, { duration: 8000 });
       if (photoFailure) toast.error(`Cadastro salvo, mas a foto não foi enviada: ${photoFailure}`, { duration: 8000 });
@@ -654,9 +666,18 @@ export default function FrequenciaPage() {
                   areas={areas}
                   occurrences={occurrences}
                   focus={department}
+                  birthdays={birthdays}
                   onOpen={(e) => setProfileId(e.id)}
                   onManageAreas={setAreasCompany}
                   onBrand={setBrandCompany}
+                />
+              ) : tab === "colaboradores" && teamView === "aniversariantes" ? (
+                <BirthdaysPanel
+                  employees={filteredEmployees}
+                  birthdays={birthdays}
+                  companies={companies}
+                  areaNameById={areaNameById}
+                  onOpen={(e) => setProfileId(e.id)}
                 />
               ) : tab === "colaboradores" ? (
                 <EmployeesTable
@@ -696,7 +717,7 @@ export default function FrequenciaPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={async () => {
-          await Promise.all([fetchEmployees(), fetchAreas(), fetchOccurrences()]);
+          await Promise.all([fetchEmployees(), fetchAreas(), fetchOccurrences(), fetchBirthdays()]);
         }}
       />
 
