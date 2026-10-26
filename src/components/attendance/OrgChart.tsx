@@ -172,7 +172,8 @@ export function OrgChart({
           onClick={() => holding && setSelected(holdingOpen ? null : holding.name)}
           aria-pressed={holding ? holdingOpen : undefined}
           aria-label={holding ? `CFFGROUP: ${holding.people.length} pessoas` : undefined}
-          className={`brand-band flex items-center gap-4 rounded-[16px] px-6 py-4 text-left text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] transition enabled:hover:brightness-110 ${
+          // Acima da linha que desce até as empresas: o anel de aberta não é atravessado por ela.
+          className={`brand-band relative z-10 flex items-center gap-4 rounded-[16px] px-6 py-4 text-left text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] transition enabled:hover:brightness-110 ${
             holdingOpen ? "ring-2 ring-ink ring-offset-2 ring-offset-bg" : ""
           }`}
         >
