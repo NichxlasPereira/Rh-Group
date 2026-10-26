@@ -129,7 +129,7 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
               type="button"
               aria-pressed={props.teamView === v.key}
               onClick={() => props.onTeamViewChange(v.key)}
-              className={`h-full rounded-[7px] px-3 text-[13px] font-semibold transition ${
+              className={`h-full rounded-[7px] px-3 text-[13px] font-semibold transition active:scale-95 ${
                 props.teamView === v.key ? "bg-accent text-accent-ink" : "text-muted hover:text-ink"
               }`}
             >

@@ -125,7 +125,7 @@ export function BirthdaysPanel({ employees, birthdays, companies, areaNameById, 
           text="A data vem da ficha cadastral (Editar ficha ou importação da planilha) ou do onboarding."
         />
       ) : (
-        <ul className="flex flex-col">
+        <ul key={month} className="rh-enter flex flex-col">
           {list.map(({ employee: e, birthday: b }) => {
             const today = isBirthdayOn(b, now);
             const soon = !today && weekAhead.some((d) => isBirthdayOn(b, d));

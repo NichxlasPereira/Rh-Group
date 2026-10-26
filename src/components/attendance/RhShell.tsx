@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "../ThemeToggle";
 import { IconBox, IconKey, IconLogout } from "../icons";
@@ -47,6 +48,28 @@ export function RhShell<K extends string>({
   hideHeader = false,
   children,
 }: RhShellProps<K>) {
+  // Marca da seção atual: desliza até o item clicado (medida no próprio menu).
+  const listRef = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Só anima depois da primeira medida, para a marca não "voar" ao abrir a página.
+  const [pillMoves, setPillMoves] = useState(false);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const measure = () => {
+      const el = list.querySelector<HTMLElement>('[aria-current="page"]');
+      setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [active, sections]);
+  useEffect(() => {
+    const timer = setTimeout(() => setPillMoves(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-4 border-b border-border bg-surface px-3 py-4 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:gap-6 lg:border-b-0 lg:border-r lg:py-5">
@@ -66,7 +89,17 @@ export function RhShell<K extends string>({
           <span className="hidden px-2.5 pb-1 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted lg:block">
             Gestão de pessoas
           </span>
-          <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+          <div
+            ref={listRef}
+            className="relative -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
+          >
+            {pill && (
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves ? "rh-pill" : ""}`}
+                style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }}
+              />
+            )}
             {sections.map((s) => {
               const current = s.key === active;
               return (
@@ -75,11 +108,13 @@ export function RhShell<K extends string>({
                   type="button"
                   onClick={() => onChange(s.key)}
                   aria-current={current ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-sm transition ${
-                    current ? "bg-accent-soft font-bold text-ink" : "font-semibold text-muted hover:bg-surface-2 hover:text-ink"
+                  className={`relative flex shrink-0 items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-sm transition active:scale-[0.97] ${
+                    current
+                      ? `font-bold text-ink ${pill ? "" : "bg-accent-soft"}`
+                      : "font-semibold text-muted hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
-                  <s.icon className={`h-[18px] w-[18px] shrink-0 ${current ? "text-ink" : ""}`} />
+                  <s.icon className={`h-[18px] w-[18px] shrink-0 ${current ? "rh-pop text-ink" : ""}`} />
                   <span className="lg:flex-1">{s.label}</span>
                   {!!s.badge && (
                     <span
@@ -139,6 +174,8 @@ export function RhShell<K extends string>({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
+        {/* Cada seção (e a ficha) entra com um leve deslize. */}
+        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-enter flex min-w-0 flex-col gap-6">
         {!hideHeader && (
           <>
         {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
@@ -167,6 +204,7 @@ export function RhShell<K extends string>({
           </>
         )}
         {children}
+        </div>
       </main>
     </div>
   );

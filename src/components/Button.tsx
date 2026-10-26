@@ -21,7 +21,7 @@ const variants: Record<Variant, string> = {
 export function Button({ variant = "primary", className = "", ...props }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition enabled:active:scale-[0.97] ${variants[variant]} ${className}`}
       {...props}
     />
   );
