@@ -238,8 +238,22 @@ export function EmployeeProfile({
         <button type="button" onClick={onBack} className="self-start text-sm text-muted hover:text-ink">
           ← {backLabel}
         </button>
-        <div className="rounded-[16px] border border-border bg-surface px-6 py-16 text-center text-sm text-muted">
-          Carregando a ficha...
+        {/* Esqueleto da ficha: faixa do cabeçalho e os cartões abaixo. */}
+        <div role="status" aria-label="Carregando a ficha" className="flex flex-col gap-4">
+          <div className="flex items-center gap-5 rounded-[18px] border border-border bg-surface px-5 py-6 sm:px-7">
+            <span className="rh-skeleton h-[104px] w-[104px] shrink-0 rounded-[22px]" />
+            <span className="flex flex-1 flex-col gap-3">
+              <span className="rh-skeleton h-6 w-1/2 rounded-full" />
+              <span className="rh-skeleton h-3.5 w-1/3 rounded-full" />
+              <span className="rh-skeleton h-3.5 w-1/4 rounded-full" />
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="rh-skeleton h-24 rounded-[14px]" />
+            ))}
+          </div>
+          <span className="rh-skeleton h-48 rounded-[14px]" />
         </div>
       </div>
     );

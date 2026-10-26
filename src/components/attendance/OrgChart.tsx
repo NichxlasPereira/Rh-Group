@@ -173,7 +173,7 @@ export function OrgChart({
           aria-pressed={holding ? holdingOpen : undefined}
           aria-label={holding ? `CFFGROUP: ${holding.people.length} pessoas` : undefined}
           // Acima da linha que desce até as empresas: o anel de aberta não é atravessado por ela.
-          className={`brand-band relative z-10 flex items-center gap-4 rounded-[16px] px-6 py-4 text-left text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] transition enabled:hover:brightness-110 enabled:active:scale-[0.98] ${
+          className={`brand-band relative z-10 flex items-center gap-4 rounded-[16px] px-6 py-4 text-left text-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] transition enabled:hover:brightness-110 enabled:active:brightness-95 ${
             holdingOpen ? "ring-2 ring-ink ring-offset-2 ring-offset-bg" : ""
           }`}
         >
@@ -235,7 +235,7 @@ export function OrgChart({
                           aria-label={`${s.name}: ${s.people.length} ${s.people.length === 1 ? "pessoa" : "pessoas"}`}
                           // Aberto: anel separado do cartão pela cor da página, visível nos dois temas.
                           style={isOpen && brand ? { boxShadow: `0 0 0 2px var(--bg), 0 0 0 4px ${brand}` } : undefined}
-                          className={`flex h-full flex-col overflow-clip rounded-[14px] border border-border bg-white text-left transition hover:-translate-y-0.5 hover:border-border-strong active:translate-y-0 active:scale-[0.97] ${
+                          className={`flex h-full flex-col overflow-clip rounded-[14px] border border-border bg-white text-left transition hover:border-border-strong hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45)] ${
                             isOpen && !brand ? "shadow-[0_0_0_2px_var(--bg),0_0_0_4px_var(--ink)]" : ""
                           } ${s.company ? "" : "border-dashed"}`}
                         >
@@ -280,7 +280,7 @@ export function OrgChart({
         <section
           key={open.name}
           aria-label={`Áreas de ${open.name}`}
-          className="rh-enter flex flex-col gap-4 overflow-clip rounded-[18px] border border-border bg-surface-2/40 p-4 sm:p-5"
+          className="rh-fade flex flex-col gap-4 overflow-clip rounded-[18px] border border-border bg-surface-2/40 p-4 sm:p-5"
         >
           {/* Cabeçalho da empresa aberta: logo e cores da marca dela. */}
           <div
@@ -377,7 +377,7 @@ export function OrgChart({
                           key={e.id}
                           type="button"
                           onClick={() => onOpen(e)}
-                          className="flex items-center gap-2.5 rounded-[10px] bg-surface-2 p-2 text-left transition hover:bg-border active:scale-[0.98]"
+                          className="flex items-center gap-2.5 rounded-[10px] bg-surface-2 p-2 text-left transition hover:bg-border"
                         >
                           <Avatar employee={e} status={todayStatus.get(e.id)} birthday={birthdayToday.has(e.id)} size="lg" color={openBrand} />
                           <span className="flex min-w-0 flex-col leading-tight">
@@ -406,7 +406,7 @@ export function OrgChart({
                             type="button"
                             onClick={() => onOpen(e)}
                             title={e.role ? `${e.name} · ${e.role}` : e.name}
-                            className={`flex w-full items-center gap-2 rounded-[8px] px-1.5 py-1 text-left text-[13px] text-ink transition hover:bg-surface-2 active:scale-[0.98] ${
+                            className={`flex w-full items-center gap-2 rounded-[8px] px-1.5 py-1 text-left text-[13px] text-ink transition hover:bg-surface-2 ${
                               e.active ? "" : "opacity-60"
                             }`}
                           >

@@ -54,6 +54,7 @@ import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionCl
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
 import { EmployeeProfile } from "@/components/attendance/EmployeeProfile";
+import { SkeletonRows } from "@/components/attendance/formControls";
 import {
   AdmissionInfo,
   ContractingCompanyInfo,
@@ -597,6 +598,7 @@ export default function FrequenciaPage() {
         description={copy.description}
         actions={actions}
         hideHeader={showingProfile}
+        busy={loading}
       >
         {!showingProfile && tab !== "aniversariantes" && (
           <AttendanceStats
@@ -666,8 +668,8 @@ export default function FrequenciaPage() {
 
             <div className="min-w-0">
               {loading ? (
-                <div className="rounded-[14px] border border-border bg-surface px-6 py-16 text-center text-sm text-muted">
-                  Carregando...
+                <div className="rounded-[14px] border border-border bg-surface">
+                  <SkeletonRows />
                 </div>
               ) : tab === "ocorrencias" ? (
                 <OccurrencesTable

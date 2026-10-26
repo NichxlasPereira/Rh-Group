@@ -75,3 +75,21 @@ export function EmptyState({
     </div>
   );
 }
+
+/** Esqueleto de lista enquanto os dados carregam: avatar e duas linhas por item. */
+export function SkeletonRows({ rows = 5 }: { rows?: number }) {
+  return (
+    <div role="status" aria-label="Carregando" className="flex flex-col">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 border-b border-border px-4 py-3.5 last:border-b-0">
+          <span className="rh-skeleton h-9 w-9 shrink-0 rounded-full" />
+          <span className="flex flex-1 flex-col gap-2">
+            <span className="rh-skeleton h-3 rounded-full" style={{ width: `${55 - (i % 3) * 12}%` }} />
+            <span className="rh-skeleton h-2.5 rounded-full" style={{ width: `${32 - (i % 2) * 8}%` }} />
+          </span>
+          <span className="rh-skeleton hidden h-7 w-20 rounded-[8px] sm:block" />
+        </div>
+      ))}
+    </div>
+  );
+}

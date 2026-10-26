@@ -26,6 +26,8 @@ interface RhShellProps<K extends string> {
   actions?: React.ReactNode;
   /** Esconde o cabeçalho da seção (a ficha do colaborador tem o seu). */
   hideHeader?: boolean;
+  /** Carregando dados: linha de progresso no topo. */
+  busy?: boolean;
   children: React.ReactNode;
 }
 
@@ -46,6 +48,7 @@ export function RhShell<K extends string>({
   description,
   actions,
   hideHeader = false,
+  busy = false,
   children,
 }: RhShellProps<K>) {
   // Marca da seção atual: desliza até o item clicado (medida no próprio menu).
@@ -98,7 +101,10 @@ export function RhShell<K extends string>({
                 aria-hidden="true"
                 className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves ? "rh-pill" : ""}`}
                 style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }}
-              />
+              >
+                {/* Barra fina da seção atual: à esquerda no menu lateral, embaixo no menu do celular. */}
+                <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink lg:bottom-auto lg:left-0 lg:top-1/2 lg:h-4 lg:w-[3px] lg:-translate-x-0 lg:-translate-y-1/2" />
+              </span>
             )}
             {sections.map((s) => {
               const current = s.key === active;
@@ -108,13 +114,13 @@ export function RhShell<K extends string>({
                   type="button"
                   onClick={() => onChange(s.key)}
                   aria-current={current ? "page" : undefined}
-                  className={`relative flex shrink-0 items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-sm transition active:scale-[0.97] ${
+                  className={`relative flex shrink-0 items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-sm transition ${
                     current
                       ? `font-bold text-ink ${pill ? "" : "bg-accent-soft"}`
-                      : "font-semibold text-muted hover:bg-surface-2 hover:text-ink"
+                      : "font-semibold text-muted hover:bg-surface-2 hover:text-ink active:bg-border"
                   }`}
                 >
-                  <s.icon className={`h-[18px] w-[18px] shrink-0 ${current ? "rh-pop text-ink" : ""}`} />
+                  <s.icon className={`h-[18px] w-[18px] shrink-0 ${current ? "text-ink" : ""}`} />
                   <span className="lg:flex-1">{s.label}</span>
                   {!!s.badge && (
                     <span
@@ -173,9 +179,18 @@ export function RhShell<K extends string>({
         )}
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
-        {/* Cada seção (e a ficha) entra com um leve deslize. */}
-        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-enter flex min-w-0 flex-col gap-6">
+      <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
+        {busy && (
+          <span
+            role="progressbar"
+            aria-label="Carregando"
+            className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden lg:left-60"
+          >
+            <span className="rh-progress block h-full w-2/5 rounded-full bg-ink/70" />
+          </span>
+        )}
+        {/* Cada seção (e a ficha) aparece em cascata curta: cabeçalho, indicadores e conteúdo. */}
+        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-stagger flex min-w-0 flex-col gap-6">
         {!hideHeader && (
           <>
         {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}

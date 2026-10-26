@@ -126,43 +126,68 @@ body {
   border-radius: 999px;
 }
 
-/* Efeitos de navegação do RHGroup: conteúdo que entra, ícone da seção e a marca que desliza. */
-@keyframes rh-enter {
+/* Efeitos do RHGroup (sóbrios): blocos que aparecem em cascata curta, marca da seção que
+   desliza, esqueleto de carregamento e linha de progresso no topo. */
+@keyframes rh-fade {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-@keyframes rh-pop {
-  0% {
-    transform: scale(1);
+@keyframes rh-shimmer {
+  from {
+    background-position: 100% 0;
   }
-  40% {
-    transform: scale(1.22) rotate(-6deg);
-  }
-  100% {
-    transform: scale(1);
+  to {
+    background-position: 0 0;
   }
 }
-.rh-enter {
-  animation: rh-enter 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+@keyframes rh-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
 }
-.rh-pop {
-  animation: rh-pop 0.36s cubic-bezier(0.3, 0.7, 0.3, 1);
+.rh-fade {
+  animation: rh-fade 0.22s ease-out both;
+}
+.rh-stagger > * {
+  animation: rh-fade 0.22s ease-out both;
+}
+.rh-stagger > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.rh-stagger > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.rh-stagger > :nth-child(n + 4) {
+  animation-delay: 120ms;
 }
 .rh-pill {
   transition:
-    transform 0.32s cubic-bezier(0.3, 0.8, 0.25, 1),
-    width 0.32s cubic-bezier(0.3, 0.8, 0.25, 1),
-    height 0.32s cubic-bezier(0.3, 0.8, 0.25, 1);
+    transform 0.3s cubic-bezier(0.3, 0.8, 0.25, 1),
+    width 0.3s cubic-bezier(0.3, 0.8, 0.25, 1),
+    height 0.3s cubic-bezier(0.3, 0.8, 0.25, 1);
+}
+.rh-skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%);
+  background-size: 300% 100%;
+  animation: rh-shimmer 1.4s ease-in-out infinite;
+}
+.rh-progress {
+  animation: rh-progress 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .rh-enter,
-  .rh-pop {
+  .rh-fade,
+  .rh-stagger > *,
+  .rh-skeleton,
+  .rh-progress {
     animation: none;
   }
   .rh-pill {

@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { IconPlus, IconTrash, IconUsers } from "../icons";
-import { ActionButton, EmptyState, Field, inputClass } from "./formControls";
+import { ActionButton, EmptyState, Field, SkeletonRows, inputClass } from "./formControls";
 
 export interface AccessUser {
   id: string;
@@ -135,7 +135,7 @@ export function AccessPanel({ currentUserId, onChanged }: AccessPanelProps) {
 
       <div className="rounded-[14px] border border-border bg-surface">
         {members === null ? (
-          <p className="px-6 py-16 text-center text-sm text-muted">Carregando...</p>
+          <SkeletonRows rows={4} />
         ) : members.length === 0 ? (
           <EmptyState icon={<IconUsers className="h-6 w-6" />} title="Nenhum acesso" text="Libere o acesso de alguém." />
         ) : (

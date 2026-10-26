@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { Button } from "../Button";
 import { Modal } from "../Modal";
 import { IconCheckCircle, IconFile, IconLink, IconPaperclip, IconPlus, IconTrash, IconUsers } from "../icons";
-import { EmptyState, Field, inputClass } from "../attendance/formControls";
+import { EmptyState, Field, SkeletonRows, inputClass } from "../attendance/formControls";
 import {
   ADMISSION_STATUS_LABEL,
   AdmissionDocumentInfo,
@@ -306,7 +306,9 @@ export function AdmissionsPanel({
         </div>
 
         {admissions === null ? (
-          <p className="px-6 py-16 text-center text-sm text-muted">Carregando...</p>
+          <div className="rounded-[14px] border border-border bg-surface">
+            <SkeletonRows rows={4} />
+          </div>
         ) : visible.length === 0 ? (
           <EmptyState
             icon={<IconUsers className="h-6 w-6" />}
