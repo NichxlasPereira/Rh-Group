@@ -535,6 +535,14 @@ export default function FrequenciaPage() {
     URL.revokeObjectURL(url);
   }
 
+  // Cada aba começa com a busca e o filtro de setor limpos.
+  function changeTab(next: AttendanceTabKey) {
+    setTab(next);
+    setProfileId(null);
+    setSearch("");
+    setDepartment("");
+  }
+
   // A ficha abre por cima da aba Colaboradores ou Aniversariantes; "Voltar" retorna a ela.
   const showingProfile = !!profileId && (tab === "colaboradores" || tab === "aniversariantes");
   const copy = SECTION_COPY[tab];
@@ -581,10 +589,7 @@ export default function FrequenciaPage() {
       <RhShell
         sections={sections}
         active={tab}
-        onChange={(next) => {
-          setTab(next);
-          setProfileId(null);
-        }}
+        onChange={changeTab}
         user={me}
         onChangePassword={() => setChangingPassword(true)}
         onLogout={logout}
@@ -635,7 +640,7 @@ export default function FrequenciaPage() {
             createSignal={createSignal}
             onAdmissionsChange={setAdmissions}
             recentOccurrences={recentOccurrences}
-            onSeeOccurrences={() => setTab("ocorrencias")}
+            onSeeOccurrences={() => changeTab("ocorrencias")}
           />
         ) : (
           <div className="flex flex-col gap-4">
