@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Header } from "@/components/Header";
 import { StatsCards } from "@/components/StatsCards";
 import { SeedBanner } from "@/components/SeedBanner";
-import { Tabs, TabKey, STOCK_TABS } from "@/components/Tabs";
+import { TabKey } from "@/components/Tabs";
 import { Button } from "@/components/Button";
-import { IconArrowDownTray, IconPlus } from "@/components/icons";
+import { IconArrowDownTray, IconBox, IconChart, IconClock, IconPlus } from "@/components/icons";
+import { RhSection, RhShell } from "@/components/attendance/RhShell";
+import { SkeletonRows } from "@/components/attendance/formControls";
 import { MaterialsTable } from "@/components/MaterialsTable";
 import { WithdrawalsTable } from "@/components/WithdrawalsTable";
 import { ReportsPanel } from "@/components/ReportsPanel";
@@ -17,6 +18,15 @@ import { WithdrawalModal, WithdrawalFormValues } from "@/components/WithdrawalMo
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Material, Withdrawal, getStockStatus } from "@/lib/types";
 import { endOtherModuleSession, logoutModule, redirectIfSessionExpired } from "@/lib/sessionClient";
+
+const SECTION_COPY: Record<TabKey, { title: string; description: string }> = {
+  estoque: {
+    title: "Estoque",
+    description: "Cadastre materiais, registre retiradas e acompanhe o estoque da CFFGROUP em um só lugar.",
+  },
+  historico: { title: "Histórico", description: "Todas as retiradas registradas: o quê, quanto, quem retirou e quando." },
+  relatorios: { title: "Relatórios", description: "Consumo por período e categoria, e o que precisa de reposição." },
+};
 
 /** Sessão do estoque expirou (12h): volta para a tela de senha. */
 function sessionExpired(res: Response): boolean {
@@ -187,48 +197,44 @@ export default function Home() {
     }
   }
 
+  const sections: RhSection<TabKey>[] = [
+    // O número no Estoque: materiais abaixo do mínimo ou esgotados.
+    { key: "estoque", label: "Estoque", icon: IconBox, badge: stats.lowStock + stats.outOfStock },
+    { key: "historico", label: "Histórico", icon: IconClock },
+    { key: "relatorios", label: "Relatórios", icon: IconChart },
+  ];
+  const copy = SECTION_COPY[tab];
+
   return (
     <>
-      <Header
-        module="estoque"
-        // Frequência é do RH: o estoque não mostra o link (o acesso é por /frequencia).
-        showFrequencia={false}
-        title={
-          <>
-            controle que
-            <br />
-            não deixa nada
-            <br />
-            faltar —
-          </>
-        }
-        description="Cadastre materiais, registre retiradas e acompanhe o estoque da CFFGROUP em um só lugar, sempre atualizado para toda a equipe."
+      <RhShell
+        sections={sections}
+        active={tab}
+        onChange={setTab}
+        moduleLabel="Estoque"
+        navLabel="Almoxarifado"
+        // O RH é restrito: o estoque não mostra o link (o acesso é por /frequencia).
+        otherModules={[]}
+        onLogout={async () => {
+          await logoutModule("estoque");
+          window.location.replace("/entrar");
+        }}
+        title={copy.title}
+        description={copy.description}
+        busy={loading}
         actions={
           <>
-            <Button variant="ghost" onClick={openNewMaterial} className="!px-4 !py-2 text-xs">
-              <IconPlus className="h-3.5 w-3.5" />
+            <Button variant="ghost" onClick={openNewMaterial} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+              <IconPlus className="h-4 w-4" />
               Novo material
             </Button>
-            <Button variant="dark" onClick={() => openWithdrawal(null)} className="!px-4 !py-2 text-xs">
-              <IconArrowDownTray className="h-3.5 w-3.5" />
-              registrar retirada
+            <Button onClick={() => openWithdrawal(null)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+              <IconArrowDownTray className="h-4 w-4" />
+              Registrar retirada
             </Button>
-            <button
-              type="button"
-              onClick={async () => {
-                await logoutModule("estoque");
-                window.location.replace("/entrar");
-              }}
-              className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
-            >
-              sair
-            </button>
           </>
         }
-        tabs={<Tabs tabs={STOCK_TABS} active={tab} onChange={setTab} />}
-      />
-
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      >
         <SeedBanner />
 
         <StatsCards
@@ -238,7 +244,7 @@ export default function Home() {
           withdrawalsLast7Days={stats.withdrawalsLast7Days}
         />
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <SearchPanel
             tab={tab}
             categories={sortedCategories}
@@ -254,8 +260,8 @@ export default function Home() {
 
           <div className="min-w-0 flex-1">
             {loading ? (
-              <div className="rounded-[14px] border border-border bg-surface px-6 py-16 text-center text-sm text-muted">
-                Carregando...
+              <div className="rounded-[14px] border border-border bg-surface">
+                <SkeletonRows />
               </div>
             ) : tab === "estoque" ? (
               <MaterialsTable
@@ -274,7 +280,7 @@ export default function Home() {
             )}
           </div>
         </div>
-      </main>
+      </RhShell>
 
       <MaterialModal
         open={materialModalOpen}

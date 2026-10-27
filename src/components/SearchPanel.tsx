@@ -33,7 +33,7 @@ export function SearchPanel({
   if (tab === "relatorios") return null;
 
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-4 rounded-[14px] border border-border bg-surface p-4 lg:w-64">
+    <aside className="flex w-full shrink-0 flex-col gap-4 rounded-[14px] border border-border bg-surface p-4 xl:w-64">
       <h2 className="font-display text-base font-semibold text-ink">Pesquisar</h2>
 
       {tab === "estoque" ? (
