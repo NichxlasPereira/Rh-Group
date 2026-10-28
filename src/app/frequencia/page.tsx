@@ -578,10 +578,12 @@ export default function FrequenciaPage() {
           <IconPlus className="h-4 w-4" />
           Novo colaborador
         </Button>
-        <Button onClick={() => openNewOccurrence(null)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-          <IconCalendarPlus className="h-4 w-4" />
-          Registrar ocorrência
-        </Button>
+        {tab === "ocorrencias" && (
+          <Button onClick={() => openNewOccurrence(null)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+            <IconCalendarPlus className="h-4 w-4" />
+            Registrar ocorrência
+          </Button>
+        )}
       </>
     );
 
