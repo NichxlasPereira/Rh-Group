@@ -575,14 +575,16 @@ export default function FrequenciaPage() {
           </Button>
         )}
         {/* Em destaque (branco), menos em Ocorrências, onde o destaque é registrar ocorrência. */}
-        <Button
-          variant={tab === "ocorrencias" ? "ghost" : "primary"}
-          onClick={openNewEmployee}
-          className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]"
-        >
-          <IconPlus className="h-4 w-4" />
-          Novo colaborador
-        </Button>
+        {tab !== "aniversariantes" && (
+          <Button
+            variant={tab === "ocorrencias" ? "ghost" : "primary"}
+            onClick={openNewEmployee}
+            className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]"
+          >
+            <IconPlus className="h-4 w-4" />
+            Novo colaborador
+          </Button>
+        )}
         {tab === "ocorrencias" && (
           <Button onClick={() => openNewOccurrence(null)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
             <IconCalendarPlus className="h-4 w-4" />
