@@ -574,7 +574,12 @@ export default function FrequenciaPage() {
             Importar planilha
           </Button>
         )}
-        <Button variant="ghost" onClick={openNewEmployee} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+        {/* Em destaque (branco), menos em Ocorrências, onde o destaque é registrar ocorrência. */}
+        <Button
+          variant={tab === "ocorrencias" ? "ghost" : "primary"}
+          onClick={openNewEmployee}
+          className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]"
+        >
           <IconPlus className="h-4 w-4" />
           Novo colaborador
         </Button>
