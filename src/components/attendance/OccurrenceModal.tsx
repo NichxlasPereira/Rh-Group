@@ -197,6 +197,8 @@ export function OccurrenceModal({
       open={open}
       onClose={onClose}
       title={occurrence ? "Editar ocorrência" : "Registrar ocorrência"}
+      // Um pouco mais larga: os quatro tipos lado a lado sem apertar "Comprovante de horas".
+      maxWidthClassName="max-w-xl"
       footer={
         <>
           <Button variant="ghost" type="button" onClick={onClose} disabled={submitting}>
@@ -239,7 +241,7 @@ export function OccurrenceModal({
                 role="radio"
                 aria-checked={values.type === t}
                 onClick={() => set("type", t)}
-                className={`rounded-[10px] border px-3 py-2 text-sm font-semibold leading-tight transition ${
+                className={`flex min-h-12 items-center justify-center rounded-[10px] border px-2 py-1.5 text-center text-sm font-semibold leading-tight text-balance transition ${
                   values.type === t
                     ? "border-accent bg-accent-soft text-accent-strong"
                     : "border-border bg-surface-2 text-muted hover:text-ink"
