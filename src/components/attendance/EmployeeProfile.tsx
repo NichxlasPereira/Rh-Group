@@ -9,7 +9,7 @@ import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { OccurrencesTable } from "./OccurrencesTable";
 import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
 import { DocumentStatus } from "@/lib/admission";
-import { Employee, Occurrence, formatFileSize, occurrenceDays } from "@/lib/attendance";
+import { Employee, Occurrence, formatDuration, formatFileSize, minutesBetween, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { DISPLAYABLE_IMAGE, isPhotoDocument } from "@/lib/employeeProfile";
 import { RECORD_FIELDS, RecordEntry } from "@/lib/employeeRecord";
@@ -281,10 +281,23 @@ export function EmployeeProfile({
   const events: { when: string; title: string; detail: string }[] = [
     ...mine.map((o) => ({
       when: o.date,
-      title: o.type === "folga" ? "Folga concedida" : o.type === "atestado" ? "Atestado registrado" : "Falta registrada",
+      title:
+        o.type === "folga"
+          ? "Folga concedida"
+          : o.type === "atestado"
+            ? "Atestado registrado"
+            : o.type === "horas"
+              ? "Comprovante de horas"
+              : "Falta registrada",
       detail: [
         `${formatDateBR(o.date)}${o.endDate !== o.date ? ` a ${formatDateBR(o.endDate)}` : ""}`,
-        o.type === "falta" ? (o.justified ? "justificada" : "sem justificativa") : `${occurrenceDays(o)} dia(s)`,
+        o.type === "falta"
+          ? o.justified
+            ? "justificada"
+            : "sem justificativa"
+          : o.type === "horas"
+            ? `${o.startTime}–${o.endTime} (${formatDuration(minutesBetween(o.startTime, o.endTime))})`
+            : `${occurrenceDays(o)} dia(s)`,
         o.approvedBy ? `por ${o.approvedBy}` : "",
       ]
         .filter(Boolean)

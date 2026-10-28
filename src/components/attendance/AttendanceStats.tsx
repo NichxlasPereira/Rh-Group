@@ -1,5 +1,5 @@
-import { MonthTotals, pluralDias } from "@/lib/attendance";
-import { IconCalendarPlus, IconMedical, IconUserPlus, IconUsers, IconUserX } from "../icons";
+import { MonthTotals, formatDuration, pluralDias } from "@/lib/attendance";
+import { IconCalendarPlus, IconClock, IconMedical, IconUserPlus, IconUsers, IconUserX } from "../icons";
 
 interface AttendanceStatsProps {
   activeEmployees: number;
@@ -33,6 +33,15 @@ export function AttendanceStats({ activeEmployees, totals, periodLabel, onboardi
       detail: totals.diasFolga > 0 ? `${periodLabel} · ${pluralDias(totals.diasFolga)} concedidos` : periodLabel,
       icon: IconCalendarPlus,
     },
+    {
+      label: "Horas comprovadas",
+      value: totals.minutosHoras > 0 ? formatDuration(totals.minutosHoras) : 0,
+      detail:
+        totals.horas > 0
+          ? `${periodLabel} · ${totals.horas} ${totals.horas === 1 ? "comprovante" : "comprovantes"}`
+          : periodLabel,
+      icon: IconClock,
+    },
     ...(onboardings
       ? [
           {
@@ -46,7 +55,7 @@ export function AttendanceStats({ activeEmployees, totals, periodLabel, onboardi
   ];
 
   return (
-    <section aria-label="Resumo do período" className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+    <section aria-label="Resumo do período" className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
       {cards.map((card) => (
         <div key={card.label} className="flex flex-col gap-2.5 rounded-[14px] border border-border bg-surface p-4">
           <span className="flex items-center justify-between gap-2 text-[12.5px] font-semibold text-muted">

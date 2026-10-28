@@ -1,14 +1,39 @@
 // "atraso" existiu até 30/09/2026 e foi retirado do sistema. Registros antigos
 // desse tipo continuam no banco, mas a API não os lista nem aceita novos.
-export type OccurrenceType = "falta" | "atestado" | "folga";
+export type OccurrenceType = "falta" | "atestado" | "folga" | "horas";
 
-export const OCCURRENCE_TYPES: OccurrenceType[] = ["falta", "atestado", "folga"];
+export const OCCURRENCE_TYPES: OccurrenceType[] = ["falta", "atestado", "folga", "horas"];
 
 export const OCCURRENCE_LABEL: Record<OccurrenceType, string> = {
   falta: "Falta",
   atestado: "Atestado",
   folga: "Folga",
+  horas: "Comprovante de horas",
 };
+
+/** Tipos que aceitam documento anexado (atestado e comprovante de horas). */
+export function acceptsAttachments(type: OccurrenceType): boolean {
+  return type === "atestado" || type === "horas";
+}
+
+/** Minutos entre dois horários "HH:MM" (0 se o fim não for depois do início). */
+export function minutesBetween(start: string | null, end: string | null): number {
+  const parse = (t: string | null) => {
+    const m = /^(\d{2}):(\d{2})$/.exec(t ?? "");
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const a = parse(start);
+  const b = parse(end);
+  return a !== null && b !== null && b > a ? b - a : 0;
+}
+
+/** 150 → "2h30", 120 → "2h", 45 → "45min". */
+export function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
+}
 
 /** Tipos que cobrem um período (data inicial e final). */
 export function isMultiDay(type: OccurrenceType): boolean {
@@ -64,6 +89,9 @@ export interface Occurrence {
   endDate: string;
   justified: boolean;
   approvedBy: string | null;
+  /** Comprovante de horas: horário da ausência ("HH:MM"). */
+  startTime: string | null;
+  endTime: string | null;
   notes: string | null;
   attachments: Attachment[];
   createdAt: string;
@@ -136,6 +164,8 @@ export interface EmployeeSummary {
   diasAtestado: number;
   folgas: number;
   diasFolga: number;
+  horas: number;
+  minutosHoras: number;
 }
 
 /** Totais por colaborador. Com `month`, considera só o que cai naquele mês. */
@@ -158,6 +188,8 @@ export function summarizeByEmployee(occurrences: Occurrence[], month?: string): 
         diasAtestado: 0,
         folgas: 0,
         diasFolga: 0,
+        horas: 0,
+        minutosHoras: 0,
       };
       map.set(key, s);
     }
@@ -167,6 +199,9 @@ export function summarizeByEmployee(occurrences: Occurrence[], month?: string): 
     } else if (o.type === "atestado") {
       s.atestados += 1;
       s.diasAtestado += month ? daysInMonth(o, month) : occurrenceDays(o);
+    } else if (o.type === "horas") {
+      s.horas += 1;
+      s.minutosHoras += minutesBetween(o.startTime, o.endTime);
     } else {
       s.folgas += 1;
       s.diasFolga += month ? daysInMonth(o, month) : occurrenceDays(o);
@@ -186,6 +221,8 @@ export function emptyTotals(): MonthTotals {
     diasAtestado: 0,
     folgas: 0,
     diasFolga: 0,
+    horas: 0,
+    minutosHoras: 0,
   };
 }
 
@@ -196,6 +233,8 @@ export function addTotals(totals: MonthTotals, s: MonthTotals): void {
   totals.diasAtestado += s.diasAtestado;
   totals.folgas += s.folgas;
   totals.diasFolga += s.diasFolga;
+  totals.horas += s.horas;
+  totals.minutosHoras += s.minutosHoras;
 }
 
 export function monthTotals(occurrences: Occurrence[], month: string): MonthTotals {

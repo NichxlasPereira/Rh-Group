@@ -12,9 +12,12 @@ import {
   OCCURRENCE_TYPES,
   Occurrence,
   OccurrenceType,
+  acceptsAttachments,
   folgaDaysUsed,
+  formatDuration,
   formatFileSize,
   isMultiDay,
+  minutesBetween,
   occurrenceDays,
   pluralDias,
 } from "@/lib/attendance";
@@ -29,6 +32,9 @@ export interface OccurrenceFormValues {
   endDate: string;
   justified: boolean;
   approvedBy: string;
+  /** Comprovante de horas: "HH:MM". */
+  startTime: string;
+  endTime: string;
   notes: string;
 }
 
@@ -55,6 +61,7 @@ const TYPE_HINT: Record<OccurrenceType, string> = {
   falta: "Ausência no dia, com ou sem justificativa.",
   atestado: "Afastamento com atestado médico — pode cobrir vários dias.",
   folga: "Folga concedida por um gestor — desconta do saldo do colaborador.",
+  horas: "Ausência em parte do dia (consulta, exame...), com o horário e o comprovante.",
 };
 
 function toInputDate(iso: string): string {
@@ -102,6 +109,8 @@ export function OccurrenceModal({
       ? occurrenceDays({ date: values.date, endDate: values.endDate })
       : null;
 
+  const hoursMinutes = values.type === "horas" ? minutesBetween(values.startTime, values.endTime) : 0;
+
   // Saldo de folgas do colaborador escolhido, sem contar a própria ocorrência em edição.
   const selectedEmployee = employees.find((e) => e.id === values.employeeId) ?? null;
   const folgaBalance = useMemo(() => {
@@ -133,6 +142,13 @@ export function OccurrenceModal({
         errs.endDate = "A data final não pode ser anterior à data inicial.";
       }
     }
+    if (values.type === "horas") {
+      if (!values.startTime) errs.startTime = "Informe o início.";
+      if (!values.endTime) errs.endTime = "Informe o fim.";
+      else if (values.startTime && values.endTime <= values.startTime) {
+        errs.endTime = "Precisa ser depois do início.";
+      }
+    }
     if (values.type === "folga") {
       if (!values.approvedBy.trim()) errs.approvedBy = "Informe o gestor que concedeu a folga.";
       if (folgaBalance && periodDays && periodDays > folgaBalance.remaining) {
@@ -153,9 +169,8 @@ export function OccurrenceModal({
 
     setSubmitting(true);
     try {
-      // Anexos só valem para atestado; em outro tipo, nada é enviado.
-      const isAtestado = values.type === "atestado";
-      await onSubmit(values, { newFiles: isAtestado ? newFiles : [], removedIds });
+      // Anexos só valem para atestado e comprovante de horas; em outro tipo, nada é enviado.
+      await onSubmit(values, { newFiles: acceptsAttachments(values.type) ? newFiles : [], removedIds });
     } finally {
       setSubmitting(false);
     }
@@ -216,7 +231,7 @@ export function OccurrenceModal({
 
         <div className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-ink">Tipo</span>
-          <div role="radiogroup" className="grid grid-cols-3 gap-2">
+          <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {OCCURRENCE_TYPES.map((t) => (
               <button
                 key={t}
@@ -224,7 +239,7 @@ export function OccurrenceModal({
                 role="radio"
                 aria-checked={values.type === t}
                 onClick={() => set("type", t)}
-                className={`rounded-[10px] border px-3 py-2 text-sm font-semibold transition ${
+                className={`rounded-[10px] border px-3 py-2 text-sm font-semibold leading-tight transition ${
                   values.type === t
                     ? "border-accent bg-accent-soft text-accent-strong"
                     : "border-border bg-surface-2 text-muted hover:text-ink"
@@ -237,7 +252,7 @@ export function OccurrenceModal({
           <span className="text-xs text-muted">{TYPE_HINT[values.type]}</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className={`grid grid-cols-1 gap-4 ${values.type === "horas" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           <Field label={isMultiDay(values.type) ? "Primeiro dia" : "Data"} error={errors.date}>
             <input
               type="date"
@@ -251,6 +266,32 @@ export function OccurrenceModal({
               className={inputClass(!!errors.date) + " font-mono"}
             />
           </Field>
+
+          {values.type === "horas" && (
+            <>
+              <Field label="Das" error={errors.startTime}>
+                <input
+                  type="time"
+                  value={values.startTime}
+                  onChange={(e) => set("startTime", e.target.value)}
+                  className={inputClass(!!errors.startTime) + " font-mono"}
+                />
+              </Field>
+              <Field
+                label="Até"
+                error={errors.endTime}
+                hint={hoursMinutes > 0 ? `${formatDuration(hoursMinutes)} fora` : undefined}
+              >
+                <input
+                  type="time"
+                  value={values.endTime}
+                  min={values.startTime || undefined}
+                  onChange={(e) => set("endTime", e.target.value)}
+                  className={inputClass(!!errors.endTime) + " font-mono"}
+                />
+              </Field>
+            </>
+          )}
 
           {isMultiDay(values.type) && (
             <Field
@@ -293,8 +334,10 @@ export function OccurrenceModal({
           </>
         )}
 
-        {values.type === "atestado" && (
+        {acceptsAttachments(values.type) && (
           <AttachmentPicker
+            label={values.type === "horas" ? "Comprovante" : "Documento do atestado"}
+            what={values.type === "horas" ? "do comprovante" : "do atestado"}
             existing={keptAttachments}
             newFiles={newFiles}
             error={fileError}
@@ -304,7 +347,7 @@ export function OccurrenceModal({
           />
         )}
 
-        {!isMultiDay(values.type) && (
+        {values.type === "falta" && (
           <label className="flex items-start gap-3 rounded-[10px] border border-border bg-surface-2 px-3 py-2.5 text-sm">
             <input
               type="checkbox"
@@ -324,7 +367,7 @@ export function OccurrenceModal({
         <Field
           label="Observações (opcional)"
           hint={
-            values.type === "atestado"
+            values.type === "atestado" || values.type === "horas"
               ? "Evite registrar diagnóstico ou CID — são dados de saúde sensíveis (LGPD)."
               : undefined
           }
@@ -339,7 +382,9 @@ export function OccurrenceModal({
                 ? "Ex.: motivo informado pelo colaborador"
                 : values.type === "folga"
                   ? "Ex.: folga de aniversário, compensação de banco de horas..."
-                  : "Ex.: atestado entregue ao RH em mãos"
+                  : values.type === "horas"
+                    ? "Ex.: consulta, exame, audiência"
+                    : "Ex.: atestado entregue ao RH em mãos"
             }
           />
         </Field>
@@ -386,6 +431,8 @@ function FolgaBalance({
 }
 
 function AttachmentPicker({
+  label,
+  what,
   existing,
   newFiles,
   error,
@@ -393,6 +440,9 @@ function AttachmentPicker({
   onRemoveExisting,
   onRemoveNew,
 }: {
+  label: string;
+  /** Complemento do texto de ajuda ("do atestado", "do comprovante"). */
+  what: string;
   existing: Attachment[];
   newFiles: File[];
   error?: string;
@@ -405,7 +455,7 @@ function AttachmentPicker({
 
   return (
     <div className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-ink">Documento do atestado</span>
+      <span className="font-medium text-ink">{label}</span>
       <div
         className={`flex flex-col gap-2 rounded-[10px] border border-dashed bg-surface-2 p-3 ${
           error ? "border-critical" : "border-border-strong"
@@ -439,7 +489,7 @@ function AttachmentPicker({
         </button>
         {empty && (
           <p className="text-center text-xs text-muted">
-            PDF ou foto do atestado (JPG, PNG, HEIC) · até {MAX_ATTACHMENT_MB} MB · ou arraste aqui
+            PDF ou foto {what} (JPG, PNG, HEIC) · até {MAX_ATTACHMENT_MB} MB · ou arraste aqui
           </p>
         )}
         <input
@@ -513,6 +563,8 @@ function initialValues(occurrence: Occurrence | null, preselected: Employee | nu
     endDate: toInputDate(occurrence.endDate),
     justified: occurrence.justified,
     approvedBy: occurrence.approvedBy ?? "",
+    startTime: occurrence.startTime ?? "",
+    endTime: occurrence.endTime ?? "",
     notes: occurrence.notes ?? "",
   };
 }
@@ -526,6 +578,8 @@ function emptyForm(): OccurrenceFormValues {
     endDate: today,
     justified: false,
     approvedBy: "",
+    startTime: "",
+    endTime: "",
     notes: "",
   };
 }

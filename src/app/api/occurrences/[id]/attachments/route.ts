@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { removeAttachmentFiles, saveAttachment } from "@/lib/attachmentStorage";
+import { OccurrenceType, acceptsAttachments } from "@/lib/attendance";
 
 const ATTACHMENT_SELECT = { id: true, fileName: true, mimeType: true, size: true, createdAt: true } as const;
 
@@ -17,8 +18,11 @@ export async function POST(
   if (!occurrence) {
     return NextResponse.json({ error: "Ocorrência não encontrada." }, { status: 404 });
   }
-  if (occurrence.type !== "atestado") {
-    return NextResponse.json({ error: "Só é possível anexar documentos a atestados." }, { status: 400 });
+  if (!acceptsAttachments(occurrence.type as OccurrenceType)) {
+    return NextResponse.json(
+      { error: "Só é possível anexar documentos a atestados e comprovantes de horas." },
+      { status: 400 }
+    );
   }
 
   const form = await request.formData().catch(() => null);
@@ -36,7 +40,7 @@ export async function POST(
     const attachment = await prisma.attendanceAttachment.create({
       data: {
         occurrenceId: id,
-        fileName: file.name.slice(0, 200) || "atestado",
+        fileName: file.name.slice(0, 200) || "documento",
         mimeType: saved.mimeType,
         size: saved.size,
         storedName: saved.storedName,

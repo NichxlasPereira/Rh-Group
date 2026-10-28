@@ -86,6 +86,8 @@ export interface OccurrenceInput {
   endDate: Date;
   justified: boolean;
   approvedBy: string | null;
+  startTime: string | null;
+  endTime: string | null;
   notes: string | null;
 }
 
@@ -126,8 +128,19 @@ export function validateOccurrenceInput(body: unknown): { data: OccurrenceInput 
     if (!approvedBy) return { error: "Informe o gestor que concedeu a folga." };
   }
 
-  const justified = isMultiDay(type) ? true : b.justified === true;
+  let startTime: string | null = null;
+  let endTime: string | null = null;
+  if (type === "horas") {
+    const time = (raw: unknown) => (typeof raw === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(raw) ? raw : null);
+    startTime = time(b.startTime);
+    endTime = time(b.endTime);
+    if (!startTime || !endTime) return { error: "Informe o horário de início e de fim." };
+    if (endTime <= startTime) return { error: "O horário final precisa ser depois do inicial." };
+  }
+
+  // Atestado, folga e comprovante de horas são justificados por natureza; falta, conforme marcado.
+  const justified = type === "falta" ? b.justified === true : true;
   const notes = typeof b.notes === "string" && b.notes.trim() ? b.notes.trim() : null;
 
-  return { data: { employeeId, type, date, endDate, justified, approvedBy, notes } };
+  return { data: { employeeId, type, date, endDate, justified, approvedBy, startTime, endTime, notes } };
 }

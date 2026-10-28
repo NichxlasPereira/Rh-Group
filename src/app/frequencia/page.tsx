@@ -34,6 +34,8 @@ import {
   CompanyArea,
   Employee,
   OCCURRENCE_LABEL,
+  formatDuration,
+  minutesBetween,
   Occurrence,
   OccurrenceType,
   availableMonths,
@@ -245,7 +247,15 @@ export default function FrequenciaPage() {
           who: o.employeeName,
           note: [
             o.employeeDepartment,
-            o.type === "folga" ? (o.approvedBy ? `concedida por ${o.approvedBy}` : null) : o.justified ? "justificada" : "sem justificativa",
+            o.type === "folga"
+              ? o.approvedBy
+                ? `concedida por ${o.approvedBy}`
+                : null
+              : o.type === "horas"
+                ? `${o.startTime}–${o.endTime}`
+                : o.justified
+                  ? "justificada"
+                  : "sem justificativa",
           ]
             .filter(Boolean)
             .join(" · "),
@@ -430,6 +440,8 @@ export default function FrequenciaPage() {
             endDate: isMultiDay(values.type) ? values.endDate : values.date,
             justified: values.justified,
             approvedBy: values.type === "folga" ? values.approvedBy.trim() : null,
+            startTime: values.type === "horas" ? values.startTime : null,
+            endTime: values.type === "horas" ? values.endTime : null,
             notes: values.notes.trim() || null,
           }),
         },
@@ -512,7 +524,7 @@ export default function FrequenciaPage() {
   }
 
   function exportCsv() {
-    const header = ["Data inicial", "Data final", "Colaborador", "Setor", "Tipo", "Dias", "Justificada", "Gestor (folga)", "Anexos", "Observações"];
+    const header = ["Data inicial", "Data final", "Colaborador", "Setor", "Tipo", "Dias", "Horário", "Horas", "Justificada", "Gestor (folga)", "Anexos", "Observações"];
     const rows = filteredOccurrences.map((o) => [
       formatDateBR(o.date),
       formatDateBR(o.endDate),
@@ -520,6 +532,8 @@ export default function FrequenciaPage() {
       o.employeeDepartment ?? "",
       OCCURRENCE_LABEL[o.type],
       String(occurrenceDays(o)),
+      o.type === "horas" ? `${o.startTime ?? ""}–${o.endTime ?? ""}` : "",
+      o.type === "horas" ? formatDuration(minutesBetween(o.startTime, o.endTime)) : "",
       o.justified ? "Sim" : "Não",
       o.approvedBy ?? "",
       String(o.attachments.length),

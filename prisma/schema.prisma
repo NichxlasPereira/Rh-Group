@@ -121,12 +121,15 @@ model AttendanceOccurrence {
   employee           Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   employeeName       String
   employeeDepartment String?
-  type               String // "atraso" | "falta" | "atestado" | "folga"
+  type               String // "atraso" | "falta" | "atestado" | "folga" | "horas"
   date               DateTime
   // Atestado e folga: último dia coberto (inclusivo). Nos demais tipos é igual a `date`.
   endDate            DateTime
   // Atraso: minutos de atraso.
   minutesLate        Int?
+  // Comprovante de horas: horário da ausência no dia ("HH:MM").
+  startTime          String?
+  endTime            String?
   // Falta: se foi justificada. Atestado é sempre justificado; atraso, conforme informado.
   justified          Boolean   @default(false)
   // Folga: gestor que concedeu.

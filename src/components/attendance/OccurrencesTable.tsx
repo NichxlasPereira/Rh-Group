@@ -1,6 +1,6 @@
 "use client";
 
-import { Occurrence, occurrenceDays, pluralDias } from "@/lib/attendance";
+import { Occurrence, acceptsAttachments, formatDuration, minutesBetween, occurrenceDays, pluralDias } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { IconCalendarPlus, IconEdit, IconPaperclip, IconTrash } from "../icons";
 import { ActionButton, EmptyState } from "./formControls";
@@ -23,7 +23,7 @@ export function OccurrencesTable({ occurrences, hasAny, onEdit, onDelete }: Occu
           text={
             hasAny
               ? "Ajuste a busca, o tipo ou o mês para encontrar o que procura."
-              : "Clique em “registrar ocorrência” para lançar uma falta, atestado ou folga."
+              : "Clique em “registrar ocorrência” para lançar uma falta, atestado, folga ou comprovante de horas."
           }
         />
       ) : (
@@ -68,9 +68,16 @@ export function OccurrencesTable({ occurrences, hasAny, onEdit, onDelete }: Occu
                         </div>
                       ) : (
                         <div className="flex flex-col items-start gap-1">
-                          <span className="font-mono tabular-nums text-ink">
-                            {days} {days === 1 ? "dia" : "dias"}
-                          </span>
+                          {o.type === "horas" ? (
+                            <span className="whitespace-nowrap font-mono tabular-nums text-ink">
+                              {o.startTime}–{o.endTime}
+                              <span className="text-muted"> · {formatDuration(minutesBetween(o.startTime, o.endTime))}</span>
+                            </span>
+                          ) : (
+                            <span className="font-mono tabular-nums text-ink">
+                              {days} {days === 1 ? "dia" : "dias"}
+                            </span>
+                          )}
                           {o.attachments.length === 0 ? (
                             <button
                               type="button"
@@ -103,7 +110,7 @@ export function OccurrencesTable({ occurrences, hasAny, onEdit, onDelete }: Occu
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        {o.type === "atestado" && (
+                        {acceptsAttachments(o.type) && (
                           <ActionButton label="Anexar documento" onClick={() => onEdit(o)}>
                             <IconPaperclip className="h-4 w-4" />
                           </ActionButton>
