@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { IconX } from "./icons";
 
 interface ModalProps {
@@ -26,9 +27,10 @@ export function Modal({ open, onClose, title, children, footer, maxWidthClassNam
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Direto no <body>: um ancestral com animação/transform prenderia o "fixed" dentro dele.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -57,6 +59,7 @@ export function Modal({ open, onClose, title, children, footer, maxWidthClassNam
         <div className="overflow-y-auto px-6 py-5">{children}</div>
         {footer && <div className="flex justify-end gap-3 border-t border-border px-6 py-4">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
