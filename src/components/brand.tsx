@@ -38,15 +38,28 @@ export function CffLogo({ className, title = "CFF Group" }: { className?: string
  *   sempre visível, ancorada no canto inferior direito.
  * - "band" (faixas baixas): só as linhas, que podem ser recortadas sem perder nada.
  */
-export function BrandArt({ className, variant = "tall" }: { className?: string; variant?: "tall" | "band" }) {
+export function BrandArt({
+  className,
+  variant = "tall",
+  animated = false,
+}: {
+  className?: string;
+  variant?: "tall" | "band";
+  /** Linhas que se desenham ao abrir, o "GROUP" e o ponto aparecendo depois (tela de entrada). */
+  animated?: boolean;
+}) {
+  // pathLength=1 deixa o traço animável sem medir o caminho.
+  const line = (delay: number) =>
+    animated ? { pathLength: 1, className: "auth-draw", style: { animationDelay: `${delay}ms` } } : {};
+  const dot = animated ? "auth-dot" : undefined;
   if (variant === "band") {
     return (
       <svg viewBox="0 0 520 220" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
         <g fill="none" stroke="currentColor" strokeWidth="18">
-          <path d="M540 196H170Q110 196 110 136V-20" />
-          <path d="M540 96H290V-20" />
+          <path d="M540 196H170Q110 196 110 136V-20" {...line(0)} />
+          <path d="M540 96H290V-20" {...line(250)} />
         </g>
-        <circle cx="468" cy="44" r="11" fill="var(--brand)" opacity="0.6" />
+        <circle cx="468" cy="44" r="11" fill="var(--brand)" opacity="0.6" className={dot} />
       </svg>
     );
   }
@@ -54,15 +67,16 @@ export function BrandArt({ className, variant = "tall" }: { className?: string; 
     <svg viewBox="0 0 400 860" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMax meet">
       <g fill="none" stroke="currentColor" strokeWidth="24">
         {/* "C" grande: desce pela esquerda, curva embaixo e segue até a borda */}
-        <path d="M70 0V732Q70 818 156 818H400" />
+        <path d="M70 0V732Q70 818 156 818H400" {...line(0)} />
         {/* Cantos internos, como no cartão */}
-        <path d="M400 300H234V0" />
-        <path d="M400 640H234V392" />
+        <path d="M400 300H234V0" {...line(300)} />
+        <path d="M400 640H234V392" {...line(500)} />
       </g>
       <text
         x="0"
         y="0"
         transform="translate(186 352) rotate(-90)"
+        className={animated ? "auth-fade" : undefined}
         fill="currentColor"
         fontFamily="var(--font-barlow), 'Segoe UI', sans-serif"
         fontSize="64"
@@ -71,7 +85,7 @@ export function BrandArt({ className, variant = "tall" }: { className?: string; 
       >
         GROUP
       </text>
-      <circle cx="334" cy="78" r="20" fill="var(--brand)" opacity="0.7" />
+      <circle cx="334" cy="78" r="20" fill="var(--brand)" opacity="0.7" className={dot} />
     </svg>
   );
 }

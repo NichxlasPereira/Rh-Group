@@ -25,10 +25,10 @@ export function AuthLayout({ moduleName, headline, features, children }: AuthLay
       {/* Painel da marca: o grafite metálico do cartão, sempre no tema escuro. */}
       <section
         data-theme="dark"
-        className="brand-band relative flex flex-col justify-between gap-8 overflow-clip px-6 py-6 text-ink sm:px-10 lg:w-[48%] lg:px-14 lg:py-12"
+        className="brand-band auth-sheen relative flex flex-col justify-between gap-8 overflow-clip px-6 py-6 text-ink sm:px-10 lg:w-[48%] lg:px-14 lg:py-12"
       >
-        <BrandArt className="pointer-events-none absolute bottom-0 right-0 hidden h-full w-[44%] max-w-[330px] text-white/[0.11] lg:block" />
-        <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 h-full w-[260px] text-white/[0.12] lg:hidden" />
+        <BrandArt animated className="pointer-events-none absolute bottom-0 right-0 hidden h-full w-[44%] max-w-[330px] text-white/[0.11] lg:block" />
+        <BrandArt animated variant="band" className="pointer-events-none absolute right-0 top-0 h-full w-[260px] text-white/[0.12] lg:hidden" />
 
         <div className="relative flex items-center justify-between gap-3">
           <CffLogo className="h-11 w-auto text-white lg:h-14" />
@@ -38,7 +38,7 @@ export function AuthLayout({ moduleName, headline, features, children }: AuthLay
         </div>
 
         <div className="relative hidden max-w-[52%] flex-col gap-8 lg:flex">
-          <div className="flex flex-col gap-3">
+          <div className="auth-rise flex flex-col gap-3">
             <span className="font-display text-sm font-light uppercase tracking-[0.24em] text-white/80">{moduleName}</span>
             <h1 className="font-display text-[46px] font-semibold uppercase leading-[1.02] tracking-[0.01em] text-white">
               {headline}
@@ -46,8 +46,12 @@ export function AuthLayout({ moduleName, headline, features, children }: AuthLay
             </h1>
           </div>
           <ul className="flex flex-col gap-5">
-            {features.map((f) => (
-              <li key={f.title} className="flex items-start gap-3.5">
+            {features.map((f, i) => (
+              <li
+                key={f.title}
+                className="auth-rise flex items-start gap-3.5"
+                style={{ animationDelay: `${200 + i * 90}ms` }}
+              >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] border border-white/25 bg-white/10 text-white">
                   <f.icon className="h-[18px] w-[18px]" />
                 </span>
