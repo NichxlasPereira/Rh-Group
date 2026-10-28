@@ -273,3 +273,4 @@ export const IconCake = strokeIcon(
 );
 export const IconChevronLeft = strokeIcon("M15 6l-6 6 6 6");
 export const IconCopy = strokeIcon("M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1zM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1");
+export const IconHome = strokeIcon("M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z");

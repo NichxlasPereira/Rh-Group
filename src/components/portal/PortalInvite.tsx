@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { Button } from "../Button";
 import { Field, inputClass } from "../attendance/formControls";
-import { PortalBrand } from "./PortalBrand";
+import { AuthLayout } from "../AuthLayout";
+import { PORTAL_FEATURES } from "./portalFeatures";
 
 /** Convite do RH: a pessoa cria a senha e já entra no portal. */
 export function PortalInvite({ token }: { token: string }) {
@@ -52,9 +53,9 @@ export function PortalInvite({ token }: { token: string }) {
   }
 
   return (
-    <>
-      <PortalBrand title={info ? `Bem-vindo, ${info.firstName}` : "Seu acesso"} />
-      <div className="flex flex-col gap-4 px-5 py-7">
+    <AuthLayout moduleName="Portal do colaborador" headline="Seu RH sempre à mão" features={PORTAL_FEATURES} themeToggle={false}>
+      <h2 className="font-display text-[26px] font-bold text-ink">{info ? `Bem-vindo, ${info.firstName}` : "Seu acesso"}</h2>
+      <div className="mt-4 flex flex-col gap-4">
         {invalid ? (
           <p className="rounded-[12px] border border-border bg-surface px-4 py-4 text-sm text-muted">{invalid}</p>
         ) : !info ? (
@@ -89,6 +90,6 @@ export function PortalInvite({ token }: { token: string }) {
           </form>
         )}
       </div>
-    </>
+    </AuthLayout>
   );
 }

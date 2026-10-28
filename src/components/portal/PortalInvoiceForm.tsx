@@ -4,8 +4,7 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "../Button";
-import { IconChevronLeft, IconPaperclip, IconX } from "../icons";
-import { BrandDot } from "../brand";
+import { IconPaperclip, IconX } from "../icons";
 import { Field, inputClass } from "../attendance/formControls";
 import { MAX_ATTACHMENT_MB, formatFileSize } from "@/lib/attendance";
 import {
@@ -18,7 +17,7 @@ import {
 } from "@/lib/invoices";
 
 /** Envio da nota fiscal: mês, arquivos e, se quiser, número, valor e recado ao RH. */
-export function PortalInvoiceForm({ onBack, onSent }: { onBack: () => void; onSent: () => void }) {
+export function PortalInvoiceForm({ onCancel, onSent }: { onCancel: () => void; onSent: () => void }) {
   const [competence, setCompetence] = useState(defaultCompetence());
   const [files, setFiles] = useState<File[]>([]);
   const [number, setNumber] = useState("");
@@ -74,23 +73,9 @@ export function PortalInvoiceForm({ onBack, onSent }: { onBack: () => void; onSe
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex min-h-screen flex-col">
-      <header className="flex items-center gap-2 px-3 pb-2 pt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Voltar"
-          className="flex h-11 w-11 items-center justify-center rounded-[12px] text-ink transition hover:bg-surface"
-        >
-          <IconChevronLeft className="h-5 w-5" />
-        </button>
-        <h1 className="font-display text-[22px] font-semibold uppercase tracking-[0.04em] text-ink">
-          Nota fiscal
-          <BrandDot className="ml-1 h-[7px] w-[7px] align-baseline" />
-        </h1>
-      </header>
-
-      <div className="rh-stagger flex flex-1 flex-col gap-5 px-4 pb-6 pt-2">
+    <form onSubmit={handleSubmit} className="flex flex-1 flex-col lg:gap-5">
+      {/* Celular: uma coluna. Computador: dados à esquerda, arquivos à direita, num cartão. */}
+      <div className="flex flex-1 flex-col gap-5 px-4 pb-6 pt-2 lg:grid lg:flex-none lg:grid-cols-2 lg:gap-x-8 lg:rounded-[16px] lg:border lg:border-border lg:bg-surface lg:p-6">
         <Field label="Mês da nota (competência)">
           <select value={competence} onChange={(e) => setCompetence(e.target.value)} className={inputClass(false) + " h-12 text-base"}>
             {recentCompetences().map((c) => (
@@ -101,7 +86,7 @@ export function PortalInvoiceForm({ onBack, onSent }: { onBack: () => void; onSe
           </select>
         </Field>
 
-        <div className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-col gap-2 text-sm lg:col-start-2 lg:row-span-3 lg:row-start-1">
           <span className="font-medium text-ink">Arquivos da nota</span>
           {files.map((f, i) => (
             <div key={`${f.name}-${i}`} className="flex items-center gap-3 rounded-[12px] border border-border bg-surface px-3 py-2.5">
@@ -188,12 +173,15 @@ export function PortalInvoiceForm({ onBack, onSent }: { onBack: () => void; onSe
         </Field>
 
         {errors.form && (
-          <p className="rounded-[12px] bg-critical-soft px-3.5 py-2.5 text-sm text-critical">{errors.form}</p>
+          <p className="rounded-[12px] bg-critical-soft px-3.5 py-2.5 text-sm text-critical lg:col-span-2">{errors.form}</p>
         )}
       </div>
 
-      <footer className="sticky bottom-0 border-t border-border bg-bg/95 px-4 pb-6 pt-3 backdrop-blur">
-        <Button type="submit" disabled={submitting} className="h-12 w-full !rounded-[12px] text-[15px]">
+      <footer className="sticky bottom-0 border-t border-border bg-bg/95 px-4 pb-6 pt-3 backdrop-blur lg:static lg:flex lg:justify-end lg:gap-3 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting} className="hidden lg:inline-flex">
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={submitting} className="h-12 w-full !rounded-[12px] text-[15px] lg:h-auto lg:w-auto lg:!rounded-full lg:text-sm">
           {submitting ? "Enviando..." : "Enviar nota ao RH"}
         </Button>
       </footer>

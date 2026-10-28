@@ -15,11 +15,13 @@ interface AuthLayoutProps {
   /** Frase de apresentação do módulo. */
   headline: string;
   features: AuthFeature[];
+  /** Botão de tema. O portal do colaborador é sempre escuro e não mostra. */
+  themeToggle?: boolean;
   children: React.ReactNode;
 }
 
 /** Tela de entrada dos módulos: painel com a identidade da CFFGROUP à esquerda, formulário à direita. */
-export function AuthLayout({ moduleName, headline, features, children }: AuthLayoutProps) {
+export function AuthLayout({ moduleName, headline, features, themeToggle = true, children }: AuthLayoutProps) {
   return (
     <main className="flex flex-1 flex-col lg:flex-row">
       {/* Painel da marca: o grafite metálico do cartão, sempre no tema escuro. */}
@@ -32,9 +34,11 @@ export function AuthLayout({ moduleName, headline, features, children }: AuthLay
 
         <div className="relative flex items-center justify-between gap-3">
           <CffLogo className="h-11 w-auto text-white lg:h-14" />
-          <div className="lg:hidden">
-            <ThemeToggle />
-          </div>
+          {themeToggle && (
+            <div className="lg:hidden">
+              <ThemeToggle />
+            </div>
+          )}
         </div>
 
         <div className="relative hidden max-w-[52%] flex-col gap-8 lg:flex">
@@ -70,9 +74,11 @@ export function AuthLayout({ moduleName, headline, features, children }: AuthLay
       </section>
 
       <section className="relative flex flex-1 items-center justify-center px-6 py-10 sm:px-8">
-        <div className="absolute right-5 top-5 hidden lg:block">
-          <ThemeToggle />
-        </div>
+        {themeToggle && (
+          <div className="absolute right-5 top-5 hidden lg:block">
+            <ThemeToggle />
+          </div>
+        )}
         <div className="w-full max-w-[380px]">{children}</div>
       </section>
     </main>

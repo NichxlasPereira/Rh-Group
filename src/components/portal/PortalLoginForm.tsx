@@ -5,7 +5,8 @@ import { FormEvent, useState } from "react";
 import { Button } from "../Button";
 import { IconLock } from "../icons";
 import { Field, inputClass } from "../attendance/formControls";
-import { PortalBrand } from "./PortalBrand";
+import { AuthLayout } from "../AuthLayout";
+import { PORTAL_FEATURES } from "./portalFeatures";
 
 export function PortalLoginForm() {
   const router = useRouter();
@@ -43,9 +44,10 @@ export function PortalLoginForm() {
   }
 
   return (
-    <>
-      <PortalBrand title="Seu RH no celular" />
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-7">
+    <AuthLayout moduleName="Portal do colaborador" headline="Seu RH sempre à mão" features={PORTAL_FEATURES} themeToggle={false}>
+      <h2 className="font-display text-[26px] font-bold text-ink">Entrar no portal</h2>
+      <p className="mt-1 text-sm text-muted">Use o seu e-mail corporativo e a senha que você criou pelo convite do RH.</p>
+      <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
         <Field label="E-mail corporativo">
           <input
             type="email"
@@ -74,6 +76,6 @@ export function PortalLoginForm() {
           Primeiro acesso ou esqueceu a senha? Peça ao RH o link de convite: por ele você cria uma senha nova.
         </p>
       </form>
-    </>
+    </AuthLayout>
   );
 }

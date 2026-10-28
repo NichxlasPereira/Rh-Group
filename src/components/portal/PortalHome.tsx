@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { INVOICE_STATUS_LABEL, InvoiceStatus, ServiceInvoice, competenceLabel, formatCents } from "@/lib/invoices";
 import { formatDateBR } from "@/lib/format";
 import { formatFileSize } from "@/lib/attendance";
-import { IconCalendarPlus, IconClock, IconFile, IconLogout, IconMedical, IconPaperclip } from "../icons";
+import { IconChevronLeft, IconFile, IconLogout, IconPaperclip } from "../icons";
+import { BrandDot } from "../brand";
 import { PortalBrand } from "./PortalBrand";
 import { PortalInvoiceForm } from "./PortalInvoiceForm";
+import { PORTAL_SOON, PortalShell, PortalView } from "./PortalShell";
 
 interface PortalHomeProps {
   employee: { name: string; role: string | null; department: string | null; contractType: string | null };
@@ -19,15 +21,8 @@ const STATUS_STYLE: Record<InvoiceStatus, string> = {
   recusada: "bg-critical-soft text-critical",
 };
 
-/** O que vem depois no portal: aparece, mas ainda não abre. */
-const SOON = [
-  { label: "Enviar atestado", icon: IconMedical },
-  { label: "Pedir folga", icon: IconCalendarPlus },
-  { label: "Comprovante de horas", icon: IconClock },
-];
-
 export function PortalHome({ employee }: PortalHomeProps) {
-  const [view, setView] = useState<"inicio" | "nota">("inicio");
+  const [view, setView] = useState<PortalView>("inicio");
   const [invoices, setInvoices] = useState<ServiceInvoice[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const router = useRouter();
@@ -50,39 +45,70 @@ export function PortalHome({ employee }: PortalHomeProps) {
     router.replace("/portal/entrar");
   }
 
+  const firstName = employee.name.trim().split(/\s+/)[0];
+  const pending = invoices?.filter((i) => i.status === "enviada").length ?? 0;
+  const who = [employee.role, employee.department].filter(Boolean).join(" · ") || undefined;
+
   if (view === "nota") {
     return (
-      <PortalInvoiceForm
-        onBack={() => setView("inicio")}
-        onSent={async () => {
-          setView("inicio");
-          await load();
-        }}
-      />
+      <PortalShell
+        employee={employee}
+        view={view}
+        onNavigate={setView}
+        onLogout={logout}
+        title="Nota fiscal"
+        subtitle="PDF e XML da nota do mês. O RH confere e você acompanha a situação aqui."
+        mobileHeader={
+          <header className="flex items-center gap-2 px-3 pb-2 pt-5">
+            <button
+              type="button"
+              onClick={() => setView("inicio")}
+              aria-label="Voltar"
+              className="flex h-11 w-11 items-center justify-center rounded-[12px] text-ink transition hover:bg-surface"
+            >
+              <IconChevronLeft className="h-5 w-5" />
+            </button>
+            <h1 className="font-display text-[22px] font-semibold uppercase tracking-[0.04em] text-ink">
+              Nota fiscal
+              <BrandDot className="ml-1 h-[7px] w-[7px] align-baseline" />
+            </h1>
+          </header>
+        }
+      >
+        <PortalInvoiceForm
+          onCancel={() => setView("inicio")}
+          onSent={async () => {
+            setView("inicio");
+            await load();
+          }}
+        />
+      </PortalShell>
     );
   }
 
-  const firstName = employee.name.trim().split(/\s+/)[0];
-  const pending = invoices?.filter((i) => i.status === "enviada").length ?? 0;
-
   return (
-    <>
-      <PortalBrand
-        title={`Olá, ${firstName}`}
-        subtitle={[employee.role, employee.department].filter(Boolean).join(" · ") || undefined}
-      >
-        <button
-          type="button"
-          onClick={logout}
-          aria-label="Sair"
-          title="Sair"
-          className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-white/25 text-white transition hover:bg-white/10"
-        >
-          <IconLogout className="h-5 w-5" />
-        </button>
-      </PortalBrand>
-
-      <main className="rh-stagger flex flex-col gap-6 px-4 py-5">
+    <PortalShell
+      employee={employee}
+      view={view}
+      onNavigate={setView}
+      onLogout={logout}
+      title={`Olá, ${firstName}`}
+      subtitle={who}
+      mobileHeader={
+        <PortalBrand title={`Olá, ${firstName}`} subtitle={who}>
+          <button
+            type="button"
+            onClick={logout}
+            aria-label="Sair"
+            title="Sair"
+            className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-white/25 text-white transition hover:bg-white/10"
+          >
+            <IconLogout className="h-5 w-5" />
+          </button>
+        </PortalBrand>
+      }
+    >
+      <div className="flex flex-col gap-6 px-4 py-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:items-start lg:p-0">
         <section aria-label="Atalhos" className="grid grid-cols-2 gap-2.5">
           <button
             type="button"
@@ -99,7 +125,7 @@ export function PortalHome({ employee }: PortalHomeProps) {
               </span>
             </span>
           </button>
-          {SOON.map((s) => (
+          {PORTAL_SOON.map((s) => (
             <div
               key={s.label}
               aria-disabled="true"
@@ -178,7 +204,7 @@ export function PortalHome({ employee }: PortalHomeProps) {
             </ul>
           )}
         </section>
-      </main>
-    </>
+      </div>
+    </PortalShell>
   );
 }
