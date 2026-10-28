@@ -78,8 +78,74 @@ model Employee {
   occurrences AttendanceOccurrence[]
   dataViews   EmployeeDataView[]
   documents   EmployeeDocument[]
+  portal      PortalAccount?
+  invoices    ServiceInvoice[]
 
   @@index([name])
+}
+
+// Portal do colaborador: a pessoa entra com o e-mail corporativo da ficha e
+// uma senha que ela mesma cria pelo convite gerado pelo RH.
+model PortalAccount {
+  id              String    @id @default(cuid())
+  employeeId      String    @unique
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  passwordHash    String?
+  // Convite de primeiro acesso (ou para trocar a senha): o banco guarda só o hash.
+  inviteTokenHash String?   @unique
+  inviteExpiresAt DateTime?
+  invitedBy       String?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions PortalSession[]
+}
+
+model PortalSession {
+  id        String        @id // sha256 do token do cookie
+  accountId String
+  account   PortalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime      @default(now())
+
+  @@index([accountId])
+}
+
+// Nota fiscal de serviço enviada pelo colaborador PJ pelo portal; o RH confere.
+model ServiceInvoice {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  competence  String // "AAAA-MM"
+  number      String?
+  amountCents Int?
+  notes       String?
+  status      String    @default("enviada") // "enviada" | "recebida" | "recusada"
+  reviewNote  String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  files ServiceInvoiceFile[]
+
+  @@index([employeeId])
+  @@index([competence])
+}
+
+// PDF ou XML da nota. O arquivo fica na pasta "notas" do volume.
+model ServiceInvoiceFile {
+  id         String         @id @default(cuid())
+  invoiceId  String
+  invoice    ServiceInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  fileName   String
+  mimeType   String
+  size       Int
+  storedName String         @unique
+  createdAt  DateTime       @default(now())
+
+  @@index([invoiceId])
 }
 
 /** Quem pediu para ver os dados pessoais completos de um colaborador (LGPD). */

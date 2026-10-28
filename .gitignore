@@ -49,3 +49,4 @@ next-env.d.ts
 /prisma/admissoes
 /prisma/colaboradores
 /prisma/empresas
+/prisma/notas

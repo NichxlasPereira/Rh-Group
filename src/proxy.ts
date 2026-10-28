@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FREQ_USER_COOKIE } from "@/lib/frequenciaCookie";
+import { PORTAL_COOKIE } from "@/lib/portalCookie";
 import { MODULES, isValidSessionToken, moduleForPath, modulePassword } from "@/lib/moduleAuth";
 
 export function proxy(request: NextRequest) {
   // Portal de admissão: o candidato é externo e entra só pelo link privado
   // (token aleatório, validado em cada rota). Fica fora de todas as senhas.
   if (isAdmissionPortal(request.nextUrl.pathname)) return NextResponse.next();
+  // Portal do colaborador: fora da senha geral do site; cada rota confere a sessão do colaborador.
+  if (isEmployeePortal(request.nextUrl.pathname)) return checkPortal(request);
 
   const basicAuthFailure = checkBasicAuth(request);
   if (basicAuthFailure) return basicAuthFailure;
@@ -17,6 +20,20 @@ function isAdmissionPortal(p: string): boolean {
   // Também o link de exportação lido pela planilha do RH (=IMPORTDATA), que
   // vem dos servidores do Google, sem senha: o token na URL é a chave.
   return p.startsWith("/admissao/") || p.startsWith("/api/admissao/") || p.startsWith("/api/planilha/");
+}
+
+function isEmployeePortal(p: string): boolean {
+  return p === "/portal" || p.startsWith("/portal/") || p.startsWith("/api/portal/");
+}
+
+const PORTAL_PUBLIC_PAGES = ["/portal/entrar", "/portal/convite/"];
+
+/** Portal: só a checagem do cookie; a sessão de verdade é validada em cada rota da API. */
+function checkPortal(request: NextRequest): NextResponse {
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith("/api/") || PORTAL_PUBLIC_PAGES.some((p) => pathname.startsWith(p))) return NextResponse.next();
+  if (request.cookies.get(PORTAL_COOKIE)?.value) return NextResponse.next();
+  return NextResponse.redirect(new URL("/portal/entrar", request.url));
 }
 
 const FREQ_PUBLIC = new Set([
@@ -37,7 +54,8 @@ function isFrequenciaPath(p: string): boolean {
     under("/api/attachments") ||
     under("/api/admissions") ||
     under("/api/admission-files") ||
-    under("/api/employee-documents")
+    under("/api/employee-documents") ||
+    under("/api/notas")
   );
 }
 

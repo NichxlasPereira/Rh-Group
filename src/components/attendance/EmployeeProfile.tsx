@@ -8,6 +8,7 @@ import { BrandArt, BrandDot } from "../brand";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { OccurrencesTable } from "./OccurrencesTable";
 import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
+import { PortalAccessCard } from "./PortalAccessCard";
 import { DocumentStatus } from "@/lib/admission";
 import { Employee, Occurrence, formatDuration, formatFileSize, minutesBetween, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
@@ -637,6 +638,8 @@ export function EmployeeProfile({
                 Editar contrato
               </button>
             </Card>
+
+            <PortalAccessCard employeeId={employee.id} active={employee.active} />
 
             <Card
               title="Documentos"

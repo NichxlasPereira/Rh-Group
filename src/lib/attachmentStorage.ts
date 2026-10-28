@@ -13,8 +13,11 @@ const ALLOWED: Record<string, string> = {
   "image/heif": ".heif",
 };
 
-/** Pastas de arquivos: anexos de atestado, documentos de admissão e da ficha, logos das empresas. */
-export type StorageFolder = "atestados" | "admissoes" | "colaboradores" | "empresas";
+/** Só para notas fiscais: o XML da NFS-e, guardado e servido apenas como download. */
+const XML: Record<string, string> = { "application/xml": ".xml" };
+
+/** Pastas de arquivos: anexos de atestado, documentos de admissão e da ficha, logos das empresas, notas fiscais. */
+export type StorageFolder = "atestados" | "admissoes" | "colaboradores" | "empresas" | "notas";
 
 /**
  * Pasta dos arquivos: uma subpasta ao lado do arquivo SQLite. Assim, em
@@ -49,11 +52,23 @@ function detectMimeType(bytes: Uint8Array): string | null {
   return null;
 }
 
+/** Texto que começa com "<" (depois de BOM e espaços) e sem bytes nulos: um XML. */
+function looksLikeXml(bytes: Uint8Array): boolean {
+  const head = bytes.slice(0, 1024);
+  if (head.includes(0)) return false;
+  const text = new TextDecoder().decode(head).replace(/^\uFEFF/, "").trimStart();
+  return text.startsWith("<");
+}
+
 export type SaveResult =
   | { storedName: string; mimeType: string; size: number }
   | { error: string };
 
-export async function saveAttachment(file: File, folder: StorageFolder = "atestados"): Promise<SaveResult> {
+export async function saveAttachment(
+  file: File,
+  folder: StorageFolder = "atestados",
+  options: { allowXml?: boolean } = {}
+): Promise<SaveResult> {
   if (file.size === 0) return { error: "O arquivo está vazio." };
   if (file.size > MAX_ATTACHMENT_BYTES) return { error: "O arquivo passa do limite de 10 MB." };
 
@@ -61,14 +76,19 @@ export async function saveAttachment(file: File, folder: StorageFolder = "atesta
   // Protege contra corpo truncado (ex.: limite de buffer do proxy).
   if (bytes.byteLength !== file.size) return { error: "O envio do arquivo foi interrompido. Tente novamente." };
 
-  const mimeType = detectMimeType(bytes);
-  if (!mimeType || !ALLOWED[mimeType]) {
-    return { error: "Formato não aceito. Envie PDF ou imagem (JPG, PNG, WEBP ou HEIC)." };
+  const allowed = options.allowXml ? { ...ALLOWED, ...XML } : ALLOWED;
+  const mimeType = detectMimeType(bytes) ?? (options.allowXml && looksLikeXml(bytes) ? "application/xml" : null);
+  if (!mimeType || !allowed[mimeType]) {
+    return {
+      error: options.allowXml
+        ? "Formato não aceito. Envie o PDF ou o XML da nota (ou uma foto: JPG, PNG, WEBP ou HEIC)."
+        : "Formato não aceito. Envie PDF ou imagem (JPG, PNG, WEBP ou HEIC).",
+    };
   }
 
   const dir = storageDir(folder);
   await mkdir(dir, { recursive: true });
-  const storedName = `${randomUUID()}${ALLOWED[mimeType]}`;
+  const storedName = `${randomUUID()}${allowed[mimeType]}`;
   await writeFile(path.join(dir, storedName), bytes);
   return { storedName, mimeType, size: bytes.byteLength };
 }

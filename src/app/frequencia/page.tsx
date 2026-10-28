@@ -10,6 +10,7 @@ import {
   IconCalendarX,
   IconArrowUpTray,
   IconChart,
+  IconFile,
   IconKey,
   IconPlus,
   IconSearch,
@@ -55,6 +56,8 @@ import { Birthday, isBirthdayOn } from "@/lib/birthdays";
 import { endOtherModuleSession, redirectIfSessionExpired } from "@/lib/sessionClient";
 import { AccessPanel, ChangeOwnPasswordModal } from "@/components/attendance/AccessPanel";
 import { AdmissionsPanel } from "@/components/admission/AdmissionsPanel";
+import { InvoicesPanel } from "@/components/attendance/InvoicesPanel";
+import { ServiceInvoiceRow } from "@/lib/invoices";
 import { EmployeeProfile } from "@/components/attendance/EmployeeProfile";
 import { SkeletonRows } from "@/components/attendance/formControls";
 import {
@@ -85,6 +88,10 @@ const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: strin
   admissoes: {
     title: "Onboarding",
     description: "Admissões digitais: dados, documentos e termos assinados pelo candidato.",
+  },
+  notas: {
+    title: "Notas fiscais",
+    description: "Notas de serviço que os colaboradores PJ enviam pelo portal do colaborador.",
   },
   acessos: { title: "Acessos", description: "Quem pode entrar no RHGroup e os pedidos de cadastro aguardando aprovação." },
 };
@@ -135,6 +142,7 @@ export default function FrequenciaPage() {
   const [brandCompany, setBrandCompany] = useState<ContractingCompanyInfo | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
+  const [invoices, setInvoices] = useState<ServiceInvoiceRow[] | null>(null);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -190,6 +198,13 @@ export default function FrequenciaPage() {
     setBirthdays(await res.json());
   }, []);
 
+  // Notas fiscais enviadas pelo portal do colaborador.
+  const fetchInvoices = useCallback(async () => {
+    const res = await fetch("/api/notas");
+    if (sessionExpired(res) || !res.ok) return;
+    setInvoices(await res.json());
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -200,9 +215,12 @@ export default function FrequenciaPage() {
       fetchCompanies(),
       fetchAreas(),
       fetchBirthdays(),
+      fetchInvoices(),
     ]).finally(() => setLoading(false));
     endOtherModuleSession("frequencia");
-  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies, fetchAreas, fetchBirthdays]);
+  }, [fetchEmployees, fetchOccurrences, fetchMe, fetchAdmissions, fetchCompanies, fetchAreas, fetchBirthdays, fetchInvoices]);
+
+  const invoicesToReview = useMemo(() => invoices?.filter((i) => i.status === "enviada").length ?? 0, [invoices]);
 
   // Onboardings: indicador do topo e contador de documentos para analisar na barra lateral.
   const onboardingSummary = useMemo(() => {
@@ -230,11 +248,12 @@ export default function FrequenciaPage() {
       { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
       { key: "aniversariantes", label: "Aniversariantes", icon: IconCake, badge: birthdaysToday },
       { key: "admissoes", label: "Onboarding", icon: IconUserPlus, badge: onboardingSummary?.toReview },
+      { key: "notas", label: "Notas fiscais", icon: IconFile, badge: invoicesToReview },
       { key: "relatorios", label: "Relatórios", icon: IconChart },
     ];
     if (me?.role === "admin") list.push({ key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests });
     return list;
-  }, [me, onboardingSummary, birthdaysToday]);
+  }, [me, onboardingSummary, birthdaysToday, invoicesToReview]);
 
   const recentOccurrences = useMemo(
     () =>
@@ -580,7 +599,7 @@ export default function FrequenciaPage() {
           Novo onboarding
         </Button>
       </>
-    ) : tab === "acessos" ? null : (
+    ) : tab === "acessos" || tab === "notas" ? null : (
       <>
         {tab === "colaboradores" && me?.role === "admin" && (
           <Button variant="ghost" onClick={() => setImportOpen(true)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
@@ -623,7 +642,7 @@ export default function FrequenciaPage() {
         hideHeader={showingProfile}
         busy={loading}
       >
-        {!showingProfile && tab !== "aniversariantes" && (
+        {!showingProfile && tab !== "aniversariantes" && tab !== "notas" && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -654,6 +673,8 @@ export default function FrequenciaPage() {
             }}
             onDeleteOccurrence={setDeletingOccurrence}
           />
+        ) : tab === "notas" ? (
+          <InvoicesPanel invoices={invoices} onChanged={fetchInvoices} />
         ) : tab === "acessos" && me?.role === "admin" ? (
           <AccessPanel currentUserId={me.id} onChanged={fetchMe} />
         ) : tab === "admissoes" ? (

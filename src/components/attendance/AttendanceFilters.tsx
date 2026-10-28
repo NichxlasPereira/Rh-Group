@@ -3,7 +3,14 @@
 import { OCCURRENCE_LABEL, OCCURRENCE_TYPES, OccurrenceType, monthKeyLabel } from "@/lib/attendance";
 import { IconSearch } from "../icons";
 
-export type AttendanceTabKey = "ocorrencias" | "colaboradores" | "aniversariantes" | "relatorios" | "admissoes" | "acessos";
+export type AttendanceTabKey =
+  | "ocorrencias"
+  | "colaboradores"
+  | "aniversariantes"
+  | "relatorios"
+  | "admissoes"
+  | "notas"
+  | "acessos";
 
 export const ALL_MONTHS = "todos";
 
