@@ -383,6 +383,7 @@ export default function FrequenciaPage() {
             contractEnd: values.contractEnd || null,
             areaId: values.areaId || null,
             areaLead: values.areaLead,
+            managerId: values.managerId || null,
           }),
         },
         "Não foi possível salvar o colaborador."
@@ -757,6 +758,7 @@ export default function FrequenciaPage() {
         employee={editingEmployee}
         existingDepartments={departments}
         areasBySector={areasBySector}
+        employees={employees}
       />
 
       <EmployeeImportModal

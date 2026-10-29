@@ -19,6 +19,8 @@ export interface EmployeeFormValues {
   contractEnd: string;
   areaId: string;
   areaLead: boolean;
+  /** Gestor direto ("" = ninguém). */
+  managerId: string;
   /** Nova foto para crachá escolhida no formulário (enviada depois de salvar). */
   photo: File | null;
   /** Ficha cadastral; só vai para o servidor se o RH mexeu (recordDirty). */
@@ -37,6 +39,7 @@ const EMPTY: EmployeeFormValues = {
   contractEnd: "",
   areaId: "",
   areaLead: false,
+  managerId: "",
   photo: null,
   record: {},
   recordDirty: false,
@@ -64,9 +67,19 @@ interface EmployeeModalProps {
   existingDepartments: string[];
   /** Áreas cadastradas para cada setor (empresa). */
   areasBySector: Map<string, CompanyArea[]>;
+  /** Todos os colaboradores: para escolher o gestor direto. */
+  employees: Employee[];
 }
 
-export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepartments, areasBySector }: EmployeeModalProps) {
+export function EmployeeModal({
+  open,
+  onClose,
+  onSubmit,
+  employee,
+  existingDepartments,
+  areasBySector,
+  employees,
+}: EmployeeModalProps) {
   const [values, setValues] = useState<EmployeeFormValues>(EMPTY);
   const [error, setError] = useState<string>();
   const [allowanceError, setAllowanceError] = useState<string>();
@@ -95,6 +108,7 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             contractEnd: employee.contractEnd?.slice(0, 10) ?? "",
             areaId: employee.areaId ?? "",
             areaLead: employee.areaLead,
+            managerId: employee.managerId ?? "",
             photo: null,
             record: {},
             recordDirty: false,
@@ -172,6 +186,29 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
   }
 
   const sectorAreas = areasBySector.get(values.department) ?? [];
+
+  // Gestor: alguém ativo da mesma empresa, menos a própria pessoa e quem já responde a ela.
+  const below = new Set<string>();
+  if (employee) {
+    const reports = new Map<string, string[]>();
+    for (const e of employees) if (e.managerId) reports.set(e.managerId, [...(reports.get(e.managerId) ?? []), e.id]);
+    const stack = [employee.id];
+    while (stack.length) {
+      for (const id of reports.get(stack.pop()!) ?? []) {
+        if (below.has(id)) continue;
+        below.add(id);
+        stack.push(id);
+      }
+    }
+  }
+  const candidates = values.department
+    ? employees
+        .filter((e) => e.active && e.department === values.department && e.id !== employee?.id && !below.has(e.id))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    : [];
+  const sameArea = values.areaId ? candidates.filter((e) => e.areaId === values.areaId) : [];
+  const otherAreas = candidates.filter((e) => !sameArea.includes(e));
+  const currentManager = employees.find((e) => e.id === values.managerId);
 
   return (
     <Modal
@@ -254,7 +291,7 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
           <select
             value={values.department}
             // As áreas são de cada empresa: trocar de setor limpa a área.
-            onChange={(e) => setValues((v) => ({ ...v, department: e.target.value, areaId: "", areaLead: false }))}
+            onChange={(e) => setValues((v) => ({ ...v, department: e.target.value, areaId: "", areaLead: false, managerId: "" }))}
             className={inputClass(false)}
           >
             <option value="">Sem setor</option>
@@ -323,6 +360,49 @@ export function EmployeeModal({ open, onClose, onSubmit, employee, existingDepar
             <span className="block text-xs text-muted">Aparece no topo da área no organograma.</span>
           </span>
         </label>
+
+        <Field
+          label="Responde a"
+          hint={
+            !values.department
+              ? "Escolha o setor (empresa) primeiro."
+              : "Gestor direto: monta os níveis do organograma. Sem gestor, a pessoa fica abaixo do responsável da área."
+          }
+          className="sm:col-span-2"
+        >
+          <select
+            value={values.managerId}
+            onChange={(e) => setValues((v) => ({ ...v, managerId: e.target.value }))}
+            disabled={!values.department}
+            className={inputClass(false) + " disabled:opacity-60"}
+          >
+            <option value="">Ninguém (topo ou responsável da área)</option>
+            {/* Gestor salvo que saiu da lista (outra empresa ou inativo) continua visível até o RH trocar. */}
+            {currentManager && !candidates.includes(currentManager) && (
+              <option value={currentManager.id}>{currentManager.name} (fora da lista)</option>
+            )}
+            {sameArea.length > 0 && (
+              <optgroup label="Nesta área">
+                {sameArea.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                    {e.role ? ` · ${e.role}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {otherAreas.length > 0 && (
+              <optgroup label={sameArea.length > 0 ? "Outras áreas da empresa" : "Pessoas da empresa"}>
+                {otherAreas.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                    {e.role ? ` · ${e.role}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </Field>
 
         <Field
           label="Folgas a que tem direito (dias)"

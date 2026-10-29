@@ -59,6 +59,10 @@ model Employee {
   areaId       String?
   area         CompanyArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
   areaLead     Boolean  @default(false)
+  // Gestor direto (organograma em níveis dentro da área). Sai sozinho se o gestor for excluído.
+  managerId    String?
+  manager      Employee?  @relation("ReportsTo", fields: [managerId], references: [id], onDelete: SetNull)
+  reports      Employee[] @relation("ReportsTo")
   // Ficha cadastral (preenchida pelo RH ou importada da planilha). Dados pessoais:
   // a lista de colaboradores não devolve estes campos; a ficha os mostra mascarados.
   birthDate        DateTime?
@@ -80,6 +84,7 @@ model Employee {
   documents   EmployeeDocument[]
 
   @@index([name])
+  @@index([managerId])
 }
 
 /** Quem pediu para ver os dados pessoais completos de um colaborador (LGPD). */

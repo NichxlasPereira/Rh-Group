@@ -260,6 +260,7 @@ export function EmployeeProfile({
   }
 
   const employee = listed;
+  const manager = employee.managerId ? employees.find((e) => e.id === employee.managerId) : undefined;
   const admission = ficha.admission;
   const birth = ficha.record.find((r) => r.key === "birthDate")?.value ?? null;
   // Campos do onboarding que não estão na ficha cadastral (nacionalidade, estado civil...).
@@ -383,6 +384,7 @@ export function EmployeeProfile({
               {employee.areaId && areaNameById.has(employee.areaId)
                 ? ` · ${areaNameById.get(employee.areaId)}${employee.areaLead ? " (responsável)" : ""}`
                 : ""}
+              {manager ? ` · responde a ${manager.name}` : ""}
             </span>
             <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
               {employee.name}

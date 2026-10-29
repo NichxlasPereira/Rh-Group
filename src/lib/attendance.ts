@@ -52,6 +52,8 @@ export interface Employee {
   contractEnd: string | null;
   areaId: string | null;
   areaLead: boolean;
+  /** Gestor direto (organograma). */
+  managerId: string | null;
   createdAt: string;
   updatedAt: string;
 }
