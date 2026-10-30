@@ -29,31 +29,18 @@ interface OrgChartProps {
   onBrand: (company: ContractingCompanyInfo) => void;
 }
 
-interface AreaGroup {
-  key: string;
-  name: string;
-  leads: Employee[];
-  /** Topo das árvores: responsáveis e quem tem gente abaixo. */
-  roots: Employee[];
-  /** Sem gestor na área e sem ninguém abaixo. */
-  loose: Employee[];
-  /** Quem responde a cada pessoa, dentro da área. */
-  kids: Map<string, Employee[]>;
-  /** Largura da árvore em colunas (para o cartão ocupar mais espaço). */
-  units: number;
-}
-
 /**
- * Monta a hierarquia de uma área: cada pessoa fica abaixo do gestor direto (se
- * ele está na mesma área); quem não tem gestor fica abaixo do responsável.
+ * Monta a hierarquia da empresa: cada pessoa fica abaixo do gestor direto (se ele
+ * é da mesma empresa); quem não tem gestor fica abaixo do responsável da sua área.
  */
-function buildArea(key: string, name: string, people: Employee[]): AreaGroup {
+function buildTree(people: Employee[]): { roots: Employee[]; kids: Map<string, Employee[]> } {
   const ids = new Set(people.map((e) => e.id));
-  const leads = people.filter((e) => e.areaLead);
+  const leadOf = new Map<string, string>();
+  for (const e of people) if (e.areaLead && e.areaId && !leadOf.has(e.areaId)) leadOf.set(e.areaId, e.id);
   const parent = new Map<string, string>();
   for (const e of people) {
     if (e.managerId && e.managerId !== e.id && ids.has(e.managerId)) parent.set(e.id, e.managerId);
-    else if (!e.managerId && !e.areaLead && leads.length > 0) parent.set(e.id, leads[0].id);
+    else if (!e.managerId && !e.areaLead && e.areaId && leadOf.has(e.areaId)) parent.set(e.id, leadOf.get(e.areaId)!);
   }
   // Dado antigo em ciclo (A → B → A): a pessoa sobe para o topo em vez de sumir.
   for (const e of people) {
@@ -71,16 +58,7 @@ function buildArea(key: string, name: string, people: Employee[]): AreaGroup {
     const up = parent.get(e.id);
     if (up) kids.set(up, [...(kids.get(up) ?? []), e]);
   }
-  const top = people.filter((e) => !parent.has(e.id));
-  const roots = top.filter((e) => e.areaLead || kids.has(e.id)).sort((a, b) => Number(b.areaLead) - Number(a.areaLead) || byName(a, b));
-  const loose = top.filter((e) => !roots.includes(e));
-  const width = (e: Employee): number => {
-    const children = kids.get(e.id) ?? [];
-    if (children.length === 0) return 1;
-    const branches = children.filter((c) => kids.has(c.id));
-    return (children.length > branches.length ? 1 : 0) + branches.reduce((sum, c) => sum + width(c), 0);
-  };
-  return { key, name, leads, roots, loose, kids, units: roots.reduce((sum, e) => sum + width(e), 0) };
+  return { roots: people.filter((e) => !parent.has(e.id)), kids };
 }
 
 function initials(name: string): string {
@@ -173,26 +151,17 @@ export function OrgChart({
 
   const openBrand = open?.company?.brandColor ?? null;
   const openLogo = open?.company ? companyLogoUrl(open.company) : null;
-  const nameById = new Map(employees.map((e) => [e.id, e.name]));
-  const nodeCtx: NodeCtx = {
-    kids: new Map(),
+  const tree = open ? buildTree([...open.people].sort(byName)) : null;
+  const treeCtx: NodeCtx = {
+    kids: tree?.kids ?? new Map(),
     status: todayStatus,
     birthdayToday,
     brand: openBrand,
-    nameById,
+    nameById: new Map(employees.map((e) => [e.id, e.name])),
+    areaNameById: new Map(areas.map((a) => [a.id, a.name])),
+    topIds: new Set(tree?.roots.map((e) => e.id)),
     onOpen,
   };
-
-  let groups: AreaGroup[] = [];
-  if (open) {
-    const companyAreas = open.company ? areas.filter((a) => a.companyId === open.company!.id) : [];
-    groups = companyAreas
-      .map((a) => buildArea(a.id, a.name, open.people.filter((e) => e.areaId === a.id).sort(byName)))
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-    const known = new Set(companyAreas.map((a) => a.id));
-    const loose = open.people.filter((e) => !e.areaId || !known.has(e.areaId)).sort(byName);
-    if (loose.length > 0) groups.push({ key: "sem-area", name: "Sem área", leads: [], roots: [], loose, kids: new Map(), units: 0 });
-  }
 
   if (sectors.length === 0) {
     return (
@@ -400,72 +369,32 @@ export function OrgChart({
             )}
           </div>
 
-          {groups.length === 0 ? (
+          {open.people.length === 0 ? (
             <p className="rounded-[14px] border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted">
-              {open.company
-                ? "Nenhuma área cadastrada para esta empresa. Use “Organizar áreas” para criar as áreas (Tecnologia, Comercial...)."
-                : "Ninguém sem setor."}
+              Ninguém nesta empresa ainda.
             </p>
           ) : (
-            <div className="grid grid-flow-row-dense grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {groups.map((g) => {
-                const tree = g.roots.length > 0;
-                const span = g.key === "sem-area" || g.units >= 3 ? "sm:col-span-full" : g.units === 2 ? "sm:col-span-2" : "";
-                return (
-                  <div
-                    key={g.key}
-                    style={openBrand && g.key !== "sem-area" ? { borderTopColor: openBrand, borderTopWidth: 3 } : undefined}
-                    className={`flex min-w-0 flex-col gap-3 rounded-[14px] border bg-surface p-3.5 ${span} ${
-                      g.key === "sem-area" ? "border-dashed border-border-strong" : "border-border"
-                    }`}
-                  >
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="font-display text-[15px] font-semibold uppercase tracking-[0.06em] text-ink">
-                        {g.key === "sem-area" && !open.company ? "Pessoas sem setor" : g.name}
-                      </span>
-                      <span className="font-mono text-xs tabular-nums text-muted">{g.roots.length + g.loose.length + [...g.kids.values()].reduce((n, k) => n + k.length, 0)}</span>
-                    </span>
-
-                    {tree ? (
-                      // Árvore de cima para baixo; rola para o lado se não couber.
-                      <div className="-mx-1 overflow-x-auto px-1 pb-1">
-                        <div className="mx-auto flex w-max items-start gap-6 pt-1">
-                          {g.roots.map((e) => (
-                            <Subtree key={e.id} employee={e} ctx={{ ...nodeCtx, kids: g.kids }} />
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      g.key !== "sem-area" && (
-                        <span className="rounded-[10px] border border-dashed border-border-strong px-3 py-2.5 text-xs text-muted">
-                          Sem responsável. Marque na ficha (Editar).
-                        </span>
-                      )
-                    )}
-
-                    {g.loose.length > 0 && (
-                      <div className="flex flex-col gap-1.5">
-                        {tree && (
-                          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Sem gestor definido</span>
-                        )}
-                        <ul
-                          className={
-                            g.key === "sem-area" || tree
-                              ? "grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 xl:grid-cols-3"
-                              : "ml-[15px] flex flex-col gap-1 border-l-2 border-border pl-3"
-                          }
-                        >
-                          {g.loose.map((e) => (
-                            <li key={e.id}>
-                              <PersonRow employee={e} ctx={nodeCtx} inline />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            // Um organograma só, de cima para baixo; rola para o lado se não couber.
+            <div className="-mx-1 overflow-x-auto px-1 pb-1">
+              <div className="mx-auto flex w-max flex-col items-center pt-1">
+                <div
+                  data-theme="light"
+                  className="flex items-center gap-3 rounded-[12px] border border-border bg-surface px-4 py-2.5 shadow-[0_8px_20px_-16px_rgba(0,0,0,0.5)]"
+                >
+                  {openLogo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={openLogo} alt="" className="h-8 w-auto max-w-[140px] object-contain" />
+                  ) : open === holding ? (
+                    <CffLogo className="h-7 w-auto text-[#17181a]" />
+                  ) : (
+                    <span className="font-display text-sm font-semibold uppercase tracking-[0.06em] text-ink">{open.name}</span>
+                  )}
+                  <span className="border-l border-border pl-3 font-display text-lg font-bold tabular-nums text-ink">
+                    {open.people.length}
+                  </span>
+                </div>
+                <Children list={tree!.roots} ctx={treeCtx} />
+              </div>
             </div>
           )}
 
@@ -494,28 +423,49 @@ interface NodeCtx {
   status: Map<string, OccurrenceType>;
   birthdayToday: Set<string>;
   brand: string | null;
-  /** Nome do gestor que está fora da área (aparece como "responde a"). */
+  /** Nome do gestor que está fora da empresa (aparece como "responde a"). */
   nameById: Map<string, string>;
+  areaNameById: Map<string, string>;
+  /** Quem está no topo (sem gestor nesta empresa). */
+  topIds: Set<string>;
   onOpen: (employee: Employee) => void;
 }
 
 const LINE = "bg-border-strong";
+const PANEL_COLUMN = 200;
+
+/** Uma pessoa e, abaixo dela, quem responde a ela. */
+function Subtree({ employee, ctx }: { employee: Employee; ctx: NodeCtx }) {
+  return (
+    <div className="flex flex-col items-center">
+      <PersonNode employee={employee} ctx={ctx} />
+      <Children list={ctx.kids.get(employee.id) ?? []} ctx={ctx} parentArea={employee.areaId} />
+    </div>
+  );
+}
 
 /**
- * Uma pessoa e quem responde a ela. Quem não tem ninguém abaixo fica num quadro
- * em lista (não alarga a árvore); quem tem equipe abre um galho próprio ao lado.
+ * Quem fica abaixo de alguém. Quem não tem ninguém abaixo vai para um quadro em
+ * lista (não alarga a árvore); quem tem equipe, ou responde pela área, abre um
+ * galho próprio ao lado.
  */
-function Subtree({ employee, ctx }: { employee: Employee; ctx: NodeCtx }) {
-  const children = ctx.kids.get(employee.id) ?? [];
-  const leaves = children.filter((c) => !ctx.kids.has(c.id));
-  const branches = children.filter((c) => ctx.kids.has(c.id));
+function Children({ list, ctx, parentArea = null }: { list: Employee[]; ctx: NodeCtx; parentArea?: string | null }) {
+  if (list.length === 0) return null;
+  const branches = list.filter((c) => c.areaLead || ctx.kids.has(c.id));
+  const leaves = list.filter((c) => !branches.includes(c));
   const columns: React.ReactNode[] = [];
   if (leaves.length > 0) {
+    const cols = leaves.length > 16 ? 3 : leaves.length > 6 ? 2 : 1;
     columns.push(
-      <ul key="equipe" className="flex w-[220px] flex-col gap-0.5 rounded-[12px] border border-border bg-surface-2/60 p-1.5">
+      <ul
+        key="equipe"
+        style={{ width: cols * PANEL_COLUMN, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        className="grid gap-x-1 gap-y-0.5 rounded-[12px] border border-border bg-surface-2/60 p-1.5"
+      >
         {leaves.map((e) => (
-          <li key={e.id}>
-            <PersonRow employee={e} ctx={ctx} />
+          <li key={e.id} className="min-w-0">
+            {/* A área só aparece quando é diferente da de quem está acima. */}
+            <PersonRow employee={e} ctx={ctx} showArea={e.areaId !== parentArea} />
           </li>
         ))}
       </ul>
@@ -524,14 +474,14 @@ function Subtree({ employee, ctx }: { employee: Employee; ctx: NodeCtx }) {
   for (const b of branches) columns.push(<Subtree key={b.id} employee={b} ctx={ctx} />);
 
   return (
-    <div className="flex flex-col items-center">
-      <PersonNode employee={employee} ctx={ctx} />
-      {columns.length > 0 && <span aria-hidden="true" className={`h-4 w-0.5 ${LINE}`} />}
-      {columns.length === 1 && columns[0]}
-      {columns.length > 1 && (
+    <>
+      <span aria-hidden="true" className={`h-4 w-0.5 ${LINE}`} />
+      {columns.length === 1 ? (
+        columns[0]
+      ) : (
         <div className="flex items-start">
           {columns.map((col, i) => (
-            <div key={i} className="relative flex flex-col items-center px-2 pt-4">
+            <div key={i} className="relative flex flex-col items-center px-1.5 pt-4">
               {/* Barra que liga os irmãos e a linha que desce até cada um. */}
               <span
                 aria-hidden="true"
@@ -543,19 +493,21 @@ function Subtree({ employee, ctx }: { employee: Employee; ctx: NodeCtx }) {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-/** Cartão de quem tem equipe (ou é responsável): foto, nome e cargo em destaque. */
+/** Cartão de quem tem equipe (ou é responsável): foto, nome, cargo em destaque e área. */
 function PersonNode({ employee: e, ctx }: { employee: Employee; ctx: NodeCtx }) {
-  const outside = e.managerId && !ctx.kids.has(e.managerId) ? ctx.nameById.get(e.managerId) : undefined;
+  // No topo, mas com gestor: ele é de outra empresa.
+  const outside = e.managerId && ctx.topIds.has(e.id) ? ctx.nameById.get(e.managerId) : undefined;
+  const area = e.areaId ? ctx.areaNameById.get(e.areaId) : undefined;
   return (
     <button
       type="button"
       onClick={() => ctx.onOpen(e)}
-      title={e.role ? `${e.name} · ${e.role}` : e.name}
-      className={`flex w-[164px] flex-col items-center gap-1.5 rounded-[12px] border border-border bg-surface px-2.5 py-3 text-center shadow-[0_8px_20px_-16px_rgba(0,0,0,0.5)] transition hover:border-border-strong hover:bg-surface-2 ${
+      title={[e.name, e.role, area].filter(Boolean).join(" · ")}
+      className={`flex w-[152px] flex-col items-center gap-1.5 rounded-[12px] border border-border bg-surface px-2.5 py-3 text-center shadow-[0_8px_20px_-16px_rgba(0,0,0,0.5)] transition hover:border-border-strong hover:bg-surface-2 ${
         e.active ? "" : "opacity-60"
       }`}
     >
@@ -569,35 +521,34 @@ function PersonNode({ employee: e, ctx }: { employee: Employee; ctx: NodeCtx }) 
           {e.role}
         </span>
       )}
-      {e.areaLead && <span className="text-[10.5px] font-semibold text-muted">Responsável pela área</span>}
+      {(area || e.areaLead) && (
+        <span className="w-full truncate text-[10.5px] font-semibold text-muted">
+          {[area, e.areaLead ? "responsável" : null].filter(Boolean).join(" · ")}
+        </span>
+      )}
       {outside && <span className="w-full truncate text-[10.5px] text-muted">Responde a {shortName(outside)}</span>}
     </button>
   );
 }
 
-/** Linha de pessoa: na equipe de alguém (nome e cargo empilhados) ou em lista solta (lado a lado). */
-function PersonRow({ employee: e, ctx, inline = false }: { employee: Employee; ctx: NodeCtx; inline?: boolean }) {
+/** Pessoa no quadro da equipe: nome e, embaixo, cargo (e a área, se mudar). */
+function PersonRow({ employee: e, ctx, showArea }: { employee: Employee; ctx: NodeCtx; showArea: boolean }) {
+  const area = e.areaId ? ctx.areaNameById.get(e.areaId) : undefined;
+  const detail = [e.role, showArea ? area : null].filter(Boolean).join(" · ");
   return (
     <button
       type="button"
       onClick={() => ctx.onOpen(e)}
-      title={e.role ? `${e.name} · ${e.role}` : e.name}
+      title={[e.name, e.role, area].filter(Boolean).join(" · ")}
       className={`flex w-full items-center gap-2 rounded-[8px] px-1.5 py-1 text-left text-[13px] text-ink transition hover:bg-surface ${
-        inline ? "hover:bg-surface-2" : ""
-      } ${e.active ? "" : "opacity-60"}`}
+        e.active ? "" : "opacity-60"
+      }`}
     >
       <Avatar employee={e} status={ctx.status.get(e.id)} birthday={ctx.birthdayToday.has(e.id)} />
-      {inline ? (
-        <>
-          <span className="max-w-[65%] shrink-0 truncate">{shortName(e.name)}</span>
-          {e.role && <span className="ml-auto min-w-0 truncate text-[11px] text-muted">{e.role}</span>}
-        </>
-      ) : (
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate font-semibold">{shortName(e.name)}</span>
-          {e.role && <span className="truncate text-[11px] text-muted">{e.role}</span>}
-        </span>
-      )}
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className="truncate font-semibold">{shortName(e.name)}</span>
+        {detail && <span className="truncate text-[11px] text-muted">{detail}</span>}
+      </span>
     </button>
   );
 }
