@@ -9,6 +9,7 @@ import {
   IconCalendarPlus,
   IconCalendarX,
   IconArrowUpTray,
+  IconCamera,
   IconChart,
   IconKey,
   IconPlus,
@@ -26,6 +27,7 @@ import { BirthdaysPanel } from "@/components/attendance/BirthdaysPanel";
 import { AreasModal } from "@/components/attendance/AreasModal";
 import { CompanyBrandModal } from "@/components/attendance/CompanyBrandModal";
 import { EmployeeImportModal } from "@/components/attendance/EmployeeImportModal";
+import { PhotoImportModal } from "@/components/attendance/PhotoImportModal";
 import { AttendanceReports } from "@/components/attendance/AttendanceReports";
 import { EmployeeModal, EmployeeFormValues } from "@/components/attendance/EmployeeModal";
 import { AttachmentChanges, OccurrenceModal, OccurrenceFormValues } from "@/components/attendance/OccurrenceModal";
@@ -134,6 +136,7 @@ export default function FrequenciaPage() {
   const [areasCompany, setAreasCompany] = useState<ContractingCompanyInfo | null>(null);
   const [brandCompany, setBrandCompany] = useState<ContractingCompanyInfo | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
 
   const [occurrenceModalOpen, setOccurrenceModalOpen] = useState(false);
@@ -589,6 +592,12 @@ export default function FrequenciaPage() {
             Importar planilha
           </Button>
         )}
+        {tab === "colaboradores" && (
+          <Button variant="ghost" onClick={() => setPhotosOpen(true)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+            <IconCamera className="h-4 w-4" />
+            Enviar fotos
+          </Button>
+        )}
         {/* Em destaque (branco), menos em Ocorrências, onde o destaque é registrar ocorrência. */}
         {tab !== "aniversariantes" && (
           <Button
@@ -759,6 +768,15 @@ export default function FrequenciaPage() {
         existingDepartments={departments}
         areasBySector={areasBySector}
         employees={employees}
+      />
+
+      <PhotoImportModal
+        open={photosOpen}
+        onClose={() => setPhotosOpen(false)}
+        employees={employees}
+        onImported={async () => {
+          await Promise.all([fetchEmployees(), fetchBirthdays()]);
+        }}
       />
 
       <EmployeeImportModal

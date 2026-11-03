@@ -568,6 +568,8 @@ function Avatar({
   /** Cor da marca da empresa (responsáveis). */
   color?: string | null;
 }) {
+  // Foto para crachá, quando há; sem foto (404), ficam as iniciais.
+  const [noPhoto, setNoPhoto] = useState(false);
   const ring = status === "folga" ? "outline outline-2 outline-offset-1 outline-ok" : status ? "outline outline-2 outline-offset-1 outline-warn" : "";
   const dims =
     size === "xl"
@@ -582,6 +584,16 @@ function Avatar({
       className={`relative flex shrink-0 items-center justify-center bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display font-semibold text-white ${dims} ${ring}`}
     >
       {initials(employee.name)}
+      {!noPhoto && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/api/employees/${employee.id}/photo`}
+          alt=""
+          loading="lazy"
+          onError={() => setNoPhoto(true)}
+          className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
+        />
+      )}
       {status && <span className="sr-only"> ({OCCURRENCE_LABEL[status]} hoje)</span>}
       {birthday && (
         <span className="absolute -bottom-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-surface text-warn ring-1 ring-border">
