@@ -1,40 +1,44 @@
 #!/bin/bash
-# Instala a cópia no computador (Mac): baixa quase na hora (a cada 10 s) os documentos
-# dos onboardings concluídos no RHGroup para uma pasta local.
+# Instala a cópia no computador (Mac): os documentos de cada onboarding concluído
+# no RHGroup aparecem numa pasta local quase na hora (confere a cada 10 s).
+# Não precisa instalar nada antes: só usa o que já vem no macOS.
 #
-#   bash instalar.sh            instala ou troca a chave/pasta
-#   bash instalar.sh --remover  desinstala (os arquivos já baixados ficam)
+# Em qualquer Mac, direto do RHGroup (o comando aparece na tela da chave):
+#   curl -fsSL <endereço do RHGroup>/api/copia-local/instalar.sh | bash
+# Ou, com o projeto: bash integrations/copia-local/instalar.sh
+# Desinstalar: acrescente --remover (os arquivos já baixados ficam).
 set -euo pipefail
 
 LABEL="com.cffgroup.rhgroup.copia-local"
 APP_DIR="$HOME/Library/Application Support/RHGroup"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG="$HOME/Library/Logs/RHGroup-copia-local.log"
-URL_PADRAO="https://system-onboarding-cffgroup.up.railway.app"
-PASTA_PADRAO="$HOME/Onboarding RH"
+
+# Baixado do RHGroup, o endereço já vem preenchido; rodando do projeto, é o oficial.
+URL_SERVIDOR="__RHGROUP_URL__"
+[[ "$URL_SERVIDOR" == "__RHGROUP"*"__" ]] && URL_SERVIDOR="https://system-onboarding-cffgroup.up.railway.app"
+URL="${RHGROUP_URL:-$URL_SERVIDOR}"
+PASTA="${PASTA:-$HOME/Onboarding RH}"
+PASTA="${PASTA/#\~/$HOME}"
+
+parar() { launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true; }
+# Arquivos da versão antiga (com Node.js), se houver.
+limpar_antigos() { rm -f "$APP_DIR/copia-local.mjs" "$APP_DIR/copia-local.json" "$APP_DIR/copia-local-estado.json"; }
 
 if [[ "${1:-}" == "--remover" ]]; then
-  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-  rm -f "$PLIST" "$APP_DIR/copia-local.json" "$APP_DIR/copia-local.mjs" "$APP_DIR/copia-local-estado.json"
-  echo "Cópia no computador removida. Os arquivos já baixados continuam na pasta."
+  parar
+  limpar_antigos
+  rm -f "$PLIST" "$APP_DIR/copia-local.sh" "$APP_DIR/url" "$APP_DIR/pasta" "$APP_DIR/cabecalho" "$APP_DIR/copia-local-estado.tsv"
+  echo "Cópia no computador removida deste Mac. Os arquivos já baixados continuam na pasta."
+  echo "Para cortar o acesso também no sistema, remova este computador em RHGroup › Onboarding › Cópia no computador."
   exit 0
 fi
-
-NODE="$(command -v node || true)"
-if [[ -z "$NODE" ]]; then
-  echo "Node.js não encontrado. Instale em https://nodejs.org e rode de novo." >&2
-  exit 1
-fi
-
-# Uma pergunta só (a chave). Outro endereço ou pasta: RHGROUP_URL=… PASTA=… bash instalar.sh
-URL="${RHGROUP_URL:-$URL_PADRAO}"
-PASTA="${PASTA:-$PASTA_PADRAO}"
-PASTA="${PASTA/#\~/$HOME}"
 
 echo "Cópia no computador — RHGroup"
 echo "Sistema: $URL"
 echo "Pasta:   $PASTA"
 echo
+
 is_key() { [[ "$1" =~ ^[A-Za-z0-9_-]{20,64}$ ]]; }
 
 # A chave nunca é digitada no Terminal. Vem, nesta ordem, do arquivo baixado no
@@ -54,24 +58,33 @@ elif TOKEN="$(pbpaste 2>/dev/null | tr -d '[:space:]' || true)"; is_key "$TOKEN"
   printf '' | pbcopy # limpa a área de transferência
 else
   TOKEN="$(osascript \
-    -e 'display dialog "Cole aqui a chave do RHGroup (Onboarding › Cópia no computador › Copiar chave):" default answer "" with hidden answer with title "Cópia no computador — RHGroup" buttons {"Cancelar", "Instalar"} default button "Instalar"' \
+    -e 'display dialog "Cole aqui a chave deste computador (RHGroup › Onboarding › Cópia no computador):" default answer "" with hidden answer with title "Cópia no computador — RHGroup" buttons {"Cancelar", "Instalar"} default button "Instalar"' \
     -e 'text returned of result' 2>/dev/null | tr -d '[:space:]' || true)"
 fi
 if ! is_key "$TOKEN"; then
-  echo "Nenhuma chave válida. No RHGroup, clique em Onboarding › Cópia no computador › Gerar nova chave › Baixar arquivo da chave e rode o instalador outra vez." >&2
+  echo "Nenhuma chave válida. No RHGroup, abra Onboarding › Cópia no computador, gere a chave deste computador, clique em Baixar arquivo da chave e rode o instalador outra vez." >&2
   exit 1
 fi
 
+umask 077
 mkdir -p "$APP_DIR" "$PASTA" "$(dirname "$PLIST")" "$(dirname "$LOG")"
 chmod 700 "$APP_DIR"
-cp "$(dirname "$0")/copia-local.mjs" "$APP_DIR/copia-local.mjs"
 
-# JSON escrito pelo Node: nada de aspas quebrando o arquivo. A chave vai pelo ambiente, não pela linha de comando.
-umask 077
-URL="$URL" TOKEN="$TOKEN" PASTA="$PASTA" "$NODE" -e '
-  const { url, token, pasta } = { url: process.env.URL, token: process.env.TOKEN, pasta: process.env.PASTA };
-  require("fs").writeFileSync(process.argv[1], JSON.stringify({ url, token, pasta }, null, 2), { mode: 0o600 });
-' "$APP_DIR/copia-local.json"
+# Programa: ao lado deste instalador (projeto) ou baixado do próprio RHGroup.
+AQUI="$(cd "$(dirname "${BASH_SOURCE[0]:-/nao-existe}")" 2>/dev/null && pwd || true)"
+if [[ -n "$AQUI" && -f "$AQUI/copia-local.sh" ]]; then
+  cp "$AQUI/copia-local.sh" "$APP_DIR/copia-local.sh.novo"
+else
+  curl -fsSL "$URL/api/copia-local/programa.sh" -o "$APP_DIR/copia-local.sh.novo"
+fi
+mv "$APP_DIR/copia-local.sh.novo" "$APP_DIR/copia-local.sh"
+
+parar
+limpar_antigos
+printf '%s\n' "$URL" > "$APP_DIR/url"
+printf '%s\n' "$PASTA" > "$APP_DIR/pasta"
+# A chave fica num arquivo de cabeçalho só do seu usuário (nunca na linha de comando).
+printf 'Authorization: Bearer %s\n' "$TOKEN" > "$APP_DIR/cabecalho"
 unset TOKEN
 
 cat > "$PLIST" <<PLIST
@@ -82,8 +95,8 @@ cat > "$PLIST" <<PLIST
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$NODE</string>
-    <string>$APP_DIR/copia-local.mjs</string>
+    <string>/bin/bash</string>
+    <string>$APP_DIR/copia-local.sh</string>
     <string>--continuo</string>
   </array>
   <key>KeepAlive</key><true/>
@@ -96,13 +109,12 @@ cat > "$PLIST" <<PLIST
 PLIST
 
 echo "Primeira cópia…"
-if ! "$NODE" "$APP_DIR/copia-local.mjs" | tee -a "$LOG"; then
+if ! /bin/bash "$APP_DIR/copia-local.sh" | tee -a "$LOG"; then
   echo
   echo "Não instalado: a primeira cópia falhou (mensagem acima). Corrija e rode o instalador outra vez." >&2
   exit 1
 fi
 
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 echo

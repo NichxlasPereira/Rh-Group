@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readAttachment } from "@/lib/attachmentStorage";
-import { isLocalCopyRequest, localCopyFile } from "@/lib/localCopy";
+import { localCopyDevice, localCopyFile } from "@/lib/localCopy";
 
 /** Um arquivo para a cópia no computador (só de onboarding concluído, documento aprovado). */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isLocalCopyRequest(request))) {
+  if (!(await localCopyDevice(request))) {
     return NextResponse.json({ error: "Chave inválida ou desativada." }, { status: 401 });
   }
   const { id } = await params;

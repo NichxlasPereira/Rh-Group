@@ -301,6 +301,18 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
+// Computador que recebe a cópia dos documentos de onboarding (programa no Mac
+// do RH). Cada um tem a sua chave; o banco guarda só o hash.
+model LocalCopyDevice {
+  id         String    @id @default(cuid())
+  name       String
+  tokenHash  String    @unique
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  keyAt      DateTime  @default(now()) // quando a chave atual foi gerada
+  lastSeenAt DateTime?
+}
+
 // Empresa contratante do acordo de confidencialidade. Fica só no banco (o
 // repositório é público e a qualificação traz CPFs dos sócios).
 model ContractingCompany {

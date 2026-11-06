@@ -1,25 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
-import { localCopyInfo, localCopyToken } from "@/lib/localCopy";
+import { addLocalCopyDevice, listLocalCopyDevices } from "@/lib/localCopy";
 
-/** Situação da cópia no computador (a chave em si nunca volta: o banco só guarda o hash). */
+/** Computadores que recebem a cópia (as chaves nunca voltam: o banco só guarda o hash). */
 export async function GET() {
   const auth = await requireFrequenciaUser({ admin: true });
   if ("response" in auth) return auth.response;
-  return NextResponse.json(await localCopyInfo());
+  return NextResponse.json({ devices: await listLocalCopyDevices() });
 }
 
-/** Gera uma chave nova — a anterior para de funcionar. Mostrada uma vez só. */
-export async function POST() {
+/** Adiciona um computador e devolve a chave dele — mostrada uma vez só. */
+export async function POST(request: NextRequest) {
   const auth = await requireFrequenciaUser({ admin: true });
   if ("response" in auth) return auth.response;
-  return NextResponse.json({ token: await localCopyToken.rotate() });
-}
-
-/** Desativa a cópia: o computador para de receber arquivos. */
-export async function DELETE() {
-  const auth = await requireFrequenciaUser({ admin: true });
-  if ("response" in auth) return auth.response;
-  await localCopyToken.revoke();
-  return NextResponse.json({ ok: true });
+  const body = await request.json().catch(() => null);
+  const name = typeof body?.name === "string" ? body.name.replace(/\s+/g, " ").trim() : "";
+  if (!name || name.length > 60) {
+    return NextResponse.json({ error: "Dê um nome ao computador (até 60 caracteres)." }, { status: 400 });
+  }
+  return NextResponse.json({ token: await addLocalCopyDevice(name, auth.user.name) }, { status: 201 });
 }

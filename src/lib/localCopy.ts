@@ -1,17 +1,15 @@
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { prisma } from "./prisma";
-import { settingToken } from "./settingToken";
 
 /**
- * Cópia no computador do RH: um programa no Mac (integrations/copia-local)
- * pergunta de tempos em tempos quais documentos de onboardings concluídos
- * existem e baixa os que ainda não tem, para uma pasta local. Entra com uma
- * chave gerada pelo administrador no RHGroup — sem login nem senha do site.
+ * Cópia no computador do RH: um programa nos Macs do RH (integrations/copia-local)
+ * confere a cada poucos segundos quais documentos de onboardings concluídos
+ * existem e baixa os que ainda não tem, para uma pasta local. Cada computador
+ * entra com a sua chave, gerada por um administrador no RHGroup — sem login nem
+ * senha do site. O banco guarda só o hash da chave.
  */
-
-export const localCopyToken = settingToken("copia_local_token");
-const LAST_SEEN_KEY = "copia_local_visto";
 
 /** Nome seguro para pasta/arquivo no Windows, no Mac e no Drive. */
 export function cleanFileName(name: string): string {
@@ -46,30 +44,52 @@ export function admissionFileName(docName: string, index: number, count: number,
   return `${cleanFileName(docName + suffix)}${path.extname(storedName)}`;
 }
 
-/** A chave vem no cabeçalho "Authorization: Bearer …" — nunca no endereço. */
-export async function isLocalCopyRequest(request: NextRequest): Promise<boolean> {
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+const newToken = () => randomBytes(24).toString("base64url");
+
+/** Computador dono da chave do cabeçalho "Authorization: Bearer …" (nunca no endereço); null se não houver. */
+export async function localCopyDevice(request: NextRequest): Promise<{ id: string } | null> {
   const header = request.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : null;
-  return localCopyToken.isValid(token);
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
+  return prisma.localCopyDevice.findUnique({ where: { tokenHash: hashToken(token) }, select: { id: true } });
 }
 
 /** O computador confere a cada poucos segundos: grava o "último contato" no máximo uma vez por minuto. */
-let lastSeenWrite = 0;
-export async function markLocalCopySeen(): Promise<void> {
-  if (Date.now() - lastSeenWrite < 60_000) return;
-  lastSeenWrite = Date.now();
-  const value = new Date().toISOString();
-  await prisma.appSetting.upsert({ where: { key: LAST_SEEN_KEY }, create: { key: LAST_SEEN_KEY, value }, update: { value } });
+const lastSeenWrite = new Map<string, number>();
+export async function markLocalCopySeen(deviceId: string): Promise<void> {
+  const now = Date.now();
+  if (now - (lastSeenWrite.get(deviceId) ?? 0) < 60_000) return;
+  lastSeenWrite.set(deviceId, now);
+  await prisma.localCopyDevice.update({ where: { id: deviceId }, data: { lastSeenAt: new Date(now) } }).catch(() => undefined);
 }
 
-export async function localCopyInfo(): Promise<{ active: boolean; createdAt: Date | null; lastSeenAt: string | null }> {
-  const [info, seen] = await Promise.all([
-    localCopyToken.info(),
-    prisma.appSetting.findUnique({ where: { key: LAST_SEEN_KEY } }),
-  ]);
-  // Último acesso só conta se veio depois da chave atual.
-  const lastSeenAt = info.active && seen && info.updatedAt && new Date(seen.value) >= info.updatedAt ? seen.value : null;
-  return { active: info.active, createdAt: info.updatedAt, lastSeenAt };
+export async function listLocalCopyDevices() {
+  return prisma.localCopyDevice.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, createdBy: true, createdAt: true, keyAt: true, lastSeenAt: true },
+  });
+}
+
+/** Novo computador: devolve a chave (mostrada uma vez só). */
+export async function addLocalCopyDevice(name: string, createdBy: string): Promise<string> {
+  const token = newToken();
+  await prisma.localCopyDevice.create({ data: { name, createdBy, tokenHash: hashToken(token) } });
+  return token;
+}
+
+/** Nova chave para um computador: a anterior dele para de funcionar; os outros não mudam. */
+export async function rotateLocalCopyDevice(id: string): Promise<string | null> {
+  const token = newToken();
+  const updated = await prisma.localCopyDevice.updateMany({
+    where: { id },
+    data: { tokenHash: hashToken(token), keyAt: new Date(), lastSeenAt: null },
+  });
+  return updated.count ? token : null;
+}
+
+export async function removeLocalCopyDevice(id: string): Promise<boolean> {
+  return (await prisma.localCopyDevice.deleteMany({ where: { id } })).count > 0;
 }
 
 export interface LocalCopyFile {
@@ -115,4 +135,13 @@ export async function localCopyFile(fileId: string) {
     where: { id: fileId, document: { status: "aprovado", admission: { status: "concluida" } } },
     select: { storedName: true, mimeType: true },
   });
+}
+
+/**
+ * A mesma lista em texto, uma linha por arquivo: "id<TAB>pasta<TAB>arquivo".
+ * É o que o programa do Mac lê — só com o que já vem no macOS, sem instalar nada.
+ * Os nomes nunca têm TAB nem quebra de linha (cleanFileName tira).
+ */
+export function localCopyTsv(admissions: LocalCopyAdmission[]): string {
+  return admissions.flatMap((a) => a.files.map((f) => `${f.id}\t${a.folder}\t${f.name}\n`)).join("");
 }
