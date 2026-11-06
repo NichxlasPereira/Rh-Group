@@ -15,8 +15,14 @@ export function proxy(request: NextRequest) {
 
 function isAdmissionPortal(p: string): boolean {
   // Também o link de exportação lido pela planilha do RH (=IMPORTDATA), que
-  // vem dos servidores do Google, sem senha: o token na URL é a chave.
-  return p.startsWith("/admissao/") || p.startsWith("/api/admissao/") || p.startsWith("/api/planilha/");
+  // vem dos servidores do Google, sem senha: o token na URL é a chave. E a
+  // cópia no computador do RH, que entra com a chave no cabeçalho.
+  return (
+    p.startsWith("/admissao/") ||
+    p.startsWith("/api/admissao/") ||
+    p.startsWith("/api/planilha/") ||
+    p.startsWith("/api/copia-local/")
+  );
 }
 
 const FREQ_PUBLIC = new Set([

@@ -1,12 +1,9 @@
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { readAttachment } from "@/lib/attachmentStorage";
 import { buildZip } from "@/lib/zip";
-
-const clean = (name: string) =>
-  name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim().slice(0, 120) || "documento";
+import { admissionFileName, admissionFolderName } from "@/lib/localCopy";
 
 /**
  * Baixa os documentos do onboarding num .zip: uma pasta com o nome da pessoa e
@@ -26,15 +23,13 @@ export async function GET(
   });
   if (!admission) return NextResponse.json({ error: "Onboarding não encontrado." }, { status: 404 });
 
-  const date = (admission.startDate ?? admission.createdAt).toISOString().slice(0, 10);
-  const folder = clean(`${admission.candidateName ?? "Candidato"} – ${date}`);
+  const folder = admissionFolderName(admission);
   const entries: { name: string; data: Buffer }[] = [];
   for (const doc of admission.documents) {
     for (const [index, file] of doc.files.entries()) {
       const data = await readAttachment(file.storedName, "admissoes");
       if (!data) continue;
-      const suffix = doc.files.length > 1 ? ` (${index + 1})` : "";
-      entries.push({ name: `${folder}/${clean(doc.name + suffix)}${path.extname(file.storedName)}`, data });
+      entries.push({ name: `${folder}/${admissionFileName(doc.name, index, doc.files.length, file.storedName)}`, data });
     }
   }
   if (entries.length === 0) {

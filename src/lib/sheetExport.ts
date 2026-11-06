@@ -1,5 +1,5 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "./prisma";
+import { settingToken } from "./settingToken";
 
 /**
  * Link de exportação para a planilha do RH: a planilha usa
@@ -9,41 +9,16 @@ import { prisma } from "./prisma";
  * invalida o anterior na hora.
  */
 
-const SETTING_KEY = "planilha_export_token";
-
-const hash = (token: string) => createHash("sha256").update(token).digest("hex");
+const exportToken = settingToken("planilha_export_token");
 
 export function exportUrl(origin: string, token: string): string {
   return `${origin}/api/planilha/${token}/onboarding.csv`;
 }
 
-export async function rotateExportToken(): Promise<string> {
-  const token = randomBytes(24).toString("base64url");
-  await prisma.appSetting.upsert({
-    where: { key: SETTING_KEY },
-    create: { key: SETTING_KEY, value: hash(token) },
-    update: { value: hash(token) },
-  });
-  return token;
-}
-
-export async function revokeExportToken(): Promise<void> {
-  await prisma.appSetting.deleteMany({ where: { key: SETTING_KEY } });
-}
-
-export async function exportLinkInfo(): Promise<{ active: boolean; updatedAt: Date | null }> {
-  const setting = await prisma.appSetting.findUnique({ where: { key: SETTING_KEY } });
-  return { active: !!setting, updatedAt: setting?.updatedAt ?? null };
-}
-
-export async function isValidExportToken(token: string): Promise<boolean> {
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return false;
-  const setting = await prisma.appSetting.findUnique({ where: { key: SETTING_KEY } });
-  if (!setting) return false;
-  const a = Buffer.from(hash(token));
-  const b = Buffer.from(setting.value);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
+export const rotateExportToken = () => exportToken.rotate();
+export const revokeExportToken = () => exportToken.revoke();
+export const exportLinkInfo = () => exportToken.info();
+export const isValidExportToken = (token: string) => exportToken.isValid(token);
 
 const dateBR = (value: Date | string | null | undefined) => {
   if (!value) return "";
