@@ -8,6 +8,7 @@ import {
   IconCake,
   IconCalendarPlus,
   IconCalendarX,
+  IconArrowDownTray,
   IconArrowUpTray,
   IconCamera,
   IconChart,
@@ -597,6 +598,16 @@ export default function FrequenciaPage() {
             <IconCamera className="h-4 w-4" />
             Enviar fotos
           </Button>
+        )}
+        {tab === "relatorios" && (
+          <a
+            href={`/api/frequencia/relatorios/resumo?mes=${reportMonth}`}
+            download
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-border-strong px-4 text-[13px] font-semibold text-ink transition hover:border-ink hover:bg-ink hover:text-bg"
+          >
+            <IconArrowDownTray className="h-4 w-4" />
+            Baixar PDF do mês
+          </a>
         )}
         {/* Em destaque (branco), menos em Ocorrências, onde o destaque é registrar ocorrência. */}
         {tab !== "aniversariantes" && (
