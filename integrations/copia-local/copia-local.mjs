@@ -3,7 +3,7 @@
  * Cópia no computador — baixa para uma pasta local os documentos aprovados
  * dos onboardings concluídos no RHGroup (uma pasta por pessoa).
  *
- * Roda sozinho de hora em hora (instalado por instalar.sh). Só baixa o que
+ * Roda sozinho a cada 15 minutos (instalado por instalar.sh). Só baixa o que
  * ainda não tem; nunca apaga nada da pasta local.
  *
  * Configuração (criada pelo instalador, só o seu usuário lê):
