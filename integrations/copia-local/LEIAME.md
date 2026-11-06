@@ -7,15 +7,17 @@ Os arquivos continuam guardados no RHGroup; esta é uma segunda cópia.
 ## Instalar
 
 1. No RHGroup, aba **Onboarding › Cópia no computador**, clique em **Gerar chave**
-   (só administradores) e copie a chave. Ela aparece uma vez só.
+   (só administradores) e depois em **Baixar arquivo da chave** (vai para
+   Downloads). A chave aparece uma vez só.
 2. No Terminal do Mac, rode:
 
    ```bash
    bash integrations/copia-local/instalar.sh
    ```
 
-   Ele usa a chave copiada (sem colar no Terminal; se não houver chave
-   copiada, abre uma janela do Mac para colar) e faz a primeira cópia na hora. A pasta é `~/Onboarding RH`; para outro endereço ou pasta:
+   Ele lê a chave do arquivo em Downloads e apaga o arquivo (sem arquivo, usa
+   a chave copiada ou abre uma janela do Mac para colar) e faz a primeira
+   cópia na hora. A pasta é `~/Onboarding RH`; para outro endereço ou pasta:
    `RHGROUP_URL=… PASTA=… bash integrations/copia-local/instalar.sh`.
 
 Precisa do Node.js instalado. A chave fica só em

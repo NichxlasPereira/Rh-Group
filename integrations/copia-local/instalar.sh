@@ -37,10 +37,19 @@ echo "Pasta:   $PASTA"
 echo
 is_key() { [[ "$1" =~ ^[A-Za-z0-9_-]{20,64}$ ]]; }
 
-# A chave vem da área de transferência ("Copiar chave" no RHGroup) — nada de
-# colar no Terminal. Sem chave copiada, abre uma janela do Mac para colar.
-TOKEN="$(pbpaste 2>/dev/null | tr -d '[:space:]' || true)"
+# A chave nunca é digitada no Terminal. Vem, nesta ordem, do arquivo baixado no
+# RHGroup ("Baixar arquivo da chave" → Downloads/rhgroup-chave.txt), da área de
+# transferência ("Copiar chave") ou de uma janela do Mac para colar.
+TOKEN=""
+ARQUIVO="$(ls -t "$HOME"/Downloads/rhgroup-chave*.txt 2>/dev/null | head -1 || true)"
+if [[ -n "$ARQUIVO" ]]; then
+  TOKEN="$(tr -d '[:space:]' < "$ARQUIVO" || true)"
+  rm -f "$HOME"/Downloads/rhgroup-chave*.txt # a chave não fica largada em Downloads
+  if is_key "$TOKEN"; then echo "Usando a chave do arquivo baixado do RHGroup (arquivo apagado)."; fi
+fi
 if is_key "$TOKEN"; then
+  :
+elif TOKEN="$(pbpaste 2>/dev/null | tr -d '[:space:]' || true)"; is_key "$TOKEN"; then
   echo "Usando a chave copiada do RHGroup."
   printf '' | pbcopy # limpa a área de transferência
 else
@@ -49,7 +58,7 @@ else
     -e 'text returned of result' 2>/dev/null | tr -d '[:space:]' || true)"
 fi
 if ! is_key "$TOKEN"; then
-  echo "Nenhuma chave válida. No RHGroup, clique em Onboarding › Cópia no computador › Gerar nova chave › Copiar chave e rode o instalador outra vez." >&2
+  echo "Nenhuma chave válida. No RHGroup, clique em Onboarding › Cópia no computador › Gerar nova chave › Baixar arquivo da chave e rode o instalador outra vez." >&2
   exit 1
 fi
 

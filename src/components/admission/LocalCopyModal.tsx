@@ -12,6 +12,41 @@ interface Info {
   lastSeenAt: string | null;
 }
 
+/** Arquivo "rhgroup-chave.txt" em Downloads: o instalador lê e apaga. */
+function downloadKey(token: string) {
+  const url = URL.createObjectURL(new Blob([token + "\n"], { type: "text/plain" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "rhgroup-chave.txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast.success("Arquivo da chave baixado. Agora rode o instalador no Mac.");
+}
+
+/** Copia a chave; se o navegador bloquear a área de transferência, usa o jeito antigo. */
+async function copyKey(token: string) {
+  try {
+    await navigator.clipboard.writeText(token);
+    toast.success("Chave copiada.");
+    return;
+  } catch {
+    // segue para o jeito antigo
+  }
+  const field = document.createElement("textarea");
+  field.value = token;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.appendChild(field);
+  field.select();
+  const ok = document.execCommand("copy");
+  field.remove();
+  if (ok) toast.success("Chave copiada.");
+  else toast.error("Não foi possível copiar. Use “Baixar arquivo da chave”.");
+}
+
 const when = (value: string | null) =>
   value ? new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
 
@@ -122,21 +157,17 @@ export function LocalCopyModal({ open, onClose }: { open: boolean; onClose: () =
               gere outra.
             </p>
             <input readOnly value={token} onFocus={(e) => e.target.select()} className={inputClass(false) + " font-mono text-xs"} />
-            <Button
-              type="button"
-              variant="ghost"
-              className="!px-4 !py-2 self-start text-xs"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(token);
-                  toast.success("Chave copiada.");
-                } catch {
-                  toast.error("Não foi possível copiar. Selecione a chave e copie.");
-                }
-              }}
-            >
-              Copiar chave
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" className="!px-4 !py-2 text-xs" onClick={() => downloadKey(token)}>
+                Baixar arquivo da chave
+              </Button>
+              <Button type="button" variant="ghost" className="!px-4 !py-2 text-xs" onClick={() => copyKey(token)}>
+                Copiar chave
+              </Button>
+            </div>
+            <p className="text-xs text-muted">
+              Baixe o arquivo (vai para Downloads) e rode o instalador no Mac: ele lê a chave do arquivo e apaga o arquivo em seguida.
+            </p>
           </div>
         )}
 
