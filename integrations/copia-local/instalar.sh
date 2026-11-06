@@ -1,5 +1,5 @@
 #!/bin/bash
-# Instala a cópia no computador (Mac): baixa a cada 15 minutos os documentos
+# Instala a cópia no computador (Mac): baixa quase na hora (a cada 10 s) os documentos
 # dos onboardings concluídos no RHGroup para uma pasta local.
 #
 #   bash instalar.sh            instala ou troca a chave/pasta
@@ -84,14 +84,10 @@ cat > "$PLIST" <<PLIST
   <array>
     <string>$NODE</string>
     <string>$APP_DIR/copia-local.mjs</string>
+    <string>--continuo</string>
   </array>
-  <key>StartCalendarInterval</key>
-  <array>
-    <dict><key>Minute</key><integer>0</integer></dict>
-    <dict><key>Minute</key><integer>15</integer></dict>
-    <dict><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Minute</key><integer>45</integer></dict>
-  </array>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
@@ -110,6 +106,6 @@ launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 echo
-echo "Pronto. A cópia roda ao ligar o Mac e a cada 15 minutos (se o Mac estiver dormindo, roda ao acordar)."
+echo "Pronto. A cópia fica ligada e confere a cada 10 segundos: o onboarding concluído aparece na pasta quase na hora."
 echo "Pasta: $PASTA"
 echo "Registro: $LOG"

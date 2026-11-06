@@ -53,7 +53,11 @@ export async function isLocalCopyRequest(request: NextRequest): Promise<boolean>
   return localCopyToken.isValid(token);
 }
 
+/** O computador confere a cada poucos segundos: grava o "último contato" no máximo uma vez por minuto. */
+let lastSeenWrite = 0;
 export async function markLocalCopySeen(): Promise<void> {
+  if (Date.now() - lastSeenWrite < 60_000) return;
+  lastSeenWrite = Date.now();
   const value = new Date().toISOString();
   await prisma.appSetting.upsert({ where: { key: LAST_SEEN_KEY }, create: { key: LAST_SEEN_KEY, value }, update: { value } });
 }

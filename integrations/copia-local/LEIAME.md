@@ -1,6 +1,6 @@
 # Cópia no computador (Mac)
 
-Baixa para uma pasta local, a cada 15 minutos, os documentos aprovados de cada
+Baixa para uma pasta local, quase na hora (confere a cada 10 segundos), os documentos aprovados de cada
 onboarding concluído no RHGroup — uma pasta por pessoa ("Nome – AAAA-MM-DD").
 Os arquivos continuam guardados no RHGroup; esta é uma segunda cópia.
 
@@ -26,7 +26,7 @@ usuário.
 
 ## Como funciona
 
-- Roda ao ligar o Mac e a cada 15 minutos (LaunchAgent `com.cffgroup.rhgroup.copia-local`).
+- Fica ligado desde o login e confere a cada 10 segundos (LaunchAgent `com.cffgroup.rhgroup.copia-local`); com o Mac dormindo, retoma ao acordar.
 - Só baixa o que ainda não tem; nunca apaga nada da pasta local. Se um arquivo
   for apagado da pasta, volta na próxima cópia.
 - O RHGroup mostra o último contato do computador na mesma tela da chave.

@@ -3,7 +3,7 @@
  * Cópia no computador — baixa para uma pasta local os documentos aprovados
  * dos onboardings concluídos no RHGroup (uma pasta por pessoa).
  *
- * Roda sozinho a cada 15 minutos (instalado por instalar.sh). Só baixa o que
+ * Fica ligado e confere a cada 10 segundos (instalado por instalar.sh). Só baixa o que
  * ainda não tem; nunca apaga nada da pasta local.
  *
  * Configuração (criada pelo instalador, só o seu usuário lê):
@@ -54,7 +54,7 @@ async function freeName(dir, name) {
   }
 }
 
-async function main() {
+async function syncOnce() {
   const config = await readJson(CONFIG);
   const { url, token, pasta } = config;
   if (!url || !token || !pasta) throw new Error(`Configuração incompleta em ${CONFIG}. Rode o instalador de novo.`);
@@ -78,30 +78,57 @@ async function main() {
       if (saved && (await exists(path.join(pasta, saved)))) continue;
 
       await mkdir(dir, { recursive: true });
-      const wanted = path.join(dir, safe(file.name));
-      const current = await exists(wanted);
-      // Mesmo nome e mesmo tamanho: já é este arquivo (ex.: estado apagado).
-      const target = current && current.size === file.size ? wanted : await freeName(dir, safe(file.name));
-      if (target !== wanted || !current) {
-        const r = await fetch(`${base}/api/copia-local/arquivos/${encodeURIComponent(file.id)}`, { headers });
-        if (!r.ok) {
-          log(`Falhou (${r.status}): ${admission.folder}/${file.name}`);
-          continue;
-        }
-        const data = Buffer.from(await r.arrayBuffer());
-        const part = `${target}.baixando`;
-        await writeFile(part, data, { mode: 0o600 });
-        await rename(part, target);
-        downloaded++;
-        log(`Baixado: ${path.relative(pasta, target)}`);
+      // Nunca sobrescreve: se já existe um arquivo com esse nome, salva como "nome (2)".
+      const target = await freeName(dir, safe(file.name));
+      const r = await fetch(`${base}/api/copia-local/arquivos/${encodeURIComponent(file.id)}`, { headers });
+      if (!r.ok) {
+        log(`Falhou (${r.status}): ${admission.folder}/${file.name}`);
+        continue;
       }
+      const data = Buffer.from(await r.arrayBuffer());
+      const part = `${target}.baixando`;
+      await writeFile(part, data, { mode: 0o600 });
+      await rename(part, target);
+      downloaded++;
+      log(`Baixado: ${path.relative(pasta, target)}`);
       state.files[file.id] = path.relative(pasta, target);
     }
   }
 
-  await mkdir(APP_DIR, { recursive: true });
-  await writeFile(STATE, JSON.stringify(state, null, 2), { mode: 0o600 });
-  log(`OK — ${admissions.length} onboarding(s) concluído(s), ${downloaded} arquivo(s) novo(s).`);
+  if (downloaded > 0 || saved.url !== base) {
+    await mkdir(APP_DIR, { recursive: true });
+    await writeFile(STATE, JSON.stringify(state, null, 2), { mode: 0o600 });
+  }
+  return { admissions: admissions.length, downloaded };
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const INTERVALO = 10_000; // de 10 em 10 segundos: o onboarding concluído aparece quase na hora
+const INTERVALO_ERRO = 60_000;
+
+async function main() {
+  if (!process.argv.includes("--continuo")) {
+    const r = await syncOnce();
+    log(`OK — ${r.admissions} onboarding(s) concluído(s), ${r.downloaded} arquivo(s) novo(s).`);
+    return;
+  }
+  // Modo contínuo (o que o Mac roda): fica ligado e confere a cada 10 segundos.
+  // Só escreve no registro quando baixa algo ou quando o erro muda.
+  log("Cópia contínua iniciada.");
+  let lastError = null;
+  for (;;) {
+    try {
+      const r = await syncOnce();
+      if (lastError) log("Conexão normalizada.");
+      if (r.downloaded > 0) log(`OK — ${r.downloaded} arquivo(s) novo(s).`);
+      lastError = null;
+      await sleep(INTERVALO);
+    } catch (err) {
+      if (err.message !== lastError) log(`ERRO: ${err.message}`);
+      lastError = err.message;
+      await sleep(INTERVALO_ERRO);
+    }
+  }
 }
 
 main().catch((err) => {
