@@ -66,7 +66,9 @@ async function main() {
   if (!res.ok) throw new Error(`RHGroup respondeu ${res.status} ao listar os onboardings.`);
   const { admissions } = await res.json();
 
-  const state = await readJson(STATE, { files: {} });
+  const saved = await readJson(STATE, { files: {} });
+  // Outro sistema (ex.: trocou do teste para o oficial): os ids não valem mais.
+  const state = saved.url === base ? saved : { url: base, files: {} };
   let downloaded = 0;
 
   for (const admission of admissions) {

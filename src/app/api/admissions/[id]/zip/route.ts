@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireFrequenciaUser } from "@/lib/frequenciaAccess";
 import { readAttachment } from "@/lib/attachmentStorage";
 import { buildZip } from "@/lib/zip";
-import { admissionFileName, admissionFolderName } from "@/lib/localCopy";
+import { admissionFileName, admissionFolderName, employeeNames } from "@/lib/localCopy";
 
 /**
  * Baixa os documentos do onboarding num .zip: uma pasta com o nome da pessoa e
@@ -23,7 +23,8 @@ export async function GET(
   });
   if (!admission) return NextResponse.json({ error: "Onboarding não encontrado." }, { status: 404 });
 
-  const folder = admissionFolderName(admission);
+  const names = await employeeNames([admission.employeeId]);
+  const folder = admissionFolderName(admission, admission.employeeId ? names.get(admission.employeeId) : null);
   const entries: { name: string; data: Buffer }[] = [];
   for (const doc of admission.documents) {
     for (const [index, file] of doc.files.entries()) {
