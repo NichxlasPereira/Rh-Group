@@ -1,49 +1,50 @@
 # Cópia no computador (Mac)
 
-Baixa para uma pasta local, quase na hora (confere a cada 10 segundos), os documentos aprovados de cada
-onboarding concluído no RHGroup — uma pasta por pessoa ("Nome – AAAA-MM-DD").
-Os arquivos continuam guardados no RHGroup; esta é uma segunda cópia.
+Os documentos aprovados de cada onboarding concluído no RHGroup aparecem,
+quase na hora (o programa confere a cada 10 segundos), numa pasta local de
+cada Mac cadastrado — uma pasta por colaborador ("Nome – AAAA-MM-DD", com o dia
+em que a pessoa fez o onboarding). Os arquivos continuam guardados no RHGroup.
 
-## Instalar
+Vários Macs podem receber ao mesmo tempo; cada um tem a sua chave.
 
-1. No RHGroup, aba **Onboarding › Cópia no computador**, clique em **Gerar chave**
-   (só administradores) e depois em **Baixar arquivo da chave** (vai para
-   Downloads). A chave aparece uma vez só.
-2. No Terminal do Mac, rode:
+## Instalar num Mac
+
+1. No RHGroup (administrador), **Onboarding › Cópia no computador ›
+   Adicionar computador**, dê um nome e clique em **Baixar arquivo da chave**
+   (vai para Downloads). A chave aparece uma vez só.
+2. No Terminal desse Mac, cole o comando que aparece na mesma tela:
 
    ```bash
-   bash integrations/copia-local/instalar.sh
+   curl -fsSL https://system-onboarding-cffgroup.up.railway.app/api/copia-local/instalar.sh | bash
    ```
 
-   Ele lê a chave do arquivo em Downloads e apaga o arquivo (sem arquivo, usa
-   a chave copiada ou abre uma janela do Mac para colar) e faz a primeira
-   cópia na hora. A pasta é `~/Onboarding RH`; para outro endereço ou pasta:
-   `RHGROUP_URL=… PASTA=… bash integrations/copia-local/instalar.sh`.
+   O instalador lê a chave do arquivo em Downloads e apaga o arquivo (sem
+   arquivo, usa a chave copiada ou abre uma janela do Mac para colar) e faz a
+   primeira cópia na hora. Não precisa instalar nada antes: só usa o que já vem
+   no macOS (bash e curl). Com o projeto, dá para rodar também
+   `bash integrations/copia-local/instalar.sh`.
 
-Precisa do Node.js instalado. A chave fica só em
-`~/Library/Application Support/RHGroup/copia-local.json`, legível só pelo seu
-usuário.
+A pasta é `~/Onboarding RH`; para outra, rode com `PASTA=…` antes do `bash`.
+A chave fica em `~/Library/Application Support/RHGroup/cabecalho`, legível só
+pelo seu usuário.
 
 ## Como funciona
 
-- Fica ligado desde o login e confere a cada 10 segundos (LaunchAgent `com.cffgroup.rhgroup.copia-local`); com o Mac dormindo, retoma ao acordar.
-- Só baixa o que ainda não tem; nunca apaga nada da pasta local. Se um arquivo
-  for apagado da pasta, volta na próxima cópia.
-- O RHGroup mostra o último contato do computador na mesma tela da chave.
+- Fica ligado desde o login e confere a cada 10 segundos (LaunchAgent
+  `com.cffgroup.rhgroup.copia-local`); com o Mac dormindo ou desligado, baixa o
+  que faltou assim que voltar.
+- Só baixa o que ainda não tem; nunca apaga nem sobrescreve nada da pasta. Se
+  um arquivo for apagado da pasta, volta na próxima conferência.
+- O RHGroup mostra o último contato de cada computador na tela da chave.
 - Registro: `~/Library/Logs/RHGroup-copia-local.log`.
 
-Pastas dentro de Documentos, Mesa ou Downloads podem pedir permissão do macOS
-para o Node; a pasta padrão fica fora delas para evitar isso.
+## Trocar a chave, remover um computador
 
-## Trocar a chave ou a pasta
+- **Nova chave** (na lista do RHGroup): a antiga daquele Mac para na hora; rode
+  o instalador de novo nele.
+- **Remover**: aquele Mac para de receber na hora; os outros continuam.
+- Desinstalar do Mac (os arquivos já baixados ficam):
 
-Gere uma nova chave no RHGroup e rode o instalador de novo.
-
-## Desinstalar
-
-```bash
-bash integrations/copia-local/instalar.sh --remover
-```
-
-Os arquivos já baixados continuam na pasta. Para cortar o acesso pelo lado do
-sistema, use **Desativar** na tela da chave.
+  ```bash
+  curl -fsSL https://system-onboarding-cffgroup.up.railway.app/api/copia-local/instalar.sh | bash -s -- --remover
+  ```
