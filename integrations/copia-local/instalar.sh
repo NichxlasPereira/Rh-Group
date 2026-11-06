@@ -35,12 +35,21 @@ echo "Cópia no computador — RHGroup"
 echo "Sistema: $URL"
 echo "Pasta:   $PASTA"
 echo
-echo "Cole a chave gerada no RHGroup (Onboarding › Cópia no computador) e aperte Enter."
-read -r -s -p "Chave (não aparece na tela ao colar): " TOKEN
-echo
-TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
-if [[ ! "$TOKEN" =~ ^[A-Za-z0-9_-]{20,64}$ ]]; then
-  echo "Isso não parece a chave. Copie de novo em RHGroup › Onboarding › Cópia no computador › Copiar chave e rode o instalador outra vez." >&2
+is_key() { [[ "$1" =~ ^[A-Za-z0-9_-]{20,64}$ ]]; }
+
+# A chave vem da área de transferência ("Copiar chave" no RHGroup) — nada de
+# colar no Terminal. Sem chave copiada, abre uma janela do Mac para colar.
+TOKEN="$(pbpaste 2>/dev/null | tr -d '[:space:]' || true)"
+if is_key "$TOKEN"; then
+  echo "Usando a chave copiada do RHGroup."
+  printf '' | pbcopy # limpa a área de transferência
+else
+  TOKEN="$(osascript \
+    -e 'display dialog "Cole aqui a chave do RHGroup (Onboarding › Cópia no computador › Copiar chave):" default answer "" with hidden answer with title "Cópia no computador — RHGroup" buttons {"Cancelar", "Instalar"} default button "Instalar"' \
+    -e 'text returned of result' 2>/dev/null | tr -d '[:space:]' || true)"
+fi
+if ! is_key "$TOKEN"; then
+  echo "Nenhuma chave válida. No RHGroup, clique em Onboarding › Cópia no computador › Gerar nova chave › Copiar chave e rode o instalador outra vez." >&2
   exit 1
 fi
 
@@ -76,7 +85,11 @@ cat > "$PLIST" <<PLIST
 PLIST
 
 echo "Primeira cópia…"
-if "$NODE" "$APP_DIR/copia-local.mjs" | tee -a "$LOG"; then :; fi
+if ! "$NODE" "$APP_DIR/copia-local.mjs" | tee -a "$LOG"; then
+  echo
+  echo "Não instalado: a primeira cópia falhou (mensagem acima). Corrija e rode o instalador outra vez." >&2
+  exit 1
+fi
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
