@@ -14,8 +14,9 @@ Os arquivos continuam guardados no RHGroup; esta é uma segunda cópia.
    bash integrations/copia-local/instalar.sh
    ```
 
-   Ele pergunta o endereço do RHGroup, a pasta (padrão: `~/Onboarding RH`) e a
-   chave (não aparece na tela ao colar). Faz a primeira cópia na hora.
+   Ele pergunta só a chave (não aparece na tela ao colar) e faz a primeira
+   cópia na hora. A pasta é `~/Onboarding RH`; para outro endereço ou pasta:
+   `RHGROUP_URL=… PASTA=… bash integrations/copia-local/instalar.sh`.
 
 Precisa do Node.js instalado. A chave fica só em
 `~/Library/Application Support/RHGroup/copia-local.json`, legível só pelo seu

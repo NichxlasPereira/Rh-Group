@@ -26,17 +26,21 @@ if [[ -z "$NODE" ]]; then
   exit 1
 fi
 
-echo "Cópia no computador — RHGroup"
-echo
-read -r -p "Endereço do RHGroup [$URL_PADRAO]: " URL
-URL="${URL:-$URL_PADRAO}"
-read -r -p "Pasta onde salvar [$PASTA_PADRAO]: " PASTA
+# Uma pergunta só (a chave). Outro endereço ou pasta: RHGROUP_URL=… PASTA=… bash instalar.sh
+URL="${RHGROUP_URL:-$URL_PADRAO}"
 PASTA="${PASTA:-$PASTA_PADRAO}"
 PASTA="${PASTA/#\~/$HOME}"
-read -r -s -p "Chave da cópia (RHGroup › Onboarding › Cópia no computador; não aparece ao colar): " TOKEN
+
+echo "Cópia no computador — RHGroup"
+echo "Sistema: $URL"
+echo "Pasta:   $PASTA"
 echo
-if [[ -z "$TOKEN" ]]; then
-  echo "Nenhuma chave informada." >&2
+echo "Cole a chave gerada no RHGroup (Onboarding › Cópia no computador) e aperte Enter."
+read -r -s -p "Chave (não aparece na tela ao colar): " TOKEN
+echo
+TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
+if [[ ! "$TOKEN" =~ ^[A-Za-z0-9_-]{20,64}$ ]]; then
+  echo "Isso não parece a chave. Copie de novo em RHGroup › Onboarding › Cópia no computador › Copiar chave e rode o instalador outra vez." >&2
   exit 1
 fi
 
