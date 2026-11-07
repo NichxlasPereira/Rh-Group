@@ -24,7 +24,7 @@ interface AttendanceReportsProps {
   onOpenOccurrence?: (o: Occurrence) => void;
 }
 
-type Drill = { type: OccurrenceType | null; sector: string | null };
+type Drill = { type: OccurrenceType | null; sector: string | null; weekday?: number | null };
 
 export function AttendanceReports({ occurrences, month, months, onOpenOccurrence }: AttendanceReportsProps) {
   // Detalhe aberto ao clicar num gráfico (tipo e/ou empresa).
@@ -145,9 +145,16 @@ export function AttendanceReports({ occurrences, month, months, onOpenOccurrence
             onSelect={(label) => setDrill({ type: OCCURRENCE_TYPES.find((t) => OCCURRENCE_LABEL[t] === label) ?? null, sector: null })}
           />
         </ChartCard>
-        <ChartCard title="Faltas por dia da semana">
+        <ChartCard title="Faltas por dia da semana" hint="Clique num dia para ver quem faltou.">
           {byWeekday.some((d) => d.value > 0) ? (
-            <DonutChart data={byWeekday} centerCaption="faltas" />
+            <DonutChart
+              data={byWeekday}
+              centerCaption="faltas"
+              onSelect={(label) => {
+                const day = WEEKDAY_LABELS.indexOf(label);
+                if (day >= 0) setDrill({ type: "falta", sector: null, weekday: day });
+              }}
+            />
           ) : (
             <p className="text-sm text-muted">Só há atestados e folgas neste mês.</p>
           )}
@@ -190,6 +197,7 @@ export function AttendanceReports({ occurrences, month, months, onOpenOccurrence
         month={month}
         type={drill?.type ?? null}
         sector={drill?.sector ?? null}
+        weekday={drill?.weekday ?? null}
         onChange={setDrill}
         onOpenOccurrence={
           onOpenOccurrence

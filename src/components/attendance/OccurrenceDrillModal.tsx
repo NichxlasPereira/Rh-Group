@@ -5,6 +5,7 @@ import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { IconPaperclip } from "../icons";
 import { OccurrenceBadge } from "./OccurrenceBadge";
+import { WEEKDAY_LABELS } from "@/lib/reports";
 import {
   OCCURRENCE_LABEL,
   OCCURRENCE_TYPES,
@@ -18,7 +19,11 @@ import {
 } from "@/lib/attendance";
 
 export const NO_SECTOR = "Sem setor";
+/** "às terças", "aos sábados". */
+const onWeekday = (day: number) => `${day === 0 || day === 6 ? "aos" : "às"} ${WEEKDAY_LABELS[day].toLowerCase()}s`;
 const sectorOf = (o: Occurrence) => o.employeeDepartment?.trim() || NO_SECTOR;
+/** Falta caiu neste dia da semana (sem dia escolhido, vale tudo). */
+const onDay = (o: Occurrence, day: number | null) => day === null || new Date(o.date).getUTCDay() === day;
 
 interface Props {
   open: boolean;
@@ -27,7 +32,9 @@ interface Props {
   month: string;
   type: OccurrenceType | null;
   sector: string | null;
-  onChange: (filters: { type: OccurrenceType | null; sector: string | null }) => void;
+  /** Só faltas que caíram neste dia da semana (0 = domingo), vindo do gráfico de dias. */
+  weekday?: number | null;
+  onChange: (filters: { type: OccurrenceType | null; sector: string | null; weekday?: number | null }) => void;
   /** Abre a ocorrência para ver ou editar (fecha este detalhe). */
   onOpenOccurrence?: (o: Occurrence) => void;
 }
@@ -36,21 +43,27 @@ interface Props {
  * Detalhe dos gráficos de Relatórios: quem teve falta, atestado, folga ou
  * comprovante de horas no mês, separado por empresa (setor).
  */
-export function OccurrenceDrillModal({ open, onClose, occurrences, month, type, sector, onChange, onOpenOccurrence }: Props) {
-  const inMonth = useMemo(() => occurrences.filter((o) => overlapsMonth(o, month)), [occurrences, month]);
+export function OccurrenceDrillModal({ open, onClose, occurrences, month, type, sector, weekday = null, onChange, onOpenOccurrence }: Props) {
+  // O dia da semana vale só para faltas (dia único); trocar de tipo ou empresa mantém o dia só se continuar em Falta.
+  const day = type === "falta" ? weekday : null;
+  const monthList = useMemo(() => occurrences.filter((o) => overlapsMonth(o, month)), [occurrences, month]);
+  const inMonth = useMemo(() => monthList.filter((o) => onDay(o, day)), [monthList, day]);
 
   const sectors = useMemo(
     () =>
-      [...new Set(inMonth.map(sectorOf))].sort((a, b) =>
+      [...new Set(monthList.map(sectorOf))].sort((a, b) =>
         a === NO_SECTOR ? 1 : b === NO_SECTOR ? -1 : a.localeCompare(b, "pt")
       ),
-    [inMonth]
+    [monthList]
   );
 
+  // Contagem de cada tipo na empresa escolhida; o dia da semana só vale para Falta.
   const typeCounts = useMemo(() => {
-    const base = sector ? inMonth.filter((o) => sectorOf(o) === sector) : inMonth;
-    return Object.fromEntries(OCCURRENCE_TYPES.map((t) => [t, base.filter((o) => o.type === t).length])) as Record<OccurrenceType, number>;
-  }, [inMonth, sector]);
+    const base = sector ? monthList.filter((o) => sectorOf(o) === sector) : monthList;
+    return Object.fromEntries(
+      OCCURRENCE_TYPES.map((t) => [t, base.filter((o) => o.type === t && (t !== "falta" || onDay(o, day))).length])
+    ) as Record<OccurrenceType, number>;
+  }, [monthList, sector, day]);
 
   // Empresa → colaborador → ocorrências (por data).
   const groups = useMemo(() => {
@@ -74,7 +87,13 @@ export function OccurrenceDrillModal({ open, onClose, occurrences, month, type, 
 
   const total = groups.reduce((n, g) => n + g.count, 0);
   const people = groups.reduce((n, g) => n + g.people.length, 0);
-  const title = [type ? OCCURRENCE_LABEL[type] : "Ocorrências", sector].filter(Boolean).join(" · ");
+  const title = [
+    type ? (day !== null ? `${OCCURRENCE_LABEL[type]}s` : OCCURRENCE_LABEL[type]) : "Ocorrências",
+    day !== null ? onWeekday(day) : null,
+    sector,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const chip = (active: boolean) =>
     `rounded-full px-3 py-1.5 text-[12.5px] transition ${
@@ -101,22 +120,38 @@ export function OccurrenceDrillModal({ open, onClose, occurrences, month, type, 
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tipo">
-            <button type="button" className={chip(!type)} aria-pressed={!type} onClick={() => onChange({ type: null, sector })}>
+            <button type="button" className={chip(!type)} aria-pressed={!type} onClick={() => onChange({ type: null, sector, weekday: null })}>
               Todos
             </button>
             {OCCURRENCE_TYPES.map((t) => (
-              <button key={t} type="button" className={chip(type === t)} aria-pressed={type === t} onClick={() => onChange({ type: t, sector })}>
+              <button key={t} type="button" className={chip(type === t)} aria-pressed={type === t} onClick={() => onChange({ type: t, sector, weekday: t === "falta" ? day : null })}>
                 {OCCURRENCE_LABEL[t]} · <span className="tabular-nums">{typeCounts[t]}</span>
               </button>
             ))}
           </div>
+          {day !== null && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Dia da semana">
+              {WEEKDAY_LABELS.map((label, i) => (
+                <button key={label} type="button" className={chip(day === i)} aria-pressed={day === i} onClick={() => onChange({ type, sector, weekday: i })}>
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => onChange({ type, sector, weekday: null })}
+                className="ml-1 text-xs font-semibold text-muted underline-offset-2 hover:text-ink hover:underline"
+              >
+                Todos os dias
+              </button>
+            </div>
+          )}
           {sectors.length > 1 && (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Empresa">
-              <button type="button" className={chip(!sector)} aria-pressed={!sector} onClick={() => onChange({ type, sector: null })}>
+              <button type="button" className={chip(!sector)} aria-pressed={!sector} onClick={() => onChange({ type, sector: null, weekday: day })}>
                 Todas as empresas
               </button>
               {sectors.map((s) => (
-                <button key={s} type="button" className={chip(sector === s)} aria-pressed={sector === s} onClick={() => onChange({ type, sector: s })}>
+                <button key={s} type="button" className={chip(sector === s)} aria-pressed={sector === s} onClick={() => onChange({ type, sector: s, weekday: day })}>
                   {s}
                 </button>
               ))}
@@ -127,6 +162,7 @@ export function OccurrenceDrillModal({ open, onClose, occurrences, month, type, 
         {groups.length === 0 ? (
           <p className="rounded-[12px] border border-border bg-surface px-4 py-6 text-center text-muted">
             Nenhuma ocorrência {type ? `de ${OCCURRENCE_LABEL[type].toLowerCase()} ` : ""}
+            {day !== null ? `${onWeekday(day)} ` : ""}
             {sector ? `em ${sector} ` : ""}neste mês.
           </p>
         ) : (
