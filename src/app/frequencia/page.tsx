@@ -762,7 +762,16 @@ export default function FrequenciaPage() {
                   onOpen={(e) => setProfileId(e.id)}
                 />
               ) : (
-                <AttendanceReports occurrences={reportOccurrences} month={reportMonth} months={months} />
+                <AttendanceReports
+                  occurrences={reportOccurrences}
+                  month={reportMonth}
+                  months={months}
+                  onOpenOccurrence={(o) => {
+                    setEditingOccurrence(o);
+                    setOccurrencePreselect(null);
+                    setOccurrenceModalOpen(true);
+                  }}
+                />
               )}
             </div>
           </div>

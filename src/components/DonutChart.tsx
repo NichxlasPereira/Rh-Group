@@ -23,6 +23,8 @@ export interface DonutDatum {
 interface DonutChartProps {
   data: DonutDatum[];
   centerCaption: string;
+  /** Com isto, cada fatia e cada linha da legenda viram clicáveis (abrem o detalhe). */
+  onSelect?: (label: string) => void;
 }
 
 interface Slice extends DonutDatum {
@@ -40,7 +42,7 @@ function foldToSlots(data: DonutDatum[]): DonutDatum[] {
   return [...kept, { label: "Outros", value: restTotal }];
 }
 
-export function DonutChart({ data, centerCaption }: DonutChartProps) {
+export function DonutChart({ data, centerCaption, onSelect }: DonutChartProps) {
   const gradientId = useId();
   const [hovered, setHovered] = useState<number | null>(null);
 
@@ -107,7 +109,8 @@ export function DonutChart({ data, centerCaption }: DonutChartProps) {
                 strokeDasharray={`${length} ${circumference - length}`}
                 strokeDashoffset={-offset}
                 strokeLinecap="round"
-                style={{ transition: "stroke-width 0.15s ease" }}
+                style={{ transition: "stroke-width 0.15s ease", cursor: onSelect ? "pointer" : undefined }}
+                onClick={onSelect ? () => onSelect(slice.label) : undefined}
                 onMouseEnter={() => setHovered(i)}
                 onMouseLeave={() => setHovered(null)}
               >
@@ -125,26 +128,29 @@ export function DonutChart({ data, centerCaption }: DonutChartProps) {
       </div>
 
       <ul className="flex w-full flex-col gap-2">
-        {slices.map((slice, i) => (
-          <li
-            key={slice.label}
-            className={`flex items-center gap-2 rounded-[8px] px-2 py-1 text-sm transition ${
-              hovered === i ? "bg-surface-2" : ""
-            }`}
-            onMouseEnter={() => setHovered(i)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: slice.color }}
-              aria-hidden="true"
-            />
-            <span className="flex-1 truncate text-ink">{slice.label}</span>
-            <span className="font-mono tabular-nums text-muted">
-              {formatQuantity(slice.value)} · {slice.pct.toFixed(0)}%
-            </span>
-          </li>
-        ))}
+        {slices.map((slice, i) => {
+          const content = (
+            <>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: slice.color }} aria-hidden="true" />
+              <span className="flex-1 truncate text-left text-ink">{slice.label}</span>
+              <span className="font-mono tabular-nums text-muted">
+                {formatQuantity(slice.value)} · {slice.pct.toFixed(0)}%
+              </span>
+            </>
+          );
+          const rowClass = `flex w-full items-center gap-2 rounded-[8px] px-2 py-1 text-sm transition ${hovered === i ? "bg-surface-2" : ""}`;
+          return (
+            <li key={slice.label} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+              {onSelect && slice.value > 0 ? (
+                <button type="button" onClick={() => onSelect(slice.label)} className={`${rowClass} cursor-pointer`} title={`Ver ${slice.label}`}>
+                  {content}
+                </button>
+              ) : (
+                <div className={rowClass}>{content}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

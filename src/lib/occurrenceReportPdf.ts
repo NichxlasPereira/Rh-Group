@@ -8,13 +8,12 @@ import {
   OCCURRENCE_LABEL,
   Occurrence,
   addTotals,
-  daysInMonth,
   emptyTotals,
   formatDuration,
-  minutesBetween,
   monthKeyLabel,
+  occurrenceDetailLabel,
+  occurrencePeriodLabel,
   overlapsMonth,
-  pluralDias,
   summarizeByEmployee,
 } from "./attendance";
 
@@ -76,25 +75,6 @@ const CRITICAL = rgb(0.7, 0.15, 0.12);
 function hexColor(hex: string | null): RGB {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex ?? "");
   return m ? rgb(parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255) : INK;
-}
-
-const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
-
-function period(o: Occurrence): string {
-  const a = o.date.slice(0, 10);
-  const b = o.endDate.slice(0, 10);
-  return a === b ? ddmm(a) : `${ddmm(a)} – ${ddmm(b)}`;
-}
-
-function detail(o: Occurrence, month: string): string {
-  if (o.type === "falta") return o.justified ? "Justificada" : "Não justificada";
-  if (o.type === "horas") {
-    const mins = minutesBetween(o.startTime, o.endTime);
-    return o.startTime && o.endTime ? `${o.startTime}–${o.endTime} (${formatDuration(mins)})` : "Horário não informado";
-  }
-  const days = daysInMonth(o, month);
-  const base = `${pluralDias(days)} no mês`;
-  return o.type === "folga" && o.approvedBy ? `${base} · aprovada por ${o.approvedBy}` : base;
 }
 
 interface Col {
@@ -318,7 +298,7 @@ export async function occurrenceReportPdf(input: {
           { title: "Detalhe", width: WIDTH - 72 - 158 - 108 },
         ],
         s.occurrences.map((o) => ({
-          cells: [period(o), o.employeeName, OCCURRENCE_LABEL[o.type] ?? o.type, detail(o, month)],
+          cells: [occurrencePeriodLabel(o), o.employeeName, OCCURRENCE_LABEL[o.type] ?? o.type, occurrenceDetailLabel(o, month)],
           colors: [undefined, undefined, undefined, o.type === "falta" && !o.justified ? CRITICAL : MUTED],
         }))
       );

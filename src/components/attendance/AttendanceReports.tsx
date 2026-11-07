@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   OCCURRENCE_LABEL,
   OCCURRENCE_TYPES,
   Occurrence,
+  OccurrenceType,
   monthKeyLabel,
   monthTotals,
   overlapsMonth,
@@ -13,14 +14,21 @@ import {
 import { WEEKDAY_LABELS } from "@/lib/reports";
 import { DonutChart } from "../DonutChart";
 import { IconCalendarPlus, IconInfo } from "../icons";
+import { NO_SECTOR, OccurrenceDrillModal } from "./OccurrenceDrillModal";
 
 interface AttendanceReportsProps {
   occurrences: Occurrence[];
   month: string;
   months: string[];
+  /** Abre uma ocorrência (a partir do detalhe dos gráficos). */
+  onOpenOccurrence?: (o: Occurrence) => void;
 }
 
-export function AttendanceReports({ occurrences, month, months }: AttendanceReportsProps) {
+type Drill = { type: OccurrenceType | null; sector: string | null };
+
+export function AttendanceReports({ occurrences, month, months, onOpenOccurrence }: AttendanceReportsProps) {
+  // Detalhe aberto ao clicar num gráfico (tipo e/ou empresa).
+  const [drill, setDrill] = useState<Drill | null>(null);
   const inMonth = useMemo(() => occurrences.filter((o) => overlapsMonth(o, month)), [occurrences, month]);
 
   const ranking = useMemo(
@@ -54,7 +62,7 @@ export function AttendanceReports({ occurrences, month, months }: AttendanceRepo
   const byDepartment = useMemo(() => {
     const map = new Map<string, number>();
     for (const o of inMonth) {
-      const key = o.employeeDepartment ?? "Sem setor";
+      const key = o.employeeDepartment?.trim() || NO_SECTOR;
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return Array.from(map, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
@@ -130,8 +138,12 @@ export function AttendanceReports({ occurrences, month, months }: AttendanceRepo
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <ChartCard title="Ocorrências por tipo">
-          <DonutChart data={byType} centerCaption="ocorrências" />
+        <ChartCard title="Ocorrências por tipo" hint="Clique num tipo para ver quem, por empresa.">
+          <DonutChart
+            data={byType}
+            centerCaption="ocorrências"
+            onSelect={(label) => setDrill({ type: OCCURRENCE_TYPES.find((t) => OCCURRENCE_LABEL[t] === label) ?? null, sector: null })}
+          />
         </ChartCard>
         <ChartCard title="Faltas por dia da semana">
           {byWeekday.some((d) => d.value > 0) ? (
@@ -140,8 +152,12 @@ export function AttendanceReports({ occurrences, month, months }: AttendanceRepo
             <p className="text-sm text-muted">Só há atestados e folgas neste mês.</p>
           )}
         </ChartCard>
-        <ChartCard title="Ocorrências por setor">
-          <DonutChart data={byDepartment} centerCaption="ocorrências" />
+        <ChartCard title="Ocorrências por setor" hint="Clique numa empresa para ver os colaboradores.">
+          <DonutChart
+            data={byDepartment}
+            centerCaption="ocorrências"
+            onSelect={(label) => setDrill({ type: null, sector: label === "Outros" ? null : label })}
+          />
         </ChartCard>
         <ChartCard title="Últimos meses">
           <table className="w-full text-left text-sm">
@@ -166,6 +182,24 @@ export function AttendanceReports({ occurrences, month, months }: AttendanceRepo
           </table>
         </ChartCard>
       </div>
+
+      <OccurrenceDrillModal
+        open={drill !== null}
+        onClose={() => setDrill(null)}
+        occurrences={occurrences}
+        month={month}
+        type={drill?.type ?? null}
+        sector={drill?.sector ?? null}
+        onChange={setDrill}
+        onOpenOccurrence={
+          onOpenOccurrence
+            ? (o) => {
+                setDrill(null);
+                onOpenOccurrence(o);
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }
@@ -182,10 +216,11 @@ function Num({ value, highlight }: { value: number; highlight?: boolean }) {
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="rounded-[14px] border border-border bg-surface p-5">
-      <h3 className="mb-4 font-display text-lg font-semibold text-ink">{title}</h3>
+      <h3 className={`font-display text-lg font-semibold text-ink ${hint ? "" : "mb-4"}`}>{title}</h3>
+      {hint && <p className="mb-4 text-xs text-muted">{hint}</p>}
       {children}
     </div>
   );

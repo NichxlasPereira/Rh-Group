@@ -279,3 +279,27 @@ export function availableMonths(occurrences: Occurrence[]): string[] {
   }
   return Array.from(set).sort().reverse();
 }
+
+const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/** "05/10" ou "05/10 – 07/10" (período de atestado e folga). */
+export function occurrencePeriodLabel(o: Pick<Occurrence, "date" | "endDate">): string {
+  const a = o.date.slice(0, 10);
+  const b = o.endDate.slice(0, 10);
+  return a === b ? ddmm(a) : `${ddmm(a)} – ${ddmm(b)}`;
+}
+
+/** Resumo de uma ocorrência no mês: justificada ou não, dias no mês, aprovador, horário. */
+export function occurrenceDetailLabel(
+  o: Pick<Occurrence, "type" | "date" | "endDate" | "justified" | "approvedBy" | "startTime" | "endTime">,
+  month: string
+): string {
+  if (o.type === "falta") return o.justified ? "Justificada" : "Não justificada";
+  if (o.type === "horas") {
+    return o.startTime && o.endTime
+      ? `${o.startTime}–${o.endTime} (${formatDuration(minutesBetween(o.startTime, o.endTime))})`
+      : "Horário não informado";
+  }
+  const base = `${pluralDias(daysInMonth(o, month))} no mês`;
+  return o.type === "folga" && o.approvedBy ? `${base} · aprovada por ${o.approvedBy}` : base;
+}
