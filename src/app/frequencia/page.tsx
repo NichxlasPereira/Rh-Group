@@ -309,6 +309,12 @@ export default function FrequenciaPage() {
     return map;
   }, [companies, areas]);
 
+  // Prestadores: nomes das áreas de cada empresa (o cadastro guarda o nome).
+  const providerAreas = useMemo(
+    () => new Map([...areasBySector].map(([sector, list]) => [sector, list.map((a) => a.name)])),
+    [areasBySector]
+  );
+
   const areaNameById = useMemo(() => new Map(areas.map((a) => [a.id, a.name])), [areas]);
 
   const periodSummaries = useMemo(
@@ -714,6 +720,7 @@ export default function FrequenciaPage() {
         ) : tab === "prestadores" ? (
           <ProvidersPanel
             departments={departments}
+            areasBySector={providerAreas}
             companyNames={Object.fromEntries(companies.map((c) => [sectorName(c), c.name]))}
             isAdmin={me?.role === "admin"}
             createSignal={providerCreateSignal}

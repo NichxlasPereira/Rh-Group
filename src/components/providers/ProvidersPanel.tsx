@@ -46,6 +46,8 @@ function monthOptions(): string[] {
 
 interface Props {
   departments: string[];
+  /** Áreas de cada empresa (as mesmas do organograma). */
+  areasBySector: Map<string, string[]>;
   /** Razão social de cada empresa (sigla → nome), para a importação reconhecer a planilha. */
   companyNames?: Record<string, string>;
   isAdmin: boolean;
@@ -61,7 +63,7 @@ interface Props {
  * Prestadores de serviço (PJs com contrato temporário): lista no mesmo jeito da
  * de colaboradores, com a situação do contrato e a nota fiscal do mês.
  */
-export function ProvidersPanel({ departments, companyNames, isAdmin, createSignal, importSignal, onAttentionChange }: Props) {
+export function ProvidersPanel({ departments, areasBySector, companyNames, isAdmin, createSignal, importSignal, onAttentionChange }: Props) {
   const [providers, setProviders] = useState<Provider[] | null>(null);
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
@@ -175,7 +177,7 @@ export function ProvidersPanel({ departments, companyNames, isAdmin, createSigna
     {
       label: "Notas pendentes",
       value: scoped.filter((p) => invoicePending(p, month)).length,
-      detail: `${monthKeyLabel(month)} · cobrança mensal`,
+      detail: monthKeyLabel(month),
       icon: IconFile,
     },
   ];
@@ -297,7 +299,7 @@ export function ProvidersPanel({ departments, companyNames, isAdmin, createSigna
                       <td className="px-4 py-3">
                         <ContractBadge provider={p} />
                         <span className="mt-1 block text-xs text-muted">
-                          {p.contractStart ? formatDateBR(p.contractStart) : "?"} → {p.contractEnd ? formatDateBR(p.contractEnd) : "sem término"}
+                          {p.contractStart ? formatDateBR(p.contractStart) : "?"} → {p.contractEnd ? formatDateBR(p.contractEnd) : "sem validade"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -339,8 +341,8 @@ export function ProvidersPanel({ departments, companyNames, isAdmin, createSigna
               </tbody>
             </table>
             <p className="border-t border-border px-4 py-2.5 text-xs text-muted">
-              Contratos que vencem em até {EXPIRING_DAYS} dias aparecem em amarelo; vencidos, em vermelho. A nota do mês só é cobrada de quem
-              tem cobrança mensal e contrato naquele mês.
+              Contratos que vencem em até {EXPIRING_DAYS} dias aparecem em amarelo; vencidos, em vermelho. A nota do mês é cobrada de quem tem
+              contrato naquele mês.
             </p>
           </div>
         )}
@@ -351,6 +353,7 @@ export function ProvidersPanel({ departments, companyNames, isAdmin, createSigna
         onClose={() => setFormOpen(false)}
         provider={editing}
         departments={companies}
+        areasBySector={areasBySector}
         saving={saving}
         onSave={save}
       />

@@ -118,9 +118,9 @@ export function ProviderImportModal({ open, onClose, existingNames, departments,
     >
       <div className="flex flex-col gap-4 text-sm">
         <p className="text-muted">
-          Na planilha, selecione as linhas <strong className="text-ink">com a linha de títulos</strong> (NOME, DATA NASCIMENTO, RG, CPF, TELEFONE,
-          EMPRESA, FUNÇÃO, Data de Contratação, Término do contrato, DEPARTAMENTO, Dados bancários…), copie e cole aqui. Nada é salvo até você
-          clicar em Importar.
+          Na planilha, selecione as linhas <strong className="text-ink">com a linha de títulos</strong>, copie e cole aqui. Entram NOME, EMPRESA,
+          FUNÇÃO (cargo), DEPARTAMENTO (área), Data de Contratação e Término do contrato; as outras colunas ficam de fora. Nada é salvo até
+          você clicar em Importar.
         </p>
         <textarea
           value={raw}
@@ -134,7 +134,9 @@ export function ProviderImportModal({ open, onClose, existingNames, departments,
         />
 
         {parsed.unknownColumns.length > 0 && (
-          <p className="text-xs text-muted">Colunas ignoradas: {parsed.unknownColumns.join(", ")}</p>
+          <p className="text-xs text-muted">
+            Ficam de fora (o cadastro é o mesmo do colaborador, sem dados pessoais): {parsed.unknownColumns.join(", ")}
+          </p>
         )}
 
         {preview.length > 0 && (
@@ -170,7 +172,7 @@ export function ProviderImportModal({ open, onClose, existingNames, departments,
                     </td>
                     <td className="px-3 py-2 text-muted">{p.row.role || "—"}</td>
                     <td className="px-3 py-2 text-muted">
-                      {p.row.contractStart || "?"} → {p.row.contractEnd || "sem término"}
+                      {p.row.contractStart || "?"} → {p.row.contractEnd || "sem validade"}
                     </td>
                     <td className={`px-3 py-2 ${p.error ? (p.duplicate ? "text-muted" : "text-critical") : "text-ok"}`}>{p.error ?? "Pronto"}</td>
                   </tr>

@@ -9,13 +9,7 @@ import { IconPaperclip, IconTrash } from "../icons";
 import { monthKeyLabel } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { formatFileSize } from "@/lib/attendance";
-import {
-  BILLING_LABEL,
-  ProviderDetail,
-  contractStatus,
-  contractStatusLabel,
-  formatCents,
-} from "@/lib/providers";
+import { ProviderDetail, contractStatus, contractStatusLabel, formatCents } from "@/lib/providers";
 import { ContractBadge } from "./ContractBadge";
 
 export type SheetTab = "dados" | "documentos" | "notas";
@@ -102,41 +96,14 @@ export function ProviderSheet({ provider, tab, onTab, month, onClose, onEdit, on
 }
 
 function DataTab({ provider: p }: { provider: ProviderDetail }) {
-  const status = contractStatus(p);
   const rows: [string, string | null][] = [
-    ["Empresa", p.department],
-    ["Função", p.role],
-    ["Departamento", p.area],
-    ["Registro do colaborador", p.registration],
-    ["Data de contratação", p.contractStart ? formatDateBR(p.contractStart) : null],
-    ["Término do contrato", p.contractEnd ? `${formatDateBR(p.contractEnd)} · ${contractStatusLabel(status)}` : null],
-    ["Valor", p.amountCents !== null ? `${formatCents(p.amountCents)} · ${BILLING_LABEL[p.billing]}` : BILLING_LABEL[p.billing]],
-    ["CNPJ da PJ", p.taxId],
-    ["Dados bancários (chave Pix)", p.pixKey],
+    ["Setor (empresa)", p.department],
+    ["Cargo", p.role],
+    ["Área", p.area],
+    ["Início do contrato", p.contractStart ? formatDateBR(p.contractStart) : null],
+    ["Validade do contrato", p.contractEnd ? `${formatDateBR(p.contractEnd)} · ${contractStatusLabel(contractStatus(p))}` : null],
   ];
-  const personal: [string, string | null][] = [
-    ["Data de nascimento", p.birthDate ? formatDateBR(p.birthDate) : null],
-    ["RG", p.rg],
-    ["CPF", p.cpf],
-    ["Telefone", p.phone],
-    ["Contato de emergência", p.emergencyContact],
-    ["E-mail pessoal", p.personalEmail],
-    ["E-mail corporativo", p.corporateEmail],
-    ["Endereço", p.address],
-    ["CEP", p.cep],
-  ];
-  return (
-    <div className="flex flex-col gap-4">
-      <DataList title="Contrato" rows={rows} />
-      <DataList title="Dados pessoais" rows={personal} />
-      {p.notes && (
-        <div>
-          <p className="mb-1 font-semibold text-ink">Observações</p>
-          <p className="whitespace-pre-wrap text-muted">{p.notes}</p>
-        </div>
-      )}
-    </div>
-  );
+  return <DataList title="Cadastro" rows={rows} />;
 }
 
 function DataList({ title, rows }: { title: string; rows: [string, string | null][] }) {

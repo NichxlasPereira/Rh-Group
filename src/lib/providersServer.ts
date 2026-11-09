@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { Billing, Provider, ProviderDetail } from "./providers";
+import { Provider, ProviderDetail } from "./providers";
 
 const PROVIDER_INCLUDE = {
   invoices: { select: { month: true } },
@@ -15,12 +15,8 @@ function toProvider(p: Row): Provider {
     department: p.department,
     role: p.role,
     area: p.area,
-    registration: p.registration,
-    corporateEmail: p.corporateEmail,
     contractStart: p.contractStart?.toISOString() ?? null,
     contractEnd: p.contractEnd?.toISOString() ?? null,
-    amountCents: p.amountCents,
-    billing: p.billing as Billing,
     active: p.active,
     createdAt: p.createdAt.toISOString(),
     invoiceMonths: [...new Set(p.invoices.map((i) => i.month))].sort(),
@@ -61,17 +57,6 @@ export async function getProvider(id: string): Promise<ProviderDetail | null> {
   ]);
   return {
     ...toProvider(p),
-    birthDate: p.birthDate?.toISOString() ?? null,
-    rg: p.rg,
-    cpf: p.cpf,
-    taxId: p.taxId,
-    phone: p.phone,
-    emergencyContact: p.emergencyContact,
-    personalEmail: p.personalEmail,
-    address: p.address,
-    cep: p.cep,
-    pixKey: p.pixKey,
-    notes: p.notes,
     documents: documents.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })),
     invoices: invoices.map((i) => ({ ...i, issueDate: i.issueDate?.toISOString() ?? null, createdAt: i.createdAt.toISOString() })),
   };

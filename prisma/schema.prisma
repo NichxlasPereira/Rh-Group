@@ -359,35 +359,20 @@ model CompanyArea {
 }
 
 // Prestador de serviço PJ com contrato temporário (fora do quadro de
-// colaboradores): cadastro da pessoa, contrato com vencimento, documentos e
-// notas fiscais. Dados pessoais (RG, CPF, endereço...) só aparecem na ficha.
+// colaboradores): o mesmo cadastro do colaborador (nome, empresa, cargo, área)
+// mais o início e a validade do contrato, documentos e notas fiscais.
 model ServiceProvider {
-  id               String    @id @default(cuid())
-  name             String
-  birthDate        DateTime?
-  rg               String?
-  cpf              String?
-  taxId            String? // CNPJ da PJ
-  phone            String?
-  emergencyContact String?
-  personalEmail    String?
-  corporateEmail   String?
-  address          String?
-  cep              String?
-  registration     String? // registro do colaborador
-  department       String? // empresa do grupo (mesmo "Setor (empresa)" dos colaboradores)
-  role             String? // função
-  area             String? // departamento
-  contractStart    DateTime?
-  contractEnd      DateTime?
-  amountCents      Int? // valor combinado
-  billing          String    @default("mensal") // "mensal" | "por_entrega" | "unico"
-  pixKey           String? // dados bancários (chave Pix)
-  notes            String?
-  active           Boolean   @default(true)
-  createdBy        String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  name          String
+  department    String? // empresa do grupo (mesmo "Setor (empresa)" dos colaboradores)
+  role          String? // cargo
+  area          String? // área da empresa (nome)
+  contractStart DateTime?
+  contractEnd   DateTime? // validade do contrato
+  active        Boolean   @default(true)
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   documents ServiceProviderDocument[]
   invoices  ServiceProviderInvoice[]
