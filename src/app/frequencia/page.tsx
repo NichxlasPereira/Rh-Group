@@ -85,7 +85,7 @@ const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: strin
   colaboradores: { title: "Colaboradores", description: "Cadastro da equipe: setores, cargos e saldo de folgas de cada pessoa." },
   prestadores: {
     title: "Prestadores",
-    description: "PJs com contrato temporário: cadastro, vencimento do contrato, documentos e notas fiscais do mês.",
+    description: "PJs com contrato temporário: cadastro, vencimento do contrato e documentos.",
   },
   aniversariantes: {
     title: "Aniversariantes",

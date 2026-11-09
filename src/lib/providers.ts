@@ -16,19 +16,6 @@ export interface ProviderDocument {
   createdAt: string;
 }
 
-export interface ProviderInvoice {
-  id: string;
-  month: string;
-  number: string | null;
-  amountCents: number | null;
-  issueDate: string | null;
-  fileName: string | null;
-  size: number | null;
-  notes: string | null;
-  uploadedBy: string | null;
-  createdAt: string;
-}
-
 /** Prestador na lista — o mesmo cadastro do colaborador mais o contrato. */
 export interface Provider {
   id: string;
@@ -40,15 +27,12 @@ export interface Provider {
   contractEnd: string | null;
   active: boolean;
   createdAt: string;
-  /** Meses ("AAAA-MM") com nota fiscal registrada. */
-  invoiceMonths: string[];
   documentCount: number;
 }
 
-/** Ficha (ao abrir um prestador): documentos e notas fiscais. */
+/** Ficha (ao abrir um prestador): documentos. */
 export interface ProviderDetail extends Provider {
   documents: ProviderDocument[];
-  invoices: ProviderInvoice[];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -95,39 +79,10 @@ export function contractStatusLabel(s: ContractStatus): string {
   }
 }
 
-/** O contrato cobre algum dia do mês "AAAA-MM"? (sem data = sem limite daquele lado) */
-export function contractCoversMonth(p: Pick<Provider, "contractStart" | "contractEnd">, month: string): boolean {
-  const [y, m] = month.split("-").map(Number);
-  const first = Date.UTC(y, m - 1, 1);
-  const last = Date.UTC(y, m, 0);
-  const startOk = !p.contractStart || new Date(p.contractStart).getTime() <= last;
-  const endOk = !p.contractEnd || new Date(p.contractEnd).getTime() >= first;
-  return startOk && endOk;
-}
-
-/** Nota do mês pendente: ativo, contrato cobre o mês e nenhuma nota registrada. */
-export function invoicePending(p: Pick<Provider, "active" | "contractStart" | "contractEnd" | "invoiceMonths">, month: string): boolean {
-  return p.active && contractCoversMonth(p, month) && !p.invoiceMonths.includes(month);
-}
-
 /** Precisa de atenção: contrato vencendo ou vencido (e ainda ativo). */
 export function needsAttention(p: Pick<Provider, "active" | "contractStart" | "contractEnd">, now = new Date()): boolean {
   const k = contractStatus(p, now).kind;
   return k === "vencendo" || k === "vencido";
-}
-
-export function formatCents(cents: number | null | undefined): string {
-  if (cents === null || cents === undefined) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
-}
-
-/** "1.234,56" / "1234.56" / "R$ 1.234" → centavos; null se vazio; NaN se inválido. */
-export function parseMoneyToCents(value: string): number | null {
-  const t = value.replace(/[R$\s]/g, "");
-  if (!t) return null;
-  const normalized = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return NaN;
-  return Math.round(Number(normalized) * 100);
 }
 
 /** "17/04/1949", "1/12/2026" ou "2026-12-01" → "AAAA-MM-DD"; "" se vazio; null se inválido. */
@@ -191,11 +146,6 @@ export function validateProviderInput(body: unknown): { data: ProviderInput } | 
       active: b.active === undefined ? true : b.active === true,
     },
   };
-}
-
-/** Mês "AAAA-MM" válido. */
-export function isMonthKey(v: unknown): v is string {
-  return typeof v === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
 }
 
 // ---------------------------------------------------------------- importação

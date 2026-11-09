@@ -360,7 +360,7 @@ model CompanyArea {
 
 // Prestador de serviço PJ com contrato temporário (fora do quadro de
 // colaboradores): o mesmo cadastro do colaborador (nome, empresa, cargo, área)
-// mais o início e a validade do contrato, documentos e notas fiscais.
+// mais o início e a validade do contrato, e os documentos.
 model ServiceProvider {
   id            String    @id @default(cuid())
   name          String
@@ -375,7 +375,6 @@ model ServiceProvider {
   updatedAt     DateTime  @updatedAt
 
   documents ServiceProviderDocument[]
-  invoices  ServiceProviderInvoice[]
 
   @@index([contractEnd])
 }
@@ -395,25 +394,4 @@ model ServiceProviderDocument {
   createdAt  DateTime        @default(now())
 
   @@index([providerId])
-}
-
-// Nota fiscal recebida do prestador, por mês de competência.
-model ServiceProviderInvoice {
-  id          String          @id @default(cuid())
-  providerId  String
-  provider    ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  month       String // "AAAA-MM" (competência)
-  number      String?
-  amountCents Int?
-  issueDate   DateTime?
-  fileName    String?
-  mimeType    String?
-  size        Int?
-  storedName  String?         @unique
-  notes       String?
-  uploadedBy  String?
-  createdAt   DateTime        @default(now())
-
-  @@index([providerId, month])
-  @@index([month])
 }

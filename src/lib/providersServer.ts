@@ -2,7 +2,6 @@ import { prisma } from "./prisma";
 import { Provider, ProviderDetail } from "./providers";
 
 const PROVIDER_INCLUDE = {
-  invoices: { select: { month: true } },
   _count: { select: { documents: true } },
 } as const;
 
@@ -19,7 +18,6 @@ function toProvider(p: Row): Provider {
     contractEnd: p.contractEnd?.toISOString() ?? null,
     active: p.active,
     createdAt: p.createdAt.toISOString(),
-    invoiceMonths: [...new Set(p.invoices.map((i) => i.month))].sort(),
     documentCount: p._count.documents,
   };
 }
@@ -32,32 +30,13 @@ export async function listProviders(): Promise<Provider[]> {
 export async function getProvider(id: string): Promise<ProviderDetail | null> {
   const p = await prisma.serviceProvider.findUnique({ where: { id }, include: PROVIDER_INCLUDE });
   if (!p) return null;
-  const [documents, invoices] = await Promise.all([
-    prisma.serviceProviderDocument.findMany({
-      where: { providerId: id },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, fileName: true, mimeType: true, size: true, uploadedBy: true, createdAt: true },
-    }),
-    prisma.serviceProviderInvoice.findMany({
-      where: { providerId: id },
-      orderBy: [{ month: "desc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        month: true,
-        number: true,
-        amountCents: true,
-        issueDate: true,
-        fileName: true,
-        size: true,
-        notes: true,
-        uploadedBy: true,
-        createdAt: true,
-      },
-    }),
-  ]);
+  const documents = await prisma.serviceProviderDocument.findMany({
+    where: { providerId: id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true, fileName: true, mimeType: true, size: true, uploadedBy: true, createdAt: true },
+  });
   return {
     ...toProvider(p),
     documents: documents.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })),
-    invoices: invoices.map((i) => ({ ...i, issueDate: i.issueDate?.toISOString() ?? null, createdAt: i.createdAt.toISOString() })),
   };
 }

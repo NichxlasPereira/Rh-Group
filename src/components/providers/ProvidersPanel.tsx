@@ -2,17 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { currentMonthKey, monthKeyLabel } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import {
   EXPIRING_DAYS,
   Provider,
   ProviderDetail,
   contractStatus,
-  invoicePending,
   needsAttention,
 } from "@/lib/providers";
-import { IconBriefcase, IconCalendarX, IconEdit, IconFile, IconSearch, IconTrash, IconUsers } from "../icons";
+import { IconBriefcase, IconCalendarX, IconEdit, IconSearch, IconTrash, IconUsers } from "../icons";
 import { ActionButton, EmptyState, SkeletonRows } from "../attendance/formControls";
 import { ContractBadge } from "./ContractBadge";
 import { ProviderFormValues, ProviderModal } from "./ProviderModal";
@@ -34,15 +32,6 @@ const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.mess
 
 const selectClass =
   "h-10 w-full rounded-[10px] border border-border bg-surface-2 px-3 text-sm text-ink focus:border-accent focus:outline-none";
-
-/** Últimos 12 meses e os próximos 2, do mais novo para o mais antigo. */
-function monthOptions(): string[] {
-  const now = new Date();
-  return Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + 2 - i, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
-}
 
 interface Props {
   departments: string[];
@@ -67,7 +56,6 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
   const [providers, setProviders] = useState<Provider[] | null>(null);
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
-  const [month, setMonth] = useState(currentMonthKey);
   const [showInactive, setShowInactive] = useState(false);
 
   const [editing, setEditing] = useState<ProviderDetail | null>(null);
@@ -143,7 +131,7 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
   }
 
   async function remove(p: Provider) {
-    if (!window.confirm(`Excluir ${p.name}? Os documentos e as notas fiscais dele também são apagados.`)) return;
+    if (!window.confirm(`Excluir ${p.name}? Os documentos dele também são apagados.`)) return;
     try {
       await call(`/api/prestadores/${p.id}`, { method: "DELETE" });
       toast.success("Prestador excluído.");
@@ -174,12 +162,6 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
       icon: IconCalendarX,
     },
     { label: "Vencidos", value: scoped.filter((p) => contractStatus(p).kind === "vencido").length, detail: "ainda ativos no cadastro", icon: IconCalendarX },
-    {
-      label: "Notas pendentes",
-      value: scoped.filter((p) => invoicePending(p, month)).length,
-      detail: monthKeyLabel(month),
-      icon: IconFile,
-    },
   ];
 
   const companies = useMemo(
@@ -211,15 +193,6 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
       </section>
 
       <section aria-label="Filtros" className="flex flex-wrap items-end gap-3 rounded-[14px] border border-border bg-surface px-4 py-3">
-        <FilterField label="Mês das notas" className="w-full sm:w-44">
-          <select value={month} onChange={(e) => setMonth(e.target.value)} className={selectClass}>
-            {monthOptions().map((m) => (
-              <option key={m} value={m}>
-                {monthKeyLabel(m)}
-              </option>
-            ))}
-          </select>
-        </FilterField>
         <FilterField label="Buscar" className="w-full sm:w-64">
           <div className="relative">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -268,15 +241,12 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
                   <th className="px-4 py-3 font-medium">Prestador</th>
                   <th className="px-4 py-3 font-medium">Empresa</th>
                   <th className="px-4 py-3 font-medium">Contrato</th>
-                  <th className="px-4 py-3 font-medium">Nota de {monthKeyLabel(month).split(" de ")[0].toLowerCase()}</th>
                   <th className="px-4 py-3 font-medium">Documentos</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((p) => {
-                  const pending = invoicePending(p, month);
-                  const received = p.invoiceMonths.includes(month);
                   return (
                     <tr key={p.id} className={`border-b border-border last:border-0 hover:bg-surface-2/40 ${p.active ? "" : "opacity-60"}`}>
                       <td className="px-4 py-3">
@@ -303,28 +273,12 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {received ? (
-                          <button type="button" onClick={() => openSheet(p, "notas")} className="text-xs font-semibold text-ok hover:underline">
-                            Recebida
-                          </button>
-                        ) : pending ? (
-                          <button type="button" onClick={() => openSheet(p, "notas")} className="text-xs font-semibold text-warn hover:underline">
-                            Pendente · registrar
-                          </button>
-                        ) : (
-                          <span className="text-xs text-muted">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
                         <button type="button" onClick={() => openSheet(p, "documentos")} className="text-xs text-muted hover:text-ink hover:underline">
                           {p.documentCount ? `${p.documentCount} ${p.documentCount === 1 ? "arquivo" : "arquivos"}` : "Enviar"}
                         </button>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <ActionButton label="Registrar nota fiscal" onClick={() => openSheet(p, "notas")}>
-                            <IconFile className="h-4 w-4" />
-                          </ActionButton>
                           <ActionButton label="Editar" onClick={() => openEdit(p)}>
                             <IconEdit className="h-4 w-4" />
                           </ActionButton>
@@ -341,8 +295,7 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
               </tbody>
             </table>
             <p className="border-t border-border px-4 py-2.5 text-xs text-muted">
-              Contratos que vencem em até {EXPIRING_DAYS} dias aparecem em amarelo; vencidos, em vermelho. A nota do mês é cobrada de quem tem
-              contrato naquele mês.
+              Contratos que vencem em até {EXPIRING_DAYS} dias aparecem em amarelo; vencidos, em vermelho.
             </p>
           </div>
         )}
@@ -361,7 +314,6 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
         provider={sheet}
         tab={sheetTab}
         onTab={setSheetTab}
-        month={month}
         onClose={() => setSheet(null)}
         onEdit={() => {
           setEditing(sheet);
