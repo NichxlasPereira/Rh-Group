@@ -10,6 +10,7 @@ import {
   IconCalendarX,
   IconArrowDownTray,
   IconArrowUpTray,
+  IconBriefcase,
   IconCamera,
   IconChart,
   IconKey,
@@ -20,6 +21,8 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection } from "@/components/attendance/RhShell";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
+import { ProvidersPanel } from "@/components/providers/ProvidersPanel";
+import { Provider, needsAttention } from "@/lib/providers";
 import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/components/attendance/AttendanceFilters";
 import { OccurrencesTable } from "@/components/attendance/OccurrencesTable";
 import { EmployeesTable } from "@/components/attendance/EmployeesTable";
@@ -80,6 +83,10 @@ interface SessionUser {
 const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: string }> = {
   ocorrencias: { title: "Ocorrências", description: "Faltas, atestados e folgas da equipe, com anexos e saldo de folgas." },
   colaboradores: { title: "Colaboradores", description: "Cadastro da equipe: setores, cargos e saldo de folgas de cada pessoa." },
+  prestadores: {
+    title: "Prestadores",
+    description: "PJs com contrato temporário: cadastro, vencimento do contrato, documentos e notas fiscais do mês.",
+  },
   aniversariantes: {
     title: "Aniversariantes",
     description: "Quem faz aniversário em cada mês: só o dia e o mês, sem ano nem idade.",
@@ -149,6 +156,17 @@ export default function FrequenciaPage() {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
   const [admissionSearch, setAdmissionSearch] = useState("");
   const [createSignal, setCreateSignal] = useState(0);
+  // Prestadores: botões do cabeçalho e o número da aba (contratos vencendo ou vencidos).
+  const [providerCreateSignal, setProviderCreateSignal] = useState(0);
+  const [providerImportSignal, setProviderImportSignal] = useState(0);
+  const [providersAttention, setProvidersAttention] = useState(0);
+  // O número da aba aparece antes de abrir Prestadores.
+  useEffect(() => {
+    fetch("/api/prestadores")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: Provider[]) => setProvidersAttention(list.filter((p) => needsAttention(p)).length))
+      .catch(() => undefined);
+  }, []);
 
   const fetchEmployees = useCallback(async () => {
     const res = await fetch("/api/employees");
@@ -232,13 +250,14 @@ export default function FrequenciaPage() {
     const list: RhSection<AttendanceTabKey>[] = [
       { key: "ocorrencias", label: "Ocorrências", icon: IconCalendarX },
       { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
+      { key: "prestadores", label: "Prestadores", icon: IconBriefcase, badge: providersAttention },
       { key: "aniversariantes", label: "Aniversariantes", icon: IconCake, badge: birthdaysToday },
       { key: "admissoes", label: "Onboarding", icon: IconUserPlus, badge: onboardingSummary?.toReview },
       { key: "relatorios", label: "Relatórios", icon: IconChart },
     ];
     if (me?.role === "admin") list.push({ key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests });
     return list;
-  }, [me, onboardingSummary, birthdaysToday]);
+  }, [me, onboardingSummary, birthdaysToday, providersAttention]);
 
   const recentOccurrences = useMemo(
     () =>
@@ -585,7 +604,22 @@ export default function FrequenciaPage() {
           Novo onboarding
         </Button>
       </>
-    ) : tab === "acessos" ? null : (
+    ) : tab === "acessos" ? null : tab === "prestadores" ? (
+      <>
+        <Button
+          variant="ghost"
+          onClick={() => setProviderImportSignal((n) => n + 1)}
+          className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]"
+        >
+          <IconArrowUpTray className="h-4 w-4" />
+          Importar planilha
+        </Button>
+        <Button onClick={() => setProviderCreateSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconPlus className="h-4 w-4" />
+          Novo prestador
+        </Button>
+      </>
+    ) : (
       <>
         {tab === "colaboradores" && me?.role === "admin" && (
           <Button variant="ghost" onClick={() => setImportOpen(true)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
@@ -644,7 +678,7 @@ export default function FrequenciaPage() {
         hideHeader={showingProfile}
         busy={loading}
       >
-        {!showingProfile && tab !== "aniversariantes" && (
+        {!showingProfile && tab !== "aniversariantes" && tab !== "prestadores" && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -677,6 +711,15 @@ export default function FrequenciaPage() {
           />
         ) : tab === "acessos" && me?.role === "admin" ? (
           <AccessPanel currentUserId={me.id} onChanged={fetchMe} />
+        ) : tab === "prestadores" ? (
+          <ProvidersPanel
+            departments={departments}
+            companyNames={Object.fromEntries(companies.map((c) => [sectorName(c), c.name]))}
+            isAdmin={me?.role === "admin"}
+            createSignal={providerCreateSignal}
+            importSignal={providerImportSignal}
+            onAttentionChange={setProvidersAttention}
+          />
         ) : tab === "admissoes" ? (
           <AdmissionsPanel
             departments={departments}

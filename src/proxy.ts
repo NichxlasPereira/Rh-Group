@@ -43,7 +43,8 @@ function isFrequenciaPath(p: string): boolean {
     under("/api/attachments") ||
     under("/api/admissions") ||
     under("/api/admission-files") ||
-    under("/api/employee-documents")
+    under("/api/employee-documents") ||
+    under("/api/prestadores")
   );
 }
 

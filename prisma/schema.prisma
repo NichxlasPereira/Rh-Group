@@ -357,3 +357,78 @@ model CompanyArea {
 
   @@unique([companyId, name])
 }
+
+// Prestador de serviço PJ com contrato temporário (fora do quadro de
+// colaboradores): cadastro da pessoa, contrato com vencimento, documentos e
+// notas fiscais. Dados pessoais (RG, CPF, endereço...) só aparecem na ficha.
+model ServiceProvider {
+  id               String    @id @default(cuid())
+  name             String
+  birthDate        DateTime?
+  rg               String?
+  cpf              String?
+  taxId            String? // CNPJ da PJ
+  phone            String?
+  emergencyContact String?
+  personalEmail    String?
+  corporateEmail   String?
+  address          String?
+  cep              String?
+  registration     String? // registro do colaborador
+  department       String? // empresa do grupo (mesmo "Setor (empresa)" dos colaboradores)
+  role             String? // função
+  area             String? // departamento
+  contractStart    DateTime?
+  contractEnd      DateTime?
+  amountCents      Int? // valor combinado
+  billing          String    @default("mensal") // "mensal" | "por_entrega" | "unico"
+  pixKey           String? // dados bancários (chave Pix)
+  notes            String?
+  active           Boolean   @default(true)
+  createdBy        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  documents ServiceProviderDocument[]
+  invoices  ServiceProviderInvoice[]
+
+  @@index([contractEnd])
+}
+
+// Arquivo na ficha do prestador (contrato assinado, cartão CNPJ...). Fica em
+// disco, na pasta "prestadores" ao lado do banco.
+model ServiceProviderDocument {
+  id         String          @id @default(cuid())
+  providerId String
+  provider   ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  name       String
+  fileName   String
+  mimeType   String
+  size       Int
+  storedName String          @unique
+  uploadedBy String?
+  createdAt  DateTime        @default(now())
+
+  @@index([providerId])
+}
+
+// Nota fiscal recebida do prestador, por mês de competência.
+model ServiceProviderInvoice {
+  id          String          @id @default(cuid())
+  providerId  String
+  provider    ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  month       String // "AAAA-MM" (competência)
+  number      String?
+  amountCents Int?
+  issueDate   DateTime?
+  fileName    String?
+  mimeType    String?
+  size        Int?
+  storedName  String?         @unique
+  notes       String?
+  uploadedBy  String?
+  createdAt   DateTime        @default(now())
+
+  @@index([providerId, month])
+  @@index([month])
+}
