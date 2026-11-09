@@ -150,53 +150,90 @@ export function validateProviderInput(body: unknown): { data: ProviderInput } | 
 
 // ---------------------------------------------------------------- importação
 
-/**
- * Colunas da planilha que entram no cadastro — as mesmas do colaborador mais o
- * contrato. Dados pessoais (CPF, RG, endereço, Pix…) ficam de fora de propósito.
- */
-const IMPORT_COLUMNS: Record<string, keyof ProviderInput> = {
-  "nome": "name",
-  "empresa": "department",
-  "setor": "department",
-  "funcao": "role",
-  "cargo": "role",
-  "departamento": "area",
-  "area": "area",
-  "data de contratacao": "contractStart",
-  "contratacao": "contractStart",
-  "inicio do contrato": "contractStart",
-  "inicio": "contractStart",
-  "termino do contrato": "contractEnd",
-  "termino": "contractEnd",
-  "validade do contrato": "contractEnd",
-  "validade": "contractEnd",
+/** Colunas que a importação entende — as mesmas do colaborador mais o contrato. */
+export type ProviderImportColumn = "name" | "company" | "role" | "area" | "contractStart" | "contractEnd";
+
+export const PROVIDER_IMPORT_LABELS: Record<ProviderImportColumn, string> = {
+  name: "Nome",
+  company: "Empresa",
+  role: "Cargo",
+  area: "Área",
+  contractStart: "Início do contrato",
+  contractEnd: "Validade do contrato",
 };
 
-const fold = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+export type ProviderImportRow = { line: number } & Partial<Record<ProviderImportColumn, string>>;
+
+export type ProviderImportAction = "atualizar" | "criar" | "sem_mudancas" | "nao_encontrado" | "ignorar";
+
+/** Resultado de uma linha (só os nomes dos campos que mudam). */
+export interface ProviderImportResult {
+  line: number;
+  name: string;
+  provider: string | null;
+  action: ProviderImportAction;
+  changes: string[];
+  warnings: string[];
+}
+
+const headerKey = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const HEADER_ALIASES: [ProviderImportColumn, string[]][] = [
+  ["name", ["nome", "nomecompleto", "prestador", "colaborador"]],
+  ["company", ["empresa", "setor", "setorempresa"]],
+  ["role", ["funcao", "cargo"]],
+  ["area", ["departamento", "area"]],
+  ["contractStart", ["datadecontratacao", "datacontratacao", "contratacao", "inicio", "iniciodocontrato", "dataentrada", "datadeentrada"]],
+  ["contractEnd", ["terminodocontrato", "termino", "validade", "validadedocontrato", "fimdocontrato", "fim"]],
+];
+
+function columnFor(header: string): ProviderImportColumn | null {
+  const k = headerKey(header);
+  return HEADER_ALIASES.find(([, aliases]) => aliases.includes(k))?.[0] ?? null;
+}
 
 /**
- * Lê a planilha colada (Excel/Google: colunas separadas por TAB) ou CSV com ";".
- * Devolve um objeto por linha, com os campos que o formulário entende.
+ * Tabela (já separada em células) → linhas com os campos reconhecidos. As demais
+ * colunas (CPF, RG, endereço, Pix…) ficam de fora de propósito.
  */
-export function parseProviderSheet(raw: string): { rows: Record<string, string>[]; unknownColumns: string[] } {
-  const lines = raw.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return { rows: [], unknownColumns: [] };
-  const sep = lines[0].includes("\t") ? "\t" : ";";
-  const header = lines[0].split(sep).map((h) => fold(h));
-  const fields = header.map((h) => IMPORT_COLUMNS[h] ?? null);
-  const unknownColumns = lines[0]
-    .split(sep)
-    .map((h, i) => (fields[i] || !h.trim() ? null : h.trim()))
-    .filter((h): h is string => !!h);
-  const rows = lines.slice(1).map((line) => {
-    const cells = line.split(sep);
-    const row: Record<string, string> = {};
-    fields.forEach((f, i) => {
-      const v = (cells[i] ?? "").trim();
-      if (f && v && !row[f]) row[f] = v;
-    });
-    return row;
-  });
-  return { rows: rows.filter((r) => r.name), unknownColumns };
+export function providerRowsFromTable(table: string[][]): {
+  rows: ProviderImportRow[];
+  columns: ProviderImportColumn[];
+  ignored: string[];
+} {
+  const [header = [], ...body] = table;
+  const columns = header.map(columnFor);
+  const ignored = header.filter((h, i) => h.trim() && !columns[i]);
+  const rows = body
+    .map((cells, index) => {
+      const row: ProviderImportRow = { line: index + 2 };
+      columns.forEach((column, i) => {
+        const value = (cells[i] ?? "").trim();
+        if (column && value && !row[column]) row[column] = value;
+      });
+      return row;
+    })
+    .filter((r) => Object.keys(r).length > 1);
+  return { rows, columns: [...new Set(columns.filter((c): c is ProviderImportColumn => !!c))], ignored };
+}
+
+const companyKey = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * Empresa da planilha → empresa cadastrada, pela sigla ou pela razão social:
+ * "NOWPRO.AI" → NOWPRO AI; "NOWPRO TECHNOLOGY" ou "nowpro.tec" → NOWPRO
+ * (NOWPRO TECHNOLOGY AND SOLUTIONS LTDA). null quando não dá para ter certeza.
+ */
+export function matchCompanyName<T extends { sector: string; name: string }>(value: string, companies: T[]): T | null {
+  const v = companyKey(value);
+  if (!v) return null;
+  const exact = companies.filter((c) => companyKey(c.sector) === v || companyKey(c.name) === v);
+  if (exact.length === 1) return exact[0];
+  const wordsPrefix = (name: string) => {
+    const a = v.split(" ");
+    const b = name.split(" ");
+    return a.length <= b.length && a.every((w, i) => b[i].startsWith(w));
+  };
+  const close = companies.filter((c) => wordsPrefix(companyKey(c.name)) || v.startsWith(companyKey(c.sector) + " "));
+  return close.length === 1 ? close[0] : null;
 }

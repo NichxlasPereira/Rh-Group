@@ -37,8 +37,6 @@ interface Props {
   departments: string[];
   /** Áreas de cada empresa (as mesmas do organograma). */
   areasBySector: Map<string, string[]>;
-  /** Razão social de cada empresa (sigla → nome), para a importação reconhecer a planilha. */
-  companyNames?: Record<string, string>;
   isAdmin: boolean;
   /** Cada vez que muda, abre o cadastro de um novo prestador (botão do cabeçalho). */
   createSignal: number;
@@ -52,7 +50,7 @@ interface Props {
  * Prestadores de serviço (PJs com contrato temporário): lista no mesmo jeito da
  * de colaboradores, com a situação do contrato e a nota fiscal do mês.
  */
-export function ProvidersPanel({ departments, areasBySector, companyNames, isAdmin, createSignal, importSignal, onAttentionChange }: Props) {
+export function ProvidersPanel({ departments, areasBySector, isAdmin, createSignal, importSignal, onAttentionChange }: Props) {
   const [providers, setProviders] = useState<Provider[] | null>(null);
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
@@ -321,14 +319,7 @@ export function ProvidersPanel({ departments, areasBySector, companyNames, isAdm
         }}
         onChanged={refreshSheet}
       />
-      <ProviderImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        existingNames={(providers ?? []).map((p) => p.name)}
-        departments={companies}
-        companyNames={companyNames}
-        onImported={load}
-      />
+      <ProviderImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
     </div>
   );
 }

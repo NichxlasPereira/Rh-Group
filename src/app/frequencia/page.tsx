@@ -721,7 +721,6 @@ export default function FrequenciaPage() {
           <ProvidersPanel
             departments={departments}
             areasBySector={providerAreas}
-            companyNames={Object.fromEntries(companies.map((c) => [sectorName(c), c.name]))}
             isAdmin={me?.role === "admin"}
             createSignal={providerCreateSignal}
             importSignal={providerImportSignal}

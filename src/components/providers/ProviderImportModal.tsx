@@ -1,187 +1,244 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "../Modal";
 import { Button } from "../Button";
-import { inputClass } from "../attendance/formControls";
-import { parseProviderSheet, validateProviderInput } from "@/lib/providers";
+import { parseTable } from "@/lib/employeeRecord";
+import {
+  PROVIDER_IMPORT_LABELS,
+  ProviderImportAction,
+  ProviderImportResult,
+  providerRowsFromTable,
+} from "@/lib/providers";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  existingNames: string[];
-  /** Empresas do grupo (mesmo "Setor (empresa)" dos colaboradores). */
-  departments: string[];
-  /** Razão social de cada empresa (sigla → nome), para reconhecer o nome da planilha. */
-  companyNames?: Record<string, string>;
+  /** Recarrega a lista depois de importar. */
   onImported: () => Promise<void>;
 }
 
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-
-const key = (s: string) => fold(s).replace(/[^a-z0-9]+/g, " ").trim();
-
-/** Cada palavra do valor é começo da palavra correspondente do nome ("nowpro tec" ↔ "nowpro technology and solutions ltda"). */
-const wordsPrefix = (value: string, name: string) => {
-  const v = value.split(" ");
-  const n = name.split(" ");
-  return v.length <= n.length && v.every((w, i) => n[i].startsWith(w));
-};
-
-/**
- * Empresa da planilha → empresa cadastrada, pela sigla ou pela razão social:
- * "NOWPRO.AI" → NOWPRO AI; "NOWPRO TECHNOLOGY" ou "nowpro.tec" → NOWPRO
- * (NOWPRO TECHNOLOGY AND SOLUTIONS LTDA). Se ficar em dúvida, deixa para escolher.
- */
-function matchCompany(value: string | undefined, departments: string[], fullNames: Record<string, string>): string {
-  if (!value) return "";
-  const v = key(value);
-  if (!v) return "";
-  const exact = departments.filter((d) => key(d) === v || key(fullNames[d] ?? "") === v);
-  if (exact.length === 1) return exact[0];
-  const close = departments.filter((d) => {
-    const full = key(fullNames[d] ?? "");
-    return (full && wordsPrefix(v, full)) || v.startsWith(key(d) + " ");
-  });
-  return close.length === 1 ? close[0] : "";
+interface Preview {
+  summary: Record<ProviderImportAction, number>;
+  results: ProviderImportResult[];
+  applied: boolean;
 }
 
-/**
- * Importa prestadores colando a planilha (copiar no Excel/Google Planilhas e
- * colar aqui, com a linha de títulos). Mostra o que vai entrar antes de salvar.
- */
-export function ProviderImportModal({ open, onClose, existingNames, departments, companyNames = {}, onImported }: Props) {
-  const [raw, setRaw] = useState("");
-  const [busy, setBusy] = useState(false);
-  // Empresa escolhida à mão em cada linha (índice → empresa).
-  const [companyOverride, setCompanyOverride] = useState<Record<number, string>>({});
+const ACTION_LABEL: Record<ProviderImportAction, { label: string; tone: string }> = {
+  atualizar: { label: "Atualizar", tone: "bg-ok-soft text-ok" },
+  criar: { label: "Novo", tone: "bg-accent-soft text-accent-strong" },
+  sem_mudancas: { label: "Sem mudanças", tone: "bg-surface-2 text-muted" },
+  nao_encontrado: { label: "Não encontrado", tone: "bg-warn-soft text-warn" },
+  ignorar: { label: "Ignorada", tone: "bg-critical-soft text-critical" },
+};
 
-  const parsed = useMemo(() => parseProviderSheet(raw), [raw]);
-  const existing = useMemo(() => new Set(existingNames.map(fold)), [existingNames]);
-  const preview = useMemo(
-    () =>
-      parsed.rows.map((sheetRow, i) => {
-        const company = companyOverride[i] ?? matchCompany(sheetRow.department, departments, companyNames);
-        const row: Record<string, string> = { ...sheetRow, department: company };
-        const result = validateProviderInput(row);
-        const duplicate = existing.has(fold(row.name ?? ""));
-        return {
-          row,
-          sheetCompany: sheetRow.department ?? "",
-          error: "error" in result ? result.error : duplicate ? "Já cadastrado — fica de fora." : null,
-          duplicate,
-        };
-      }),
-    [parsed, existing, departments, companyNames, companyOverride]
-  );
-  const ready = preview.filter((p) => !p.error);
+/** Importa a planilha de prestadores (colada do Excel/Sheets ou CSV) — igual à de colaboradores. */
+export function ProviderImportModal({ open, onClose, onImported }: Props) {
+  const [text, setText] = useState("");
+  const [createMissing, setCreateMissing] = useState(false);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const parsed = text.trim() ? providerRowsFromTable(parseTable(text)) : null;
 
   function close() {
-    setRaw("");
-    setCompanyOverride({});
+    setText("");
+    setPreview(null);
+    setCreateMissing(false);
     onClose();
   }
 
-  async function importAll() {
-    setBusy(true);
-    let ok = 0;
-    const failed: string[] = [];
-    for (const p of ready) {
-      const res = await fetch("/api/prestadores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p.row) });
-      if (res.ok) ok++;
-      else failed.push(p.row.name);
+  async function loadFile(file: File | undefined) {
+    if (!file) return;
+    if (/\.xlsx?$/i.test(file.name)) {
+      toast.error("Arquivo do Excel: copie as células (com o cabeçalho) e cole no campo, ou salve como CSV.", {
+        duration: 8000,
+      });
+      return;
     }
-    setBusy(false);
-    await onImported();
-    if (failed.length) toast.error(`Não importados: ${failed.join(", ")}`);
-    if (ok) toast.success(`${ok} ${ok === 1 ? "prestador importado" : "prestadores importados"}.`);
-    if (!failed.length) close();
+    setText(await file.text());
+    setPreview(null);
   }
+
+  async function run(apply: boolean) {
+    if (!parsed) return;
+    setBusy(true);
+    const res = await fetch("/api/prestadores/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows: parsed.rows, apply, createMissing }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      toast.error(body.error || "Não foi possível importar.");
+      return;
+    }
+    setPreview(body);
+    if (apply) {
+      await onImported();
+      toast.success("Planilha importada.");
+    }
+  }
+
+  const toApply = preview ? preview.summary.atualizar + preview.summary.criar : 0;
 
   return (
     <Modal
       open={open}
       onClose={close}
-      title="Importar prestadores"
-      maxWidthClassName="max-w-3xl"
+      title="Importar planilha de prestadores"
+      maxWidthClassName="max-w-4xl"
       footer={
-        <>
-          <Button type="button" variant="ghost" onClick={close}>
-            Cancelar
+        preview?.applied ? (
+          <Button type="button" onClick={close}>
+            Concluir
           </Button>
-          <Button type="button" onClick={importAll} disabled={busy || ready.length === 0}>
-            {busy ? "Importando…" : ready.length ? `Importar ${ready.length}` : "Importar"}
-          </Button>
-        </>
+        ) : preview ? (
+          <>
+            <Button variant="ghost" type="button" onClick={() => setPreview(null)} disabled={busy}>
+              Voltar
+            </Button>
+            <Button type="button" onClick={() => run(true)} disabled={busy || toApply === 0}>
+              {busy ? "Importando..." : `Importar ${toApply} ${toApply === 1 ? "prestador" : "prestadores"}`}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" type="button" onClick={close}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => run(false)} disabled={busy || !parsed?.rows.length}>
+              {busy ? "Conferindo..." : "Conferir"}
+            </Button>
+          </>
+        )
       }
     >
-      <div className="flex flex-col gap-4 text-sm">
-        <p className="text-muted">
-          Na planilha, selecione as linhas <strong className="text-ink">com a linha de títulos</strong>, copie e cole aqui. Entram NOME, EMPRESA,
-          FUNÇÃO (cargo), DEPARTAMENTO (área), Data de Contratação e Término do contrato; as outras colunas ficam de fora. Nada é salvo até
-          você clicar em Importar.
-        </p>
-        <textarea
-          value={raw}
-          onChange={(e) => {
-            setRaw(e.target.value);
-            setCompanyOverride({});
-          }}
-          rows={6}
-          placeholder="Cole aqui a planilha…"
-          className={inputClass(false) + " font-mono text-xs"}
-        />
-
-        {parsed.unknownColumns.length > 0 && (
-          <p className="text-xs text-muted">
-            Ficam de fora (o cadastro é o mesmo do colaborador, sem dados pessoais): {parsed.unknownColumns.join(", ")}
+      {!preview ? (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted">
+            Na planilha, selecione as células <strong className="text-ink">com a linha do cabeçalho</strong>, copie e cole
+            abaixo. Também dá para enviar um arquivo CSV. O sistema encontra cada prestador pelo nome; células vazias não
+            apagam o que já está no cadastro.
           </p>
-        )}
+          <textarea
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setPreview(null);
+            }}
+            rows={8}
+            placeholder={"NOME\tEMPRESA\tFUNÇÃO\tDEPARTAMENTO\tData de Contratação\tTérmino do contrato\nMaria Silva\tNOWPRO AI\t..."}
+            className="w-full rounded-[10px] border border-border bg-surface-2 px-3 py-2 font-mono text-xs text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+            aria-label="Linhas da planilha"
+            spellCheck={false}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="cursor-pointer rounded-[8px] border border-border-strong bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink transition hover:bg-surface-2 focus-within:ring-2 focus-within:ring-accent">
+              Enviar arquivo CSV
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv,text/plain,.xlsx,.xls"
+                onChange={(e) => {
+                  loadFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+                className="sr-only"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={createMissing}
+                onChange={(e) => setCreateMissing(e.target.checked)}
+                className="h-4 w-4 accent-[var(--accent)]"
+              />
+              Cadastrar como novos quem não for encontrado
+            </label>
+          </div>
 
-        {preview.length > 0 && (
-          <div className="overflow-x-auto rounded-[12px] border border-border">
+          {parsed && (
+            <div className="flex flex-col gap-2 rounded-[12px] border border-border bg-surface-2/50 p-3 text-sm">
+              <span className="text-ink">
+                <strong>{parsed.rows.length}</strong> {parsed.rows.length === 1 ? "linha" : "linhas"} de prestadores. Colunas
+                reconhecidas:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {parsed.columns.map((c) => (
+                  <span key={c} className="rounded-full bg-ok-soft px-2.5 py-0.5 text-xs font-semibold text-ok">
+                    {PROVIDER_IMPORT_LABELS[c]}
+                  </span>
+                ))}
+                {parsed.ignored.map((h) => (
+                  <span
+                    key={h}
+                    title="Coluna que o cadastro de prestador não usa: fica de fora"
+                    className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted line-through"
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+              {!parsed.columns.includes("name") && (
+                <span className="text-xs text-critical">Falta a coluna NOME para saber de quem é cada linha.</span>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(ACTION_LABEL) as ProviderImportAction[])
+              .filter((a) => preview.summary[a] > 0)
+              .map((a) => (
+                <span key={a} className={`rounded-full px-3 py-1 text-xs font-bold ${ACTION_LABEL[a].tone}`}>
+                  {preview.summary[a]} · {ACTION_LABEL[a].label}
+                </span>
+              ))}
+          </div>
+          <p className="text-sm text-muted">
+            {preview.applied
+              ? "Importação concluída. A lista já mostra os dados novos."
+              : "Confira antes de importar: aparecem só os campos que vão mudar."}
+          </p>
+          <div className="max-h-[50vh] overflow-auto rounded-[12px] border border-border">
             <table className="w-full text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-border bg-surface-2/60 text-xs uppercase tracking-wide text-muted">
-                  <th className="px-3 py-2 font-medium">Nome</th>
-                  <th className="px-3 py-2 font-medium">Empresa</th>
-                  <th className="px-3 py-2 font-medium">Função</th>
-                  <th className="px-3 py-2 font-medium">Contrato</th>
-                  <th className="px-3 py-2 font-medium">Situação</th>
+              <thead className="sticky top-0 bg-surface-2 text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Linha</th>
+                  <th className="px-3 py-2 font-medium">Planilha</th>
+                  <th className="px-3 py-2 font-medium">Prestador</th>
+                  <th className="px-3 py-2 font-medium">O que muda</th>
                 </tr>
               </thead>
               <tbody>
-                {preview.map((p, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 font-medium text-ink">{p.row.name}</td>
+                {preview.results.map((r) => (
+                  <tr key={r.line} className="border-t border-border align-top">
+                    <td className="px-3 py-2 font-mono text-xs text-muted">{r.line}</td>
+                    <td className="px-3 py-2 text-ink">{r.name || "—"}</td>
                     <td className="px-3 py-2">
-                      <select
-                        value={p.row.department}
-                        onChange={(e) => setCompanyOverride((o) => ({ ...o, [i]: e.target.value }))}
-                        className={`rounded-[8px] border bg-surface-2 px-2 py-1 text-[13px] ${p.row.department ? "border-border text-ink" : "border-warn text-warn"}`}
-                        title={p.sheetCompany ? `Na planilha: ${p.sheetCompany}` : undefined}
-                      >
-                        <option value="">{p.sheetCompany ? `Escolha (planilha: ${p.sheetCompany})` : "Sem empresa"}</option>
-                        {departments.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${ACTION_LABEL[r.action].tone}`}>
+                        {ACTION_LABEL[r.action].label}
+                      </span>
+                      {r.provider && r.action !== "criar" && <span className="block text-xs text-muted">{r.provider}</span>}
                     </td>
-                    <td className="px-3 py-2 text-muted">{p.row.role || "—"}</td>
-                    <td className="px-3 py-2 text-muted">
-                      {p.row.contractStart || "?"} → {p.row.contractEnd || "sem validade"}
+                    <td className="px-3 py-2">
+                      {r.changes.length > 0 && <span className="text-ink">{r.changes.join(", ")}</span>}
+                      {r.warnings.map((w) => (
+                        <span key={w} className="block text-xs text-warn">
+                          {w}
+                        </span>
+                      ))}
                     </td>
-                    <td className={`px-3 py-2 ${p.error ? (p.duplicate ? "text-muted" : "text-critical") : "text-ok"}`}>{p.error ?? "Pronto"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </Modal>
   );
 }
