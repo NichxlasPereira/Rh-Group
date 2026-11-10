@@ -21,7 +21,9 @@ function isAdmissionPortal(p: string): boolean {
     p.startsWith("/admissao/") ||
     p.startsWith("/api/admissao/") ||
     p.startsWith("/api/planilha/") ||
-    p.startsWith("/api/copia-local/")
+    p.startsWith("/api/copia-local/") ||
+    // Botões das mensagens do Slack: valem só com a assinatura do app.
+    p.startsWith("/api/slack/")
   );
 }
 

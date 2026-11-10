@@ -23,6 +23,7 @@ import { formatDateBR } from "@/lib/format";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { TermsSettingsModal, companyIncomplete } from "./TermsSettingsModal";
 import { LocalCopyModal } from "./LocalCopyModal";
+import { StartKitSettingsModal } from "./StartKitSettingsModal";
 
 async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -129,6 +130,7 @@ export function AdmissionsPanel({
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
   const [termsSettings, setTermsSettings] = useState(false);
   const [localCopy, setLocalCopy] = useState(false);
+  const [startKit, setStartKit] = useState(false);
   const [choosingCompany, setChoosingCompany] = useState(false);
   const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -300,6 +302,13 @@ export function AdmissionsPanel({
             <div className="flex items-center gap-4">
               <button
                 type="button"
+                onClick={() => setStartKit(true)}
+                className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
+              >
+                Kit de início
+              </button>
+              <button
+                type="button"
                 onClick={() => setLocalCopy(true)}
                 className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
               >
@@ -462,6 +471,7 @@ export function AdmissionsPanel({
         onConfirm={(companyId) => create(companyId)}
       />
       {isAdmin && <LocalCopyModal open={localCopy} onClose={() => setLocalCopy(false)} />}
+      {isAdmin && <StartKitSettingsModal open={startKit} onClose={() => setStartKit(false)} departments={departments} />}
       {isAdmin && (
         <TermsSettingsModal
           open={termsSettings}

@@ -82,6 +82,7 @@ model Employee {
   occurrences AttendanceOccurrence[]
   dataViews   EmployeeDataView[]
   documents   EmployeeDocument[]
+  startKits   StartKitRequest[]
 
   @@index([name])
   @@index([managerId])
@@ -394,4 +395,53 @@ model ServiceProviderDocument {
   createdAt  DateTime        @default(now())
 
   @@index([providerId])
+}
+
+// Kit de início: o que cada colaborador novo precisa no primeiro dia
+// (ferramentas, acessos, equipamentos) e quem cuida. Sem empresa/área = vale
+// para todos. Ao concluir o onboarding vira uma lista no Slack e na ficha.
+model StartKitItem {
+  id           String   @id @default(cuid())
+  name         String
+  responsible  String // "TI", "Facilities", "Gestor"...
+  slackMention String? // ID de pessoa (U…) ou grupo (S…) do Slack a marcar
+  department   String? // empresa; null = todas
+  area         String? // área da empresa; null = todas
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Pedido do kit para um colaborador (um por onboarding concluído) e a mensagem
+// no Slack que acompanha.
+model StartKitRequest {
+  id             String          @id @default(cuid())
+  employeeId     String
+  employee       Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  admissionId    String?
+  startDate      DateTime?
+  slackChannel   String?
+  slackTs        String?
+  slackError     String?
+  reminderSentAt DateTime?
+  createdBy      String?
+  createdAt      DateTime        @default(now())
+  tasks          StartKitTask[]
+
+  @@index([employeeId])
+}
+
+model StartKitTask {
+  id           String          @id @default(cuid())
+  requestId    String
+  request      StartKitRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  name         String
+  responsible  String
+  slackMention String?
+  sortOrder    Int             @default(0)
+  doneAt       DateTime?
+  doneBy       String?
+  doneVia      String? // "slack" | "rhgroup"
+
+  @@index([requestId])
 }

@@ -6,6 +6,7 @@ import { Button } from "../Button";
 import { IconCalendarPlus, IconChevronDown, IconFile, IconPaperclip } from "../icons";
 import { BrandArt, BrandDot } from "../brand";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
+import { StartKitCard } from "./StartKitCard";
 import { OccurrencesTable } from "./OccurrencesTable";
 import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
 import { DocumentStatus } from "@/lib/admission";
@@ -665,6 +666,8 @@ export function EmployeeProfile({
                 )
               )}
             </Card>
+
+            <StartKitCard employeeId={employee.id} />
           </div>
         </div>
       )}

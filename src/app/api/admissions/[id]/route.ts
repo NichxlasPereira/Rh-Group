@@ -7,6 +7,7 @@ import { parseAdmissionFields } from "@/lib/admissionValidation";
 import { admissionProgress, fieldsProgress } from "@/lib/admission";
 import { exportAdmissionToDrive } from "@/lib/admissionDrive";
 import { syncAdmissionToSheet } from "@/lib/admissionSheet";
+import { createStartKit } from "@/lib/startKit";
 
 function nameKey(name: string): string {
   return name.trim().replace(/\s+/g, " ").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -96,6 +97,15 @@ export async function PATCH(
     await exportAdmissionToDrive(updated.id);
     // Depois do Drive, para a planilha já levar o link da pasta.
     await syncAdmissionToSheet(updated.id);
+    // Kit de início: lista de ferramentas, acessos e equipamentos no Slack. Se o
+    // Slack falhar, o pedido fica na ficha com o motivo e dá para reenviar.
+    if (updated.employeeId) {
+      await createStartKit(updated.employeeId, {
+        admissionId: updated.id,
+        startDate: admission.startDate,
+        createdBy: auth.user.name,
+      }).catch((err) => console.error("Kit de início:", err));
+    }
     const withDrive = await prisma.admission.findUnique({ where: { id }, include: ADMISSION_INCLUDE });
     return NextResponse.json(publicAdmission(withDrive!));
   }
