@@ -12,14 +12,20 @@ interface Item {
   name: string;
   responsible: string;
   slackMention: string | null;
+  slackUserName: string | null;
   department: string | null;
   area: string | null;
 }
 
 interface Settings {
   slack: { configured: boolean; interactive: boolean; ok: boolean; workspace?: string; bot?: string; error?: string };
-  channel: string | null;
   items: Item[];
+}
+
+interface SlackPerson {
+  id: string;
+  name: string;
+  title: string | null;
 }
 
 async function call(url: string, method = "GET", body?: unknown) {
@@ -39,15 +45,18 @@ async function call(url: string, method = "GET", body?: unknown) {
 
 const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.message : "Erro inesperado.");
 
-const emptyItem = { name: "", responsible: "", slackMention: "", department: "", area: "" };
+const emptyItem = { name: "", responsible: "", slackMention: "", slackUserName: "", department: "", area: "" };
 
-/** Manifesto do app do Slack: cola em api.slack.com › Create New App › From a manifest. */
+/** Manifesto do app do Slack: cola em api.slack.com › Create New App › From a manifest (ou em App Manifest, para atualizar). */
 function manifest(origin: string) {
   return JSON.stringify(
     {
       display_information: { name: "RHGroup", description: "Kit de início dos colaboradores novos (CFFGROUP)" },
-      features: { bot_user: { display_name: "RHGroup", always_online: false } },
-      oauth_config: { scopes: { bot: ["chat:write", "chat:write.public"] } },
+      features: {
+        app_home: { home_tab_enabled: false, messages_tab_enabled: true, messages_tab_read_only_enabled: true },
+        bot_user: { display_name: "RHGroup", always_online: false },
+      },
+      oauth_config: { scopes: { bot: ["chat:write", "im:write", "users:read"] } },
       settings: {
         interactivity: { is_enabled: true, request_url: `${origin}/api/slack/interacoes` },
         org_deploy_enabled: false,
@@ -79,12 +88,15 @@ async function copy(text: string, done: string) {
 }
 
 /**
- * Kit de início (administradores): conexão com o Slack, canal das mensagens e
- * os itens que cada colaborador novo precisa no primeiro dia.
+ * Kit de início (administradores): conexão com o Slack e os itens que cada
+ * colaborador novo precisa no primeiro dia — cada item com a pessoa do Slack
+ * que o recebe por mensagem direta.
  */
 export function StartKitSettingsModal({ open, onClose, departments }: { open: boolean; onClose: () => void; departments: string[] }) {
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [channel, setChannel] = useState("");
+  const [people, setPeople] = useState<SlackPerson[] | null>(null);
+  const [peopleError, setPeopleError] = useState("");
+  const [testUser, setTestUser] = useState("");
   const [form, setForm] = useState(emptyItem);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -95,8 +107,16 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
     try {
       const s: Settings = await call("/api/frequencia/kit");
       setSettings(s);
-      setChannel(s.channel ?? "");
       setShowSetup(!s.slack.ok);
+      if (s.slack.ok) {
+        try {
+          setPeople(await call("/api/frequencia/kit/pessoas"));
+          setPeopleError("");
+        } catch (err) {
+          setPeople([]);
+          setPeopleError(err instanceof Error ? err.message : "Não foi possível listar as pessoas do Slack.");
+        }
+      }
     } catch (err) {
       errorToast(err);
     }
@@ -122,25 +142,18 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const formAreas = useMemo(() => (form.department ? (areasBySector.get(form.department) ?? []) : []), [form.department, areasBySector]);
-
-  async function saveChannel(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await call("/api/frequencia/kit", "PUT", { channel: channel.trim() });
-      toast.success("Canal salvo.");
-      await load();
-    } catch (err) {
-      errorToast(err);
-    } finally {
-      setBusy(false);
-    }
-  }
+  // Pessoa já escolhida que não está mais na lista (saiu do Slack) continua visível.
+  const peopleOptions = useMemo(() => {
+    const list = people ?? [];
+    return form.slackMention && !list.some((p) => p.id === form.slackMention)
+      ? [{ id: form.slackMention, name: form.slackUserName || form.slackMention, title: null }, ...list]
+      : list;
+  }, [people, form.slackMention, form.slackUserName]);
 
   async function sendTest() {
     setBusy(true);
     try {
-      await call("/api/frequencia/kit/teste", "POST");
+      await call("/api/frequencia/kit/teste", "POST", { userId: testUser });
       toast.success("Mensagem de teste enviada no Slack.");
     } catch (err) {
       errorToast(err);
@@ -184,6 +197,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
   }
 
   const slack = settings?.slack;
+  const missingPerson = settings?.items.filter((i) => !i.slackMention).length ?? 0;
 
   return (
     <Modal
@@ -199,9 +213,9 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
     >
       <div className="flex flex-col gap-5 text-sm">
         <p className="text-muted">
-          Ao concluir um onboarding, o RHGroup manda no Slack a lista do que a pessoa precisa no primeiro dia, com um botão{" "}
-          <strong className="text-ink">Pronto</strong> por item. A 3 dias do início, quem ainda não marcou recebe um lembrete. A lista
-          também aparece na ficha do colaborador.
+          Ao concluir um onboarding, cada responsável recebe no Slack, por <strong className="text-ink">mensagem direta</strong>, só os
+          itens dele — com um botão <strong className="text-ink">Pronto</strong> por item. A 3 dias do início, quem ainda tiver item
+          pendente recebe um lembrete. A lista completa aparece na ficha do colaborador.
         </p>
 
         {/* Slack */}
@@ -221,6 +235,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
             )}
           </div>
           {slack?.error && <p className="text-xs text-warn">{slack.error}</p>}
+          {peopleError && <p className="text-xs text-warn">{peopleError}</p>}
           {slack?.ok && !slack.interactive && (
             <p className="text-xs text-warn">
               Falta a variável SLACK_SIGNING_SECRET no Railway: sem ela, o botão “Pronto” do Slack não funciona.
@@ -237,8 +252,8 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
           {showSetup && (
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13px] text-muted">
               <li>
-                Em <strong className="text-ink">api.slack.com/apps</strong>, clique em <em>Create New App › From a manifest</em>, escolha o
-                workspace e cole o manifesto abaixo.
+                Em <strong className="text-ink">api.slack.com/apps</strong>: para um app novo, <em>Create New App › From a manifest</em>; para o
+                app RHGroup que já existe, abra o app › <em>App Manifest</em>. Cole o manifesto abaixo e salve.
                 <div className="mt-2">
                   <Button type="button" variant="ghost" className="!px-3 !py-1.5 text-xs" onClick={() => copy(manifest(origin), "Manifesto copiado.")}>
                     Copiar manifesto
@@ -246,43 +261,51 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
                 </div>
               </li>
               <li>
-                Clique em <em>Install to Workspace</em> e autorize.
+                Clique em <em>Install to Workspace</em> (ou <em>Reinstall</em>) e autorize. Permissões: enviar mensagens, mensagens
+                diretas e ver a lista de pessoas.
               </li>
               <li>
-                Em <em>OAuth &amp; Permissions</em>, copie o <em>Bot User OAuth Token</em> (começa com xoxb-) e coloque no Railway na
-                variável <strong className="text-ink">SLACK_BOT_TOKEN</strong>.
+                Em <em>OAuth &amp; Permissions</em>, copie o <em>Bot User OAuth Token</em> (começa com xoxb-) para a variável{" "}
+                <strong className="text-ink">SLACK_BOT_TOKEN</strong> no Railway.
               </li>
               <li>
-                Em <em>Basic Information</em>, copie o <em>Signing Secret</em> e coloque no Railway na variável{" "}
-                <strong className="text-ink">SLACK_SIGNING_SECRET</strong>.
+                Em <em>Basic Information</em>, copie o <em>Signing Secret</em> para a variável{" "}
+                <strong className="text-ink">SLACK_SIGNING_SECRET</strong> no Railway.
               </li>
-              <li>Volte aqui, escolha o canal e clique em “Enviar teste”.</li>
+              <li>Volte aqui, mande um teste para você e escolha quem recebe cada item.</li>
             </ol>
           )}
 
-          <form onSubmit={saveChannel} className="flex flex-wrap items-end gap-2">
-            <label className="flex min-w-[14rem] flex-1 flex-col gap-1.5">
-              <span className="text-xs font-semibold text-muted">Canal das mensagens</span>
-              <input
-                value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-                placeholder="#onboarding"
-                className={inputClass(false)}
-              />
-            </label>
-            <Button type="submit" variant="ghost" className="!px-4 !py-2 text-xs" disabled={busy}>
-              Salvar canal
-            </Button>
-            <Button type="button" variant="ghost" className="!px-4 !py-2 text-xs" disabled={busy || !settings?.channel || !slack?.ok} onClick={sendTest}>
-              Enviar teste
-            </Button>
-          </form>
-          <p className="text-xs text-muted">Canal público funciona direto. Em canal privado, adicione o app RHGroup ao canal antes.</p>
+          {slack?.ok && (
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex min-w-[14rem] flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-muted">Mandar uma mensagem de teste para</span>
+                <select value={testUser} onChange={(e) => setTestUser(e.target.value)} className={inputClass(false)}>
+                  <option value="">Escolha a pessoa…</option>
+                  {(people ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.title ? ` — ${p.title}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="button" variant="ghost" className="!px-4 !py-2 text-xs" disabled={busy || !testUser} onClick={sendTest}>
+                Enviar teste
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* Itens */}
         <section className="flex flex-col gap-3">
           <h3 className="font-display text-[15px] font-semibold text-ink">Itens do kit</h3>
+          {missingPerson > 0 && (
+            <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
+              {missingPerson} {missingPerson === 1 ? "item está" : "itens estão"} sem pessoa no Slack e não {missingPerson === 1 ? "vai" : "vão"} ser
+              enviado{missingPerson === 1 ? "" : "s"}. Clique no lápis para escolher quem recebe.
+            </p>
+          )}
           {settings && settings.items.length === 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-dashed border-border-strong px-4 py-3 text-muted">
               Nenhum item ainda.
@@ -298,9 +321,13 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-ink">{i.name}</p>
                     <p className="text-xs text-muted">
-                      {i.responsible}
-                      {i.slackMention ? ` · marca ${i.slackMention} no Slack` : ""} ·{" "}
-                      {i.department ? `${i.department}${i.area ? ` › ${i.area}` : ""}` : "todas as empresas"}
+                      {i.responsible} ·{" "}
+                      {i.slackUserName ? (
+                        <span className="text-ink">recebe: {i.slackUserName}</span>
+                      ) : (
+                        <span className="text-warn">sem pessoa no Slack</span>
+                      )}{" "}
+                      · {i.department ? `${i.department}${i.area ? ` › ${i.area}` : ""}` : "todas as empresas"}
                     </p>
                   </div>
                   <button
@@ -312,6 +339,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
                         name: i.name,
                         responsible: i.responsible,
                         slackMention: i.slackMention ?? "",
+                        slackUserName: i.slackUserName ?? "",
                         department: i.department ?? "",
                         area: i.area ?? "",
                       });
@@ -334,10 +362,30 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
             <input
               value={form.responsible}
               onChange={(e) => setForm({ ...form, responsible: e.target.value })}
-              placeholder="Quem cuida (ex.: TI, Facilities, Gestor)"
+              placeholder="Área responsável (ex.: TI, Facilities, Gestor)"
               maxLength={40}
               className={inputClass(false)}
             />
+            <label className="flex flex-col gap-1.5 sm:col-span-2">
+              <select
+                value={form.slackMention}
+                onChange={(e) => {
+                  const person = peopleOptions.find((p) => p.id === e.target.value);
+                  setForm({ ...form, slackMention: e.target.value, slackUserName: person?.name ?? "" });
+                }}
+                disabled={!slack?.ok}
+                className={inputClass(false) + " disabled:opacity-60"}
+              >
+                <option value="">{slack?.ok ? "Quem recebe no Slack…" : "Conecte o Slack para escolher quem recebe"}</option>
+                {peopleOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.title ? ` — ${p.title}` : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted">Essa pessoa recebe o item por mensagem direta e marca “Pronto” quando resolver.</span>
+            </label>
             <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value, area: "" })} className={inputClass(false)}>
               <option value="">Todas as empresas</option>
               {departments.map((d) => (
@@ -359,15 +407,6 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
                 </option>
               ))}
             </select>
-            <label className="flex flex-col gap-1.5 sm:col-span-2">
-              <input
-                value={form.slackMention}
-                onChange={(e) => setForm({ ...form, slackMention: e.target.value })}
-                placeholder="Quem marcar no Slack (opcional): ID do membro (U…) ou do grupo (S…)"
-                className={inputClass(false)}
-              />
-              <span className="text-xs text-muted">No Slack: perfil da pessoa › ⋮ › Copiar ID do membro. Sem ID, a mensagem mostra só o nome do responsável.</span>
-            </label>
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" className="!px-4 !py-2 text-xs" disabled={busy || !form.name.trim() || !form.responsible.trim()}>
                 {editingId ? "Salvar item" : "Adicionar item"}

@@ -404,16 +404,17 @@ model StartKitItem {
   id           String   @id @default(cuid())
   name         String
   responsible  String // "TI", "Facilities", "Gestor"...
-  slackMention String? // ID de pessoa (U…) ou grupo (S…) do Slack a marcar
-  department   String? // empresa; null = todas
+  slackMention  String? // pessoa do Slack (ID U…) que recebe este item por mensagem direta
+  slackUserName String? // nome dela no Slack (para mostrar)
+  department    String? // empresa; null = todas
   area         String? // área da empresa; null = todas
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
-// Pedido do kit para um colaborador (um por onboarding concluído) e a mensagem
-// no Slack que acompanha.
+// Pedido do kit para um colaborador (um por onboarding concluído). Cada
+// responsável recebe uma mensagem direta no Slack com os itens dele.
 model StartKitRequest {
   id             String          @id @default(cuid())
   employeeId     String
@@ -427,6 +428,7 @@ model StartKitRequest {
   createdBy      String?
   createdAt      DateTime        @default(now())
   tasks          StartKitTask[]
+  messages       StartKitMessage[]
 
   @@index([employeeId])
 }
@@ -437,11 +439,25 @@ model StartKitTask {
   request      StartKitRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   name         String
   responsible  String
-  slackMention String?
+  slackMention  String? // quem recebe no Slack (ID U…)
+  slackUserName String?
   sortOrder    Int             @default(0)
   doneAt       DateTime?
   doneBy       String?
   doneVia      String? // "slack" | "rhgroup"
 
   @@index([requestId])
+}
+
+// Mensagem direta do kit para um responsável (uma por pessoa por pedido).
+model StartKitMessage {
+  id          String          @id @default(cuid())
+  requestId   String
+  request     StartKitRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  slackUserId String
+  channel     String // conversa direta (D…)
+  ts          String
+  createdAt   DateTime        @default(now())
+
+  @@unique([requestId, slackUserId])
 }

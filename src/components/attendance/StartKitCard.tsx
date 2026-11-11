@@ -93,7 +93,7 @@ export function StartKitCard({ employeeId }: { employeeId: string }) {
       ) : !kit ? (
         <>
           <p className="text-sm text-muted">
-            Ferramentas, acessos e equipamentos para o primeiro dia. O pedido sai sozinho no Slack quando o onboarding é concluído;
+            Ferramentas, acessos e equipamentos para o primeiro dia. Cada responsável recebe os seus itens no Slack quando o onboarding é concluído;
             para quem entrou antes, monte aqui.
           </p>
           <button
@@ -109,7 +109,9 @@ export function StartKitCard({ employeeId }: { employeeId: string }) {
         <>
           <p className="text-xs text-muted">
             {kit.startDate ? `Início em ${formatDateBR(kit.startDate)} · ` : ""}
-            {kit.sentToSlack ? "enviado no Slack" : "não enviado no Slack"}
+            {kit.sentCount > 0
+              ? `enviado no Slack para ${kit.sentCount} ${kit.sentCount === 1 ? "pessoa" : "pessoas"}`
+              : "não enviado no Slack"}
             {kit.reminderSentAt ? " · lembrete enviado" : ""}
           </p>
           {kit.slackError && (
@@ -140,7 +142,12 @@ export function StartKitCard({ employeeId }: { employeeId: string }) {
                   />
                   <span className="min-w-0 text-[13px]">
                     <span className={`font-semibold ${t.doneAt ? "text-muted line-through" : "text-ink"}`}>{t.name}</span>
-                    <span className="text-muted"> · {t.responsible}</span>
+                    <span className="text-muted">
+                      {" "}
+                      · {t.responsible}
+                      {t.recipient ? ` · ${t.recipient}` : ""}
+                    </span>
+                    {!t.doneAt && !t.sent && <span className="block text-xs text-warn">não chegou no Slack</span>}
                     {t.doneAt && (
                       <span className="block text-xs text-muted">
                         pronto {t.doneBy ? `por ${t.doneBy} ` : ""}

@@ -20,28 +20,38 @@ export function slackConfig(): SlackConfig | null {
 export class SlackError extends Error {}
 
 const FRIENDLY: Record<string, string> = {
-  channel_not_found: "Canal não encontrado. Confira o nome (ex.: #onboarding) ou use o ID do canal.",
-  not_in_channel: "O app RHGroup não está no canal. No Slack, abra o canal e adicione o app (Integrações › Adicionar apps).",
-  is_archived: "O canal está arquivado.",
+  channel_not_found: "Conversa não encontrada no Slack. Confira se a pessoa ainda está no workspace.",
   invalid_auth: "Token do Slack inválido. Confira SLACK_BOT_TOKEN no Railway.",
   not_authed: "Token do Slack ausente. Confira SLACK_BOT_TOKEN no Railway.",
   account_inactive: "O app do Slack foi desativado ou removido do workspace.",
-  missing_scope: "O app do Slack não tem a permissão chat:write. Reinstale o app com o manifesto do RHGroup.",
+  missing_scope: "O app do Slack não tem todas as permissões (chat:write, im:write, users:read). Atualize o app com o manifesto do RHGroup e reinstale.",
+  user_not_found: "Pessoa não encontrada no Slack (pode ter saído do workspace). Escolha outra em Onboarding › Kit de início.",
+  cannot_dm_bot: "Não dá para mandar mensagem direta para um bot.",
   ratelimited: "O Slack pediu para esperar um pouco (muitas mensagens). Tente de novo em instantes.",
 };
 
 /** Chama um método da Web API do Slack; lança SlackError com mensagem em português. */
-export async function slackApi<T = Record<string, unknown>>(method: string, body: Record<string, unknown>): Promise<T> {
+export async function slackApi<T = Record<string, unknown>>(
+  method: string,
+  body: Record<string, unknown>,
+  opts: { form?: boolean } = {}
+): Promise<T> {
   const config = slackConfig();
   if (!config) throw new SlackError("Slack não configurado: falta SLACK_BOT_TOKEN no Railway.");
   let res: Response;
   try {
     // SLACK_API_BASE só serve para testes locais (simulador do Slack).
     const base = process.env.SLACK_API_BASE?.trim() || "https://slack.com/api";
+    // Métodos de leitura (ex.: users.list) só entendem formulário; os de escrita, JSON.
     res = await fetch(`${base}/${method}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": opts.form ? "application/x-www-form-urlencoded" : "application/json; charset=utf-8",
+      },
+      body: opts.form
+        ? new URLSearchParams(Object.entries(body).map(([k, v]) => [k, String(v)])).toString()
+        : JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
     });
   } catch {
@@ -65,14 +75,6 @@ export function verifySlackSignature(rawBody: string, timestamp: string | null, 
   const a = Buffer.from(expected);
   const b = Buffer.from(signature);
   return a.length === b.length && timingSafeEqual(a, b);
-}
-
-/** "U012ABC" → <@U012ABC>; "S012ABC" (grupo) → <!subteam^S012ABC>; o resto, como texto. */
-export function slackMention(id: string | null | undefined): string {
-  const v = (id ?? "").trim().replace(/^@/, "");
-  if (/^[UW][A-Z0-9]{6,}$/.test(v)) return `<@${v}>`;
-  if (/^S[A-Z0-9]{6,}$/.test(v)) return `<!subteam^${v}>`;
-  return "";
 }
 
 /** Texto seguro dentro de mensagens do Slack (&, < e > têm significado especial). */

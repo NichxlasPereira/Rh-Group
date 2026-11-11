@@ -2,7 +2,8 @@
 export interface StartKitItemInput {
   name: string;
   responsible: string;
-  slackMention: string | null;
+  slackMention: string | null; // pessoa do Slack que recebe (ID U…)
+  slackUserName: string | null;
   department: string | null;
   area: string | null;
 }
@@ -16,14 +17,15 @@ export function validateStartKitItem(body: unknown): { data: StartKitItemInput }
   const responsible = text(b.responsible, 40);
   if (!responsible) return { error: "Informe quem cuida do item (ex.: TI, Facilities, Gestor)." };
   const mention = text(b.slackMention, 20).replace(/^@/, "").toUpperCase();
-  if (mention && !/^[UWS][A-Z0-9]{6,}$/.test(mention)) {
-    return { error: "ID do Slack inválido: use o ID do membro (começa com U) ou do grupo (começa com S)." };
+  if (mention && !/^[UW][A-Z0-9]{6,}$/.test(mention)) {
+    return { error: "Escolha na lista a pessoa do Slack que recebe este item." };
   }
   return {
     data: {
       name,
       responsible,
       slackMention: mention || null,
+      slackUserName: mention ? text(b.slackUserName, 120) || null : null,
       department: text(b.department, 80) || null,
       area: text(b.area, 80) || null,
     },
