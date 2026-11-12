@@ -114,19 +114,7 @@ export function StartKitCard({ employeeId }: { employeeId: string }) {
               : "não enviado no Slack"}
             {kit.reminderSentAt ? " · lembrete enviado" : ""}
           </p>
-          {kit.slackError && (
-            <div className="flex flex-col gap-2 rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
-              <span>{kit.slackError}</span>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => post({ action: "reenviar", requestId: kit.id }, "Kit de início enviado no Slack.")}
-                className="self-start font-bold underline-offset-2 hover:underline disabled:opacity-50"
-              >
-                {busy ? "Enviando…" : "Enviar no Slack de novo"}
-              </button>
-            </div>
-          )}
+          {kit.slackError && <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">{kit.slackError}</p>}
           {kit.tasks.length === 0 ? (
             <p className="text-sm text-muted">Nenhum item valia para esta pessoa. Cadastre itens em Onboarding › Kit de início.</p>
           ) : (
@@ -159,6 +147,15 @@ export function StartKitCard({ employeeId }: { employeeId: string }) {
               ))}
             </ul>
           )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => post({ action: "atualizar" }, "Kit atualizado e enviado no Slack.")}
+            title="Acrescenta os itens que passaram a valer (empresa, área ou configuração do kit), completa quem recebe e manda no Slack o que faltar. O que já está pronto não muda."
+            className="h-9 rounded-[10px] border border-border-strong text-[12.5px] font-bold text-ink transition hover:bg-surface-2 disabled:opacity-50"
+          >
+            {busy ? "Atualizando…" : "Atualizar com a configuração atual"}
+          </button>
         </>
       )}
     </section>

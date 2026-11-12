@@ -210,6 +210,68 @@ export async function createStartKit(
   return req.id;
 }
 
+/**
+ * Deixa o kit do colaborador em dia com a configuração atual (empresa, área e
+ * itens): acrescenta os itens que passaram a valer (ex.: a área foi definida
+ * depois do onboarding), completa quem recebe nos itens ainda não enviados,
+ * tira os pendentes que não valem mais e nunca foram enviados, e manda no
+ * Slack o que faltar. O que já está pronto não muda.
+ */
+export async function syncStartKit(employeeId: string, opts: { createIfMissing?: boolean; createdBy?: string | null } = {}) {
+  const latest = await prisma.startKitRequest.findFirst({ where: { employeeId }, orderBy: { createdAt: "desc" }, select: { id: true } });
+  if (!latest) {
+    if (opts.createIfMissing) await createStartKit(employeeId, { createdBy: opts.createdBy });
+    return;
+  }
+  const req = await loadRequest(latest.id);
+  if (!req) return;
+  const area = req.employee.areaId ? await prisma.companyArea.findUnique({ where: { id: req.employee.areaId }, select: { name: true } }) : null;
+  const items = await itemsFor(req.employee.department, area?.name ?? null);
+  const itemByName = new Map(items.map((i) => [i.name, i]));
+  const messaged = new Set(req.messages.map((m) => m.slackUserId));
+  const wasSent = (t: TaskRow) => !!t.slackMention && messaged.has(t.slackMention);
+
+  const touched = new Set<string>();
+  for (const t of req.tasks) {
+    if (t.doneAt || wasSent(t)) continue;
+    const item = itemByName.get(t.name);
+    if (!item) {
+      await prisma.startKitTask.delete({ where: { id: t.id } });
+      continue;
+    }
+    if (item.slackMention !== t.slackMention || item.responsible !== t.responsible) {
+      await prisma.startKitTask.update({
+        where: { id: t.id },
+        data: { slackMention: item.slackMention, slackUserName: item.slackUserName, responsible: item.responsible },
+      });
+    }
+    if (item.slackMention) touched.add(item.slackMention);
+  }
+  const existingNames = new Set(req.tasks.map((t) => t.name));
+  let order = req.tasks.reduce((max, t) => Math.max(max, t.sortOrder), -1);
+  for (const item of items) {
+    if (existingNames.has(item.name)) continue;
+    await prisma.startKitTask.create({
+      data: {
+        requestId: req.id,
+        name: item.name,
+        responsible: item.responsible,
+        slackMention: item.slackMention,
+        slackUserName: item.slackUserName,
+        sortOrder: ++order,
+      },
+    });
+    if (item.slackMention) touched.add(item.slackMention);
+  }
+  if (!req.startDate && req.employee.startDate) {
+    await prisma.startKitRequest.update({ where: { id: req.id }, data: { startDate: req.employee.startDate } });
+  }
+
+  // Quem ainda não recebeu, recebe agora; quem já recebeu e ganhou item, tem a mensagem atualizada.
+  await postStartKit(req.id);
+  for (const userId of touched) if (messaged.has(userId)) await refreshFor(req.id, userId);
+}
+
 /** Marca ou desmarca um item, no RHGroup ou pelo botão do Slack, e atualiza a mensagem. */
 export async function setTaskDone(taskId: string, done: boolean, by: string, via: "slack" | "rhgroup"): Promise<string | null> {
   const task = await prisma.startKitTask.findUnique({ where: { id: taskId }, select: { requestId: true, slackMention: true } });

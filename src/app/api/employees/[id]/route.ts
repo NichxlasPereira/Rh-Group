@@ -5,6 +5,7 @@ import { validateEmployeeInput } from "@/lib/attendanceValidation";
 import { checkManager, resolveEmployeeArea } from "@/lib/companyAreas";
 import { removeAttachmentFiles } from "@/lib/attachmentStorage";
 import { PERSONAL_OMIT } from "@/lib/employeeRecordServer";
+import { syncStartKit } from "@/lib/startKit";
 
 export async function PATCH(
   request: NextRequest,
@@ -40,6 +41,10 @@ export async function PATCH(
     });
     return updated;
   });
+  // Mudou de empresa ou de área: o kit de início ganha os itens que passaram a valer.
+  if (employee.department !== existing.department || employee.areaId !== existing.areaId) {
+    await syncStartKit(id).catch((err) => console.error("Kit de início:", err));
+  }
   return NextResponse.json(employee);
 }
 

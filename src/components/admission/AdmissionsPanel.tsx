@@ -57,6 +57,8 @@ interface AdmissionsPanelProps {
   isAdmin: boolean;
   /** Concluir cria um colaborador: a página recarrega a lista dela. */
   onEmployeesChanged: () => void;
+  /** Depois de concluir, abre a ficha do novo colaborador (aba Colaboradores). */
+  onOpenEmployee?: (employeeId: string) => void;
   /** Busca do cabeçalho da página (nome, empresa ou cargo). */
   search: string;
   /** Cada vez que muda, cria um onboarding (botão "Novo onboarding" do cabeçalho). */
@@ -121,6 +123,7 @@ export function AdmissionsPanel({
   departments,
   isAdmin,
   onEmployeesChanged,
+  onOpenEmployee,
   search,
   createSignal,
   onAdmissionsChange,
@@ -265,6 +268,7 @@ export function AdmissionsPanel({
         onChanged={load}
         onShowLink={(url) => setLink({ url, admission: selected })}
         onEmployeesChanged={onEmployeesChanged}
+        onOpenEmployee={onOpenEmployee}
         linkModal={link && <LinkModal link={link} onClose={() => setLink(null)} />}
       />
     );
@@ -495,6 +499,7 @@ function AdmissionDetail({
   onChanged,
   onShowLink,
   onEmployeesChanged,
+  onOpenEmployee,
   linkModal,
 }: {
   admission: AdmissionInfo;
@@ -504,6 +509,7 @@ function AdmissionDetail({
   onChanged: () => Promise<void>;
   onShowLink: (url: string) => void;
   onEmployeesChanged: () => void;
+  onOpenEmployee?: (employeeId: string) => void;
   linkModal: React.ReactNode;
 }) {
   const [refusing, setRefusing] = useState<AdmissionDocumentInfo | null>(null);
@@ -586,9 +592,11 @@ function AdmissionDetail({
                 title={ready ? undefined : "O candidato precisa preencher os dados e você aprovar os documentos obrigatórios"}
                 onClick={() =>
                   act(async () => {
-                    await send(base, "PATCH", { action: "concluir" });
+                    const done: AdmissionInfo = await send(base, "PATCH", { action: "concluir" });
                     onEmployeesChanged();
-                  }, `${displayName(admission)} agora é colaborador ativo.`)
+                    // Vai para a ficha do novo colaborador: lá aparece o kit de início enviado no Slack.
+                    if (done.employeeId) onOpenEmployee?.(done.employeeId);
+                  }, `${displayName(admission)} agora é colaborador ativo. Kit de início enviado no Slack.`)
                 }
               >
                 Concluir onboarding

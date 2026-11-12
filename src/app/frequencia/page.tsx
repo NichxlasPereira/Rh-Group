@@ -731,6 +731,10 @@ export default function FrequenciaPage() {
             departments={departments}
             isAdmin={me?.role === "admin"}
             onEmployeesChanged={fetchEmployees}
+            onOpenEmployee={(employeeId) => {
+              changeTab("colaboradores");
+              setProfileId(employeeId);
+            }}
             search={admissionSearch}
             createSignal={createSignal}
             onAdmissionsChange={setAdmissions}
