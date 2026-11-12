@@ -56,7 +56,8 @@ function manifest(origin: string) {
         app_home: { home_tab_enabled: false, messages_tab_enabled: true, messages_tab_read_only_enabled: true },
         bot_user: { display_name: "RHGroup", always_online: false },
       },
-      oauth_config: { scopes: { bot: ["chat:write", "im:write", "users:read"] } },
+      // Apps novos do Slack vêm com PKCE ligado, e o manifesto não pode desligar.
+      oauth_config: { pkce_enabled: true, scopes: { bot: ["chat:write", "im:write", "users:read"] } },
       settings: {
         interactivity: { is_enabled: true, request_url: `${origin}/api/slack/interacoes` },
         org_deploy_enabled: false,
