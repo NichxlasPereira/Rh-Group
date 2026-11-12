@@ -271,6 +271,7 @@ export function AdmissionsPanel({
   if (selected) {
     return (
       <AdmissionDetail
+        key={selected.id}
         admission={selected}
         departments={departments}
         companies={companies}
@@ -529,6 +530,7 @@ function AdmissionDetail({
   const [sameName, setSameName] = useState<{ id: string; name: string; department: string | null; role: string | null; active: boolean }[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newDoc, setNewDoc] = useState("");
+  const [page, setPage] = useState<DetailPage>("candidato");
   const p = admissionProgress(admission.documents);
   const d = fieldsProgress(admission.fields);
   const ready = p.approved >= p.required && d.filled >= d.required && !!admission.candidateName;
@@ -671,174 +673,201 @@ function AdmissionDetail({
         </div>
       </div>
 
-      <CandidateDataCard
-        fields={admission.fields}
-        editable={open}
-        onAdd={(body) => act(() => send(`${base}/fields`, "POST", body), "Dado incluído. O candidato já vê no link dele.")}
-        onToggle={(f) =>
-          act(
-            () => send(`${base}/fields/${f.id}`, "PATCH", { required: !f.required }),
-            f.required ? "Agora é opcional." : "Agora é obrigatório."
-          )
-        }
-        onRemove={(f) => act(() => send(`${base}/fields/${f.id}`, "DELETE"), "Dado retirado do pedido.")}
+      <DetailTabs
+        page={page}
+        onPage={setPage}
+        pages={[
+          { key: "candidato", label: "Candidato", hint: `${d.filled}/${d.required}`, done: d.filled >= d.required },
+          { key: "internos", label: "Dados internos", hint: admission.department ? undefined : "sem empresa", done: !!admission.department },
+          { key: "kit", label: "Kit de início" },
+          {
+            key: "documentos",
+            label: "Documentos",
+            hint: p.inReview > 0 ? `${p.inReview} para analisar` : `${p.approved}/${p.required}`,
+            done: p.approved >= p.required && p.inReview === 0,
+          },
+        ]}
       />
 
-      <InternalInfoCard
-        admission={admission}
-        departments={departments}
-        areasFor={(sector) => {
-          const company = companies.find((c) => c.cnpj && (c.shortName || c.name).trim() === sector);
-          return company ? areas.filter((a) => a.companyId === company.id).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) : [];
-        }}
-        editable={admission.status !== "concluida"}
-        onSave={(body) => act(() => send(base, "PATCH", body), "Dados internos salvos.")}
-      />
+      {page === "candidato" && (
+        <CandidateDataCard
+          fields={admission.fields}
+          editable={open}
+          onAdd={(body) => act(() => send(`${base}/fields`, "POST", body), "Dado incluído. O candidato já vê no link dele.")}
+          onToggle={(f) =>
+            act(
+              () => send(`${base}/fields/${f.id}`, "PATCH", { required: !f.required }),
+              f.required ? "Agora é opcional." : "Agora é obrigatório."
+            )
+          }
+          onRemove={(f) => act(() => send(`${base}/fields/${f.id}`, "DELETE"), "Dado retirado do pedido.")}
+        />
+      )}
 
-      <AdmissionKitCard
-        admissionId={admission.id}
-        refreshKey={`${admission.department}:${admission.areaId}:${admission.status}`}
-      />
+      {page === "internos" && (
+        <InternalInfoCard
+          admission={admission}
+          departments={departments}
+          areasFor={(sector) => {
+            const company = companies.find((c) => c.cnpj && (c.shortName || c.name).trim() === sector);
+            return company ? areas.filter((a) => a.companyId === company.id).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) : [];
+          }}
+          editable={admission.status !== "concluida"}
+          onSave={(body) => act(() => send(base, "PATCH", body), "Dados internos salvos.")}
+        />
+      )}
 
-      <h3 className="mt-2 font-display text-lg font-semibold text-ink">Documentos</h3>
-      <NdaCompanyCard
-        admission={admission}
-        companies={companies}
-        editable={open}
-        onChange={(contractingCompanyId) =>
-          act(
-            () => send(base, "PATCH", { action: "empresa", contractingCompanyId }),
-            contractingCompanyId
-              ? "Empresa definida. O candidato já vê os termos no link dele."
-              : "Termos retirados deste onboarding."
-          )
-        }
-      />
-      <ul className="flex flex-col gap-3">
-        {admission.documents.map((doc) => (
-          <li key={doc.id} className="rounded-[14px] border border-border bg-surface p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-medium text-ink">
-                  {doc.name}
-                  {!doc.required && <span className="ml-1.5 text-xs font-normal text-muted">(opcional)</span>}
-                </p>
-                {doc.description && <p className="text-xs text-muted">{doc.description}</p>}
-                {doc.reviewedBy && doc.reviewedAt && doc.status !== "enviado" && (
-                  <p className="text-xs text-muted">
-                    {doc.status === "aprovado" ? "Aprovado" : "Recusado"} por {doc.reviewedBy} em{" "}
-                    {formatDateBR(doc.reviewedAt)}
-                  </p>
-                )}
-              </div>
-              <DocumentStatusBadge status={doc.status} />
-            </div>
+      {page === "kit" && (
+        <AdmissionKitCard
+          admissionId={admission.id}
+          refreshKey={`${admission.department}:${admission.areaId}:${admission.status}`}
+        />
+      )}
 
-            {isGeneratedDocument(doc.kind) && doc.files.length > 0 && doc.status === "enviado" && (
-              <p className="mt-2 text-xs text-muted">
-                Antes de aprovar, confira a assinatura gov.br do PDF em{" "}
-                <a
-                  href="https://validar.iti.gov.br"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-accent-strong underline"
-                >
-                  validar.iti.gov.br
-                </a>
-                .
-              </p>
-            )}
+      {page === "documentos" && (
+        <>
+          <NdaCompanyCard
+            admission={admission}
+            companies={companies}
+            editable={open}
+            onChange={(contractingCompanyId) =>
+              act(
+                () => send(base, "PATCH", { action: "empresa", contractingCompanyId }),
+                contractingCompanyId
+                  ? "Empresa definida. O candidato já vê os termos no link dele."
+                  : "Termos retirados deste onboarding."
+              )
+            }
+          />
+          <ul className="flex flex-col gap-3">
+            {admission.documents.map((doc) => (
+              <li key={doc.id} className="rounded-[14px] border border-border bg-surface p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">
+                      {doc.name}
+                      {!doc.required && <span className="ml-1.5 text-xs font-normal text-muted">(opcional)</span>}
+                    </p>
+                    {doc.description && <p className="text-xs text-muted">{doc.description}</p>}
+                    {doc.reviewedBy && doc.reviewedAt && doc.status !== "enviado" && (
+                      <p className="text-xs text-muted">
+                        {doc.status === "aprovado" ? "Aprovado" : "Recusado"} por {doc.reviewedBy} em{" "}
+                        {formatDateBR(doc.reviewedAt)}
+                      </p>
+                    )}
+                  </div>
+                  <DocumentStatusBadge status={doc.status} />
+                </div>
 
-            {doc.status === "recusado" && doc.reviewNote && (
-              <p className="mt-2 rounded-[10px] bg-critical-soft px-3 py-2 text-sm text-ink">Motivo: {doc.reviewNote}</p>
-            )}
-
-            {doc.files.length > 0 ? (
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {doc.files.map((f) => (
-                  <li key={f.id}>
+                {isGeneratedDocument(doc.kind) && doc.files.length > 0 && doc.status === "enviado" && (
+                  <p className="mt-2 text-xs text-muted">
+                    Antes de aprovar, confira a assinatura gov.br do PDF em{" "}
                     <a
-                      href={`/api/admission-files/${f.id}`}
+                      href="https://validar.iti.gov.br"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex max-w-[16rem] items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 py-1.5 text-xs text-accent-strong hover:underline"
+                      className="font-semibold text-accent-strong underline"
                     >
-                      <IconPaperclip className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{f.fileName}</span>
-                      <span className="shrink-0 text-muted">{formatFileSize(f.size)}</span>
+                      validar.iti.gov.br
                     </a>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-xs text-muted">O candidato ainda não enviou este documento.</p>
-            )}
-
-            {open && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                {doc.files.length > 0 && doc.status !== "aprovado" && (
-                  <Button
-                    className="!px-3 !py-1.5 text-xs"
-                    onClick={() => act(() => send(`${base}/documents/${doc.id}`, "PATCH", { status: "aprovado" }), "Documento aprovado.")}
-                  >
-                    Aprovar
-                  </Button>
+                    .
+                  </p>
                 )}
-                {doc.files.length > 0 && doc.status !== "recusado" && (
-                  <Button variant="ghost" className="!px-3 !py-1.5 text-xs" onClick={() => setRefusing(doc)}>
-                    Recusar
-                  </Button>
-                )}
-                <button
-                  type="button"
-                  onClick={() =>
-                    act(
-                      () => send(`${base}/documents/${doc.id}`, "PATCH", { required: !doc.required }),
-                      doc.required ? "Agora é opcional." : "Agora é obrigatório."
-                    )
-                  }
-                  className="text-xs font-semibold text-muted underline-offset-2 hover:text-ink hover:underline"
-                >
-                  {doc.required ? "tornar opcional" : "tornar obrigatório"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => act(() => send(`${base}/documents/${doc.id}`, "DELETE"), "Documento retirado da lista.")}
-                  className="ml-auto text-xs font-semibold text-muted underline-offset-2 hover:text-critical hover:underline"
-                >
-                  retirar da lista
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
 
-      {open && (
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const name = newDoc.trim();
-            if (!name) return;
-            act(async () => {
-              await send(`${base}/documents`, "POST", { name, required: true });
-              setNewDoc("");
-            }, "Documento incluído. O candidato já vê no link dele.");
-          }}
-        >
-          <input
-            value={newDoc}
-            onChange={(e) => setNewDoc(e.target.value)}
-            placeholder="Pedir outro documento"
-            className={inputClass(false)}
-          />
-          <Button type="submit" variant="ghost" className="!px-4 shrink-0 text-xs">
-            <IconPlus className="h-3.5 w-3.5" />
-            Incluir
-          </Button>
-        </form>
+                {doc.status === "recusado" && doc.reviewNote && (
+                  <p className="mt-2 rounded-[10px] bg-critical-soft px-3 py-2 text-sm text-ink">Motivo: {doc.reviewNote}</p>
+                )}
+
+                {doc.files.length > 0 ? (
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {doc.files.map((f) => (
+                      <li key={f.id}>
+                        <a
+                          href={`/api/admission-files/${f.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex max-w-[16rem] items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 py-1.5 text-xs text-accent-strong hover:underline"
+                        >
+                          <IconPaperclip className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{f.fileName}</span>
+                          <span className="shrink-0 text-muted">{formatFileSize(f.size)}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-xs text-muted">O candidato ainda não enviou este documento.</p>
+                )}
+
+                {open && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                    {doc.files.length > 0 && doc.status !== "aprovado" && (
+                      <Button
+                        className="!px-3 !py-1.5 text-xs"
+                        onClick={() => act(() => send(`${base}/documents/${doc.id}`, "PATCH", { status: "aprovado" }), "Documento aprovado.")}
+                      >
+                        Aprovar
+                      </Button>
+                    )}
+                    {doc.files.length > 0 && doc.status !== "recusado" && (
+                      <Button variant="ghost" className="!px-3 !py-1.5 text-xs" onClick={() => setRefusing(doc)}>
+                        Recusar
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        act(
+                          () => send(`${base}/documents/${doc.id}`, "PATCH", { required: !doc.required }),
+                          doc.required ? "Agora é opcional." : "Agora é obrigatório."
+                        )
+                      }
+                      className="text-xs font-semibold text-muted underline-offset-2 hover:text-ink hover:underline"
+                    >
+                      {doc.required ? "tornar opcional" : "tornar obrigatório"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => act(() => send(`${base}/documents/${doc.id}`, "DELETE"), "Documento retirado da lista.")}
+                      className="ml-auto text-xs font-semibold text-muted underline-offset-2 hover:text-critical hover:underline"
+                    >
+                      retirar da lista
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          {open && (
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = newDoc.trim();
+                if (!name) return;
+                act(async () => {
+                  await send(`${base}/documents`, "POST", { name, required: true });
+                  setNewDoc("");
+                }, "Documento incluído. O candidato já vê no link dele.");
+              }}
+            >
+              <input
+                value={newDoc}
+                onChange={(e) => setNewDoc(e.target.value)}
+                placeholder="Pedir outro documento"
+                className={inputClass(false)}
+              />
+              <Button type="submit" variant="ghost" className="!px-4 shrink-0 text-xs">
+                <IconPlus className="h-3.5 w-3.5" />
+                Incluir
+              </Button>
+            </form>
+          )}
+        </>
       )}
+
+      <PageSteps page={page} onPage={setPage} />
 
       <RefuseModal
         document={refusing}
@@ -927,6 +956,92 @@ function AdmissionDetail({
           </button>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+type DetailPage = "candidato" | "internos" | "kit" | "documentos";
+
+const DETAIL_PAGES: { key: DetailPage; label: string }[] = [
+  { key: "candidato", label: "Candidato" },
+  { key: "internos", label: "Dados internos" },
+  { key: "kit", label: "Kit de início" },
+  { key: "documentos", label: "Documentos" },
+];
+
+/** Uma seção do onboarding por página, com a situação de cada uma na aba. */
+function DetailTabs({
+  page,
+  onPage,
+  pages,
+}: {
+  page: DetailPage;
+  onPage: (page: DetailPage) => void;
+  pages: { key: DetailPage; label: string; hint?: string; done?: boolean }[];
+}) {
+  return (
+    <div
+      id="onboarding-secoes"
+      role="tablist"
+      aria-label="Seções do onboarding"
+      className="grid scroll-mt-4 grid-cols-2 gap-1.5 rounded-[14px] border border-border bg-surface p-1.5 lg:grid-cols-4"
+    >
+      {pages.map((t, i) => {
+        const active = page === t.key;
+        return (
+          <button
+            key={t.key}
+            role="tab"
+            type="button"
+            aria-selected={active}
+            onClick={() => onPage(t.key)}
+            className={`flex min-w-0 items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-left transition ${
+              active ? "bg-ink text-bg" : "text-muted hover:bg-surface-2 hover:text-ink"
+            }`}
+          >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold ${
+                active ? "bg-bg text-ink" : t.done ? "bg-ok-soft text-ok" : "bg-surface-2 text-muted"
+              }`}
+            >
+              {t.done ? "✓" : i + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-bold">{t.label}</span>
+              {t.hint && (
+                <span className={`block truncate text-[11.5px] ${active ? "text-bg/70" : t.done ? "text-ok" : "text-warn"}`}>{t.hint}</span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Anterior / próxima seção, no pé da página. */
+function PageSteps({ page, onPage }: { page: DetailPage; onPage: (page: DetailPage) => void }) {
+  const i = DETAIL_PAGES.findIndex((p) => p.key === page);
+  const prev = DETAIL_PAGES[i - 1];
+  const next = DETAIL_PAGES[i + 1];
+  const go = (p: DetailPage) => {
+    onPage(p);
+    document.getElementById("onboarding-secoes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+      {prev ? (
+        <button type="button" onClick={() => go(prev.key)} className="text-sm font-semibold text-muted hover:text-ink">
+          ← {prev.label}
+        </button>
+      ) : (
+        <span />
+      )}
+      {next && (
+        <button type="button" onClick={() => go(next.key)} className="text-sm font-semibold text-accent-strong hover:underline">
+          {next.label} →
+        </button>
+      )}
     </div>
   );
 }
