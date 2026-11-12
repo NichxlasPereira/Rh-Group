@@ -176,6 +176,8 @@ export interface AdmissionInfo {
   createdBy: string | null;
   employeeId: string | null;
   contractingCompanyId: string | null;
+  /** Área da empresa (vai para o cadastro ao concluir e define o kit de início). */
+  areaId: string | null;
   driveStatus: "enviado" | "erro" | "nao_configurado" | null;
   driveFolderUrl: string | null;
   driveError: string | null;

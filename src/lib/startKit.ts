@@ -42,7 +42,7 @@ function daysUntil(d: Date): number {
 }
 
 /** Itens do kit que valem para esta pessoa (empresa e área; vazio = todos). */
-async function itemsFor(department: string | null, areaName: string | null) {
+export async function itemsFor(department: string | null, areaName: string | null) {
   const items = await prisma.startKitItem.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
   return items.filter((i) => (!i.department || i.department === department) && (!i.area || i.area === areaName));
 }
@@ -179,7 +179,7 @@ async function refreshFor(requestId: string, slackUserId: string | null): Promis
  */
 export async function createStartKit(
   employeeId: string,
-  opts: { admissionId?: string | null; startDate?: Date | null; createdBy?: string | null } = {}
+  opts: { admissionId?: string | null; startDate?: Date | null; createdBy?: string | null; skipItemIds?: string[] } = {}
 ): Promise<string | null> {
   if (opts.admissionId) {
     const existing = await prisma.startKitRequest.findFirst({ where: { admissionId: opts.admissionId }, select: { id: true } });
@@ -188,13 +188,17 @@ export async function createStartKit(
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { department: true, areaId: true, startDate: true } });
   if (!employee) return null;
   const area = employee.areaId ? await prisma.companyArea.findUnique({ where: { id: employee.areaId }, select: { name: true } }) : null;
-  const items = await itemsFor(employee.department, area?.name ?? null);
+  const all = await itemsFor(employee.department, area?.name ?? null);
+  const skip = new Set(opts.skipItemIds ?? []);
+  const items = all.filter((i) => !skip.has(i.id));
+  const skippedNames = all.filter((i) => skip.has(i.id)).map((i) => i.name);
   const req = await prisma.startKitRequest.create({
     data: {
       employeeId,
       admissionId: opts.admissionId ?? null,
       startDate: opts.startDate ?? employee.startDate ?? null,
       createdBy: opts.createdBy ?? null,
+      skipped: skippedNames.length ? JSON.stringify(skippedNames) : null,
       tasks: {
         create: items.map((i, index) => ({
           name: i.name,
@@ -226,7 +230,14 @@ export async function syncStartKit(employeeId: string, opts: { createIfMissing?:
   const req = await loadRequest(latest.id);
   if (!req) return;
   const area = req.employee.areaId ? await prisma.companyArea.findUnique({ where: { id: req.employee.areaId }, select: { name: true } }) : null;
-  const items = await itemsFor(req.employee.department, area?.name ?? null);
+  // Itens tirados desta contratação no onboarding não voltam na atualização.
+  let skipped: string[] = [];
+  try {
+    skipped = JSON.parse(req.skipped ?? "[]");
+  } catch {
+    skipped = [];
+  }
+  const items = (await itemsFor(req.employee.department, area?.name ?? null)).filter((i) => !skipped.includes(i.name));
   const itemByName = new Map(items.map((i) => [i.name, i]));
   const messaged = new Set(req.messages.map((m) => m.slackUserId));
   const wasSent = (t: TaskRow) => !!t.slackMention && messaged.has(t.slackMention);
@@ -330,38 +341,50 @@ export async function sendStartKitReminders(): Promise<number> {
   return sent;
 }
 
-/** Pedidos do colaborador (o mais novo primeiro), para a ficha. */
-export async function startKitsFor(employeeId: string) {
-  const rows = await prisma.startKitRequest.findMany({
-    where: { employeeId },
-    orderBy: { createdAt: "desc" },
-    include: { tasks: { orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }, messages: { select: { slackUserId: true } } },
-  });
-  return rows.map((r) => {
-    const sentTo = new Set(r.messages.map((m) => m.slackUserId));
-    return {
-      id: r.id,
-      startDate: r.startDate?.toISOString() ?? null,
-      sentCount: sentTo.size,
-      slackError: r.slackError,
-      reminderSentAt: r.reminderSentAt?.toISOString() ?? null,
-      createdAt: r.createdAt.toISOString(),
-      createdBy: r.createdBy,
-      tasks: r.tasks.map((t) => ({
-        id: t.id,
-        name: t.name,
-        responsible: t.responsible,
-        recipient: t.slackUserName,
-        sent: !!t.slackMention && sentTo.has(t.slackMention),
-        doneAt: t.doneAt?.toISOString() ?? null,
-        doneBy: t.doneBy,
-        doneVia: t.doneVia,
-      })),
-    };
-  });
+const VIEW_INCLUDE = {
+  tasks: { orderBy: [{ sortOrder: "asc" as const }, { name: "asc" as const }] },
+  messages: { select: { slackUserId: true } },
+};
+
+/** Kit enviado na conclusão deste onboarding (para o cartão do onboarding). */
+export async function startKitForAdmission(admissionId: string) {
+  const r = await prisma.startKitRequest.findFirst({ where: { admissionId }, orderBy: { createdAt: "desc" }, include: VIEW_INCLUDE });
+  return r ? toView(r) : null;
 }
 
-export type StartKitView = Awaited<ReturnType<typeof startKitsFor>>[number];
+/** Pedidos do colaborador (o mais novo primeiro), para a ficha. */
+export async function startKitsFor(employeeId: string) {
+  const rows = await prisma.startKitRequest.findMany({ where: { employeeId }, orderBy: { createdAt: "desc" }, include: VIEW_INCLUDE });
+  return rows.map(toView);
+}
+
+type ViewRow = NonNullable<Awaited<ReturnType<typeof prisma.startKitRequest.findFirst<{ include: typeof VIEW_INCLUDE }>>>>;
+
+function toView(r: ViewRow) {
+  const sentTo = new Set(r.messages.map((m) => m.slackUserId));
+  return {
+    id: r.id,
+    startDate: r.startDate?.toISOString() ?? null,
+    sentCount: sentTo.size,
+    slackError: r.slackError,
+    reminderSentAt: r.reminderSentAt?.toISOString() ?? null,
+    createdAt: r.createdAt.toISOString(),
+    createdBy: r.createdBy,
+    tasks: r.tasks.map((t) => ({
+      id: t.id,
+      name: t.name,
+      responsible: t.responsible,
+      recipient: t.slackUserName,
+      sent: !!t.slackMention && sentTo.has(t.slackMention),
+      doneAt: t.doneAt?.toISOString() ?? null,
+      doneBy: t.doneBy,
+      doneVia: t.doneVia,
+    })),
+    admissionId: r.admissionId,
+  };
+}
+
+export type StartKitView = ReturnType<typeof toView>;
 
 // ---------------------------------------------------------------- pessoas do Slack
 

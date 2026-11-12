@@ -8,6 +8,17 @@ import { admissionProgress, fieldsProgress } from "@/lib/admission";
 import { exportAdmissionToDrive } from "@/lib/admissionDrive";
 import { syncAdmissionToSheet } from "@/lib/admissionSheet";
 import { createStartKit } from "@/lib/startKit";
+import { sectorName } from "@/lib/admission";
+
+/** IDs dos itens do kit tirados desta contratação (JSON guardado no onboarding). */
+function parseSkip(raw: string | null): string[] {
+  try {
+    const v = JSON.parse(raw ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function nameKey(name: string): string {
   return name.trim().replace(/\s+/g, " ").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -104,6 +115,8 @@ export async function PATCH(
             role: admission.role ?? target.role,
             ...(admission.startDate ? { startDate: admission.startDate } : {}),
             ...(changedCompany ? { areaId: null, areaLead: false, managerId: null } : {}),
+            // A área escolhida no onboarding vale (é da empresa do onboarding).
+            ...(admission.areaId ? { areaId: admission.areaId, areaLead: false } : {}),
           },
         });
         if (changedCompany) {
@@ -116,6 +129,7 @@ export async function PATCH(
             data: {
               name: candidateName,
               department: admission.department,
+              areaId: admission.areaId,
               role: admission.role,
               active: true,
               startDate: admission.startDate,
@@ -137,6 +151,7 @@ export async function PATCH(
         admissionId: updated.id,
         startDate: admission.startDate,
         createdBy: auth.user.name,
+        skipItemIds: parseSkip(admission.startKitSkip),
       }).catch((err) => console.error("Kit de início:", err));
     }
     const withDrive = await prisma.admission.findUnique({ where: { id }, include: ADMISSION_INCLUDE });
@@ -156,6 +171,12 @@ export async function PATCH(
   // sem ação, a rota grava o registro inteiro (cartão "Dados internos").
   const fields = body?.action === "empresa" ? null : parseAdmissionFields(body);
   if (fields && "error" in fields) return NextResponse.json({ error: fields.error }, { status: 400 });
+  if (fields && fields.data.areaId) {
+    const area = await prisma.companyArea.findUnique({ where: { id: fields.data.areaId }, include: { company: true } });
+    if (!area || sectorName(area.company) !== fields.data.department) {
+      return NextResponse.json({ error: "Essa área não é da empresa escolhida." }, { status: 400 });
+    }
+  }
   if (!fields && contractingCompanyId === undefined) {
     return NextResponse.json({ error: "Escolha a empresa." }, { status: 400 });
   }

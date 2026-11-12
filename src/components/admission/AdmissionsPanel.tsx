@@ -24,6 +24,7 @@ import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { TermsSettingsModal, companyIncomplete } from "./TermsSettingsModal";
 import { LocalCopyModal } from "./LocalCopyModal";
 import { StartKitSettingsModal } from "./StartKitSettingsModal";
+import { AdmissionKitCard } from "./AdmissionKitCard";
 
 async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -131,6 +132,8 @@ export function AdmissionsPanel({
   onSeeOccurrences,
 }: AdmissionsPanelProps) {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
+  // Áreas de cada empresa (para escolher a área do onboarding em Dados internos).
+  const [areas, setAreas] = useState<{ id: string; companyId: string; name: string }[]>([]);
   const [termsSettings, setTermsSettings] = useState(false);
   const [localCopy, setLocalCopy] = useState(false);
   const [startKit, setStartKit] = useState(false);
@@ -151,6 +154,13 @@ export function AdmissionsPanel({
       errorToast(err);
     }
   }, [onAdmissionsChange]);
+
+  useEffect(() => {
+    fetch("/api/frequencia/areas")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setAreas)
+      .catch(() => undefined);
+  }, []);
 
   const loadCompanies = useCallback(async () => {
     try {
@@ -264,6 +274,7 @@ export function AdmissionsPanel({
         admission={selected}
         departments={departments}
         companies={companies}
+        areas={areas}
         onBack={() => setSelectedId(null)}
         onChanged={load}
         onShowLink={(url) => setLink({ url, admission: selected })}
@@ -495,6 +506,7 @@ function AdmissionDetail({
   admission,
   departments,
   companies,
+  areas,
   onBack,
   onChanged,
   onShowLink,
@@ -505,6 +517,7 @@ function AdmissionDetail({
   admission: AdmissionInfo;
   departments: string[];
   companies: ContractingCompanyInfo[];
+  areas: { id: string; companyId: string; name: string }[];
   onBack: () => void;
   onChanged: () => Promise<void>;
   onShowLink: (url: string) => void;
@@ -674,8 +687,17 @@ function AdmissionDetail({
       <InternalInfoCard
         admission={admission}
         departments={departments}
+        areasFor={(sector) => {
+          const company = companies.find((c) => c.cnpj && (c.shortName || c.name).trim() === sector);
+          return company ? areas.filter((a) => a.companyId === company.id).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) : [];
+        }}
         editable={admission.status !== "concluida"}
         onSave={(body) => act(() => send(base, "PATCH", body), "Dados internos salvos.")}
+      />
+
+      <AdmissionKitCard
+        admissionId={admission.id}
+        refreshKey={`${admission.department}:${admission.areaId}:${admission.status}`}
       />
 
       <h3 className="mt-2 font-display text-lg font-semibold text-ink">Documentos</h3>
@@ -1106,17 +1128,21 @@ function CandidateDataCard({
 function InternalInfoCard({
   admission,
   departments,
+  areasFor,
   editable,
   onSave,
 }: {
   admission: AdmissionInfo;
   departments: string[];
+  /** Áreas da empresa (setor) escolhida. */
+  areasFor: (sector: string) => { id: string; name: string }[];
   editable: boolean;
   onSave: (body: Record<string, string>) => Promise<void>;
 }) {
   const initial = () => ({
     role: admission.role ?? "",
     department: admission.department ?? "",
+    areaId: admission.areaId ?? "",
     startDate: admission.startDate ? admission.startDate.slice(0, 10) : "",
     notes: admission.notes ?? "",
   });
@@ -1130,12 +1156,19 @@ function InternalInfoCard({
         <div className="min-w-0">
           <h3 className="font-display text-lg font-semibold text-ink">Dados internos</h3>
           <p className="text-sm text-muted">
-            {[admission.role && `Cargo: ${admission.role}`, admission.department && `Setor: ${admission.department}`, admission.startDate && `Início: ${formatDateBR(admission.startDate)}`]
+            {[
+              admission.role && `Cargo: ${admission.role}`,
+              admission.department && `Setor: ${admission.department}`,
+              admission.department && admission.areaId && `Área: ${areasFor(admission.department).find((a) => a.id === admission.areaId)?.name ?? "—"}`,
+              admission.startDate && `Início: ${formatDateBR(admission.startDate)}`,
+            ]
               .filter(Boolean)
               .join(" · ") || "Cargo, setor e início ainda não informados."}
           </p>
           {admission.notes && <p className="mt-1 whitespace-pre-line text-sm text-ink">{admission.notes}</p>}
-          <p className="mt-1 text-xs text-muted">Só o RH vê. Cargo e setor vão para o cadastro do colaborador ao concluir.</p>
+          <p className="mt-1 text-xs text-muted">
+            Só o RH vê. Cargo, setor e área vão para o cadastro do colaborador ao concluir e definem o kit de início.
+          </p>
         </div>
         {editable && (
           <Button
@@ -1155,7 +1188,7 @@ function InternalInfoCard({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-[14px] border border-border bg-surface p-5 sm:grid-cols-3"
+      className="grid grid-cols-1 gap-4 rounded-[14px] border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4"
       onSubmit={async (e) => {
         e.preventDefault();
         // A rota grava o registro inteiro: manda junto o que o candidato preencheu.
@@ -1168,14 +1201,15 @@ function InternalInfoCard({
         setEditing(false);
       }}
     >
-      <h3 className="font-display text-lg font-semibold text-ink sm:col-span-3">Dados internos</h3>
+      <h3 className="font-display text-lg font-semibold text-ink sm:col-span-2 lg:col-span-4">Dados internos</h3>
       <Field label="Cargo">
         <input value={values.role} onChange={(e) => set("role", e.target.value)} className={inputClass(false)} autoFocus />
       </Field>
       <Field label="Setor (empresa)">
         <select
           value={values.department}
-          onChange={(e) => set("department", e.target.value)}
+          // As áreas são de cada empresa: trocar de setor limpa a área.
+          onChange={(e) => setValues((v) => ({ ...v, department: e.target.value, areaId: "" }))}
           className={inputClass(false)}
         >
           <option value="">Sem setor</option>
@@ -1190,6 +1224,22 @@ function InternalInfoCard({
           ))}
         </select>
       </Field>
+      <Field label="Área">
+        <select
+          value={values.areaId}
+          onChange={(e) => set("areaId", e.target.value)}
+          disabled={!values.department || areasFor(values.department).length === 0}
+          className={inputClass(false) + " disabled:opacity-60"}
+        >
+          <option value="">{values.department ? "Sem área" : "Escolha o setor primeiro"}</option>
+          {values.department &&
+            areasFor(values.department).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+        </select>
+      </Field>
       <Field label="Início previsto">
         <input
           type="date"
@@ -1198,10 +1248,10 @@ function InternalInfoCard({
           className={inputClass(false) + " font-mono"}
         />
       </Field>
-      <Field label="Observações (só o RH vê)" className="sm:col-span-3">
+      <Field label="Observações (só o RH vê)" className="sm:col-span-2 lg:col-span-4">
         <textarea value={values.notes} onChange={(e) => set("notes", e.target.value)} rows={2} className={inputClass(false) + " resize-y"} />
       </Field>
-      <div className="flex gap-2 sm:col-span-3">
+      <div className="flex gap-2 sm:col-span-2 lg:col-span-4">
         <Button type="submit" className="!px-4 !py-1.5 text-xs">
           Salvar
         </Button>

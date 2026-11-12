@@ -223,6 +223,10 @@ model Admission {
   driveSyncedAt  DateTime?
   // Quando o candidato enviou os dados pela primeira vez (botão "Enviar dados").
   submittedAt DateTime?
+  // Área da empresa (setor) — vai para o cadastro ao concluir e define o kit de início.
+  areaId String?
+  // Itens do kit de início que NÃO vão nesta contratação (JSON com os IDs dos itens).
+  startKitSkip String?
   // Empresa que contrata — usada no acordo de confidencialidade (NDA).
   contractingCompanyId String?
   contractingCompany   ContractingCompany? @relation(fields: [contractingCompanyId], references: [id], onDelete: SetNull)
@@ -426,6 +430,7 @@ model StartKitRequest {
   slackError     String?
   reminderSentAt DateTime?
   createdBy      String?
+  skipped        String? // nomes dos itens tirados desta contratação (JSON): a atualização não os traz de volta
   createdAt      DateTime        @default(now())
   tasks          StartKitTask[]
   messages       StartKitMessage[]

@@ -6,6 +6,7 @@ export interface AdmissionFields {
   phone: string | null;
   role: string | null;
   department: string | null;
+  areaId: string | null;
   startDate: Date | null;
   notes: string | null;
 }
@@ -35,6 +36,8 @@ export function parseAdmissionFields(body: unknown): { data: AdmissionFields } |
       phone: optional(b.phone, 40),
       role: optional(b.role),
       department: optional(b.department),
+      // Área só faz sentido com empresa; a rota confere se é da empresa escolhida.
+      areaId: optional(b.department) ? optional(b.areaId, 40) : null,
       startDate,
       notes: optional(b.notes, 1000),
     },
