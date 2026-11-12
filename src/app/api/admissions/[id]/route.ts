@@ -69,26 +69,59 @@ export async function PATCH(
       return NextResponse.json({ error: "O nome do candidato ainda não foi preenchido." }, { status: 409 });
     }
 
+    // Já existe alguém com o mesmo nome? O RH decide: é a mesma pessoa (atualiza
+    // o cadastro com os dados deste onboarding) ou outra (cria um novo).
+    const mode = body?.employeeMode === "novo" || body?.employeeMode === "atualizar" ? body.employeeMode : null;
+    const sameName = (
+      await prisma.employee.findMany({ select: { id: true, name: true, department: true, role: true, active: true, areaId: true } })
+    ).filter((e) => nameKey(e.name) === nameKey(candidateName));
+    if (sameName.length > 0 && !mode) {
+      return NextResponse.json(
+        {
+          error: `Já existe ${sameName.length === 1 ? "um colaborador" : `${sameName.length} colaboradores`} com o nome ${candidateName}.`,
+          conflict: sameName.map((e) => ({ id: e.id, name: e.name, department: e.department, role: e.role, active: e.active })),
+        },
+        { status: 409 }
+      );
+    }
+    const target = mode === "atualizar" ? sameName.find((e) => e.id === body?.employeeId) : null;
+    if (mode === "atualizar" && !target) {
+      return NextResponse.json({ error: "Escolha qual cadastro atualizar." }, { status: 400 });
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
-      // Se já existe colaborador com o mesmo nome, reaproveita em vez de duplicar.
-      const employees = await tx.employee.findMany({ select: { id: true, name: true } });
-      const existing = employees.find((e) => nameKey(e.name) === nameKey(candidateName));
-      const employeeId = existing
-        ? (await tx.employee.update({ where: { id: existing.id }, data: { active: true } })).id
-        : (
-            await tx.employee.create({
-              data: {
-                name: candidateName,
-                department: admission.department,
-                role: admission.role,
-                active: true,
-                startDate: admission.startDate,
-              },
-            })
-          ).id;
-      // A data de início do onboarding vira a data de entrada da ficha (se ainda não houver).
-      if (admission.startDate) {
-        await tx.employee.updateMany({ where: { id: employeeId, startDate: null }, data: { startDate: admission.startDate } });
+      let employeeId: string;
+      if (target) {
+        // Mesma pessoa: reativa e traz os dados deste onboarding. Mudou de empresa:
+        // a área e o gestor da empresa anterior saem.
+        const department = admission.department ?? target.department;
+        const changedCompany = department !== target.department;
+        await tx.employee.update({
+          where: { id: target.id },
+          data: {
+            active: true,
+            department,
+            role: admission.role ?? target.role,
+            ...(admission.startDate ? { startDate: admission.startDate } : {}),
+            ...(changedCompany ? { areaId: null, areaLead: false, managerId: null } : {}),
+          },
+        });
+        if (changedCompany) {
+          await tx.attendanceOccurrence.updateMany({ where: { employeeId: target.id }, data: { employeeDepartment: department } });
+        }
+        employeeId = target.id;
+      } else {
+        employeeId = (
+          await tx.employee.create({
+            data: {
+              name: candidateName,
+              department: admission.department,
+              role: admission.role,
+              active: true,
+              startDate: admission.startDate,
+            },
+          })
+        ).id;
       }
       return tx.admission.update({ where: { id }, data: { status: "concluida", employeeId } });
     });

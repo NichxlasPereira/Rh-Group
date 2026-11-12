@@ -513,6 +513,7 @@ function AdmissionDetail({
   linkModal: React.ReactNode;
 }) {
   const [refusing, setRefusing] = useState<AdmissionDocumentInfo | null>(null);
+  const [sameName, setSameName] = useState<{ id: string; name: string; department: string | null; role: string | null; active: boolean }[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newDoc, setNewDoc] = useState("");
   const p = admissionProgress(admission.documents);
@@ -526,6 +527,34 @@ function AdmissionDetail({
       await fn();
       await onChanged();
       toast.success(message);
+    } catch (err) {
+      errorToast(err);
+    }
+  }
+
+  /**
+   * Conclui o onboarding. Se já houver colaborador com o mesmo nome, o servidor
+   * devolve os cadastros parecidos e o RH escolhe: atualizar um deles ou criar novo.
+   */
+  async function conclude(choice: { employeeMode?: "novo" | "atualizar"; employeeId?: string }) {
+    try {
+      const res = await fetch(base, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "concluir", ...choice }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && Array.isArray(data.conflict)) {
+        setSameName(data.conflict);
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || "Não foi possível concluir.");
+      setSameName(null);
+      await onChanged();
+      onEmployeesChanged();
+      toast.success(`${displayName(admission)} agora é colaborador ativo. Kit de início enviado no Slack.`);
+      // Vai para a ficha do colaborador: lá aparece o kit de início.
+      if (data.employeeId) onOpenEmployee?.(data.employeeId);
     } catch (err) {
       errorToast(err);
     }
@@ -590,14 +619,7 @@ function AdmissionDetail({
                 className="!px-4 !py-2 text-xs"
                 disabled={!ready}
                 title={ready ? undefined : "O candidato precisa preencher os dados e você aprovar os documentos obrigatórios"}
-                onClick={() =>
-                  act(async () => {
-                    const done: AdmissionInfo = await send(base, "PATCH", { action: "concluir" });
-                    onEmployeesChanged();
-                    // Vai para a ficha do novo colaborador: lá aparece o kit de início enviado no Slack.
-                    if (done.employeeId) onOpenEmployee?.(done.employeeId);
-                  }, `${displayName(admission)} agora é colaborador ativo. Kit de início enviado no Slack.`)
-                }
+                onClick={() => conclude({})}
               >
                 Concluir onboarding
               </Button>
@@ -844,6 +866,45 @@ function AdmissionDetail({
       </Modal>
 
       {linkModal}
+      <Modal
+        open={!!sameName}
+        onClose={() => setSameName(null)}
+        title="Já existe alguém com esse nome"
+        maxWidthClassName="max-w-lg"
+        footer={
+          <Button type="button" variant="ghost" onClick={() => setSameName(null)}>
+            Cancelar
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-3 text-sm">
+          <p className="text-muted">
+            É a mesma pessoa? Atualizar traz deste onboarding a empresa, o cargo e a data de início (se a empresa mudar, a área e o gestor
+            antigos saem). Se for outra pessoa, crie um novo colaborador.
+          </p>
+          {(sameName ?? []).map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => conclude({ employeeMode: "atualizar", employeeId: e.id })}
+              className="flex flex-col items-start rounded-[12px] border border-border-strong px-4 py-3 text-left transition hover:bg-surface-2"
+            >
+              <span className="font-semibold text-ink">Atualizar o cadastro de {e.name}</span>
+              <span className="text-xs text-muted">
+                {[e.department ?? "sem empresa", e.role, e.active ? "ativo" : "desligado"].filter(Boolean).join(" · ")}
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => conclude({ employeeMode: "novo" })}
+            className="flex flex-col items-start rounded-[12px] border border-border-strong px-4 py-3 text-left transition hover:bg-surface-2"
+          >
+            <span className="font-semibold text-ink">Criar novo colaborador</span>
+            <span className="text-xs text-muted">É outra pessoa com o mesmo nome.</span>
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
