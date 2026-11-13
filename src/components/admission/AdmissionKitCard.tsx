@@ -15,7 +15,7 @@ interface PreviewItem {
   scope: string;
 }
 
-type KitState =
+export type KitState =
   | { stage: "previa"; slackReady: boolean; department: string | null; area: string | null; items: PreviewItem[] }
   | { stage: "enviado"; kit: StartKitView | null; employeeId: string | null };
 
@@ -32,14 +32,40 @@ async function call(url: string, init?: RequestInit) {
 
 const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.message : "Erro inesperado.");
 
+/** Situação do kit para a barra de etapas: "3/5" e ✓ quando tudo ficou pronto. */
+export function kitStepStatus(state: KitState | null): { hint?: string; done?: boolean } {
+  if (!state) return {};
+  if (state.stage === "previa") {
+    const n = state.items.filter((i) => i.included).length;
+    return { hint: n === 0 ? "nenhum item" : `${n} ${n === 1 ? "item" : "itens"} a enviar` };
+  }
+  const tasks = state.kit?.tasks ?? [];
+  if (tasks.length === 0) return {};
+  const done = tasks.filter((t) => t.doneAt).length;
+  return { hint: `${done}/${tasks.length} prontos`, done: done === tasks.length };
+}
+
 /**
  * Kit de início dentro do onboarding. Antes de concluir mostra o que vai sair
  * no Slack e para quem (pela empresa e área dos dados internos), e deixa tirar
  * itens só desta contratação. Depois de concluir, mostra o andamento.
  */
-export function AdmissionKitCard({ admissionId, refreshKey }: { admissionId: string; refreshKey: string }) {
+export function AdmissionKitCard({
+  admissionId,
+  refreshKey,
+  onState,
+}: {
+  admissionId: string;
+  refreshKey: string;
+  /** Avisa a barra de etapas do onboarding a cada mudança (itens marcados, tarefas prontas). */
+  onState?: (state: KitState) => void;
+}) {
   const [state, setState] = useState<KitState | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (state) onState?.(state);
+  }, [state, onState]);
 
   const load = useCallback(async () => {
     try {

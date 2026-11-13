@@ -24,7 +24,7 @@ import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { TermsSettingsModal, companyIncomplete } from "./TermsSettingsModal";
 import { LocalCopyModal } from "./LocalCopyModal";
 import { StartKitSettingsModal } from "./StartKitSettingsModal";
-import { AdmissionKitCard } from "./AdmissionKitCard";
+import { AdmissionKitCard, kitStepStatus, type KitState } from "./AdmissionKitCard";
 
 async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -531,11 +531,27 @@ function AdmissionDetail({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newDoc, setNewDoc] = useState("");
   const [page, setPage] = useState<DetailPage>("candidato");
+  const [kitState, setKitState] = useState<KitState | null>(null);
+  const kitRefreshKey = `${admission.department}:${admission.areaId}:${admission.status}`;
   const p = admissionProgress(admission.documents);
   const d = fieldsProgress(admission.fields);
   const ready = p.approved >= p.required && d.filled >= d.required && !!admission.candidateName;
   const open = admission.status === "em_andamento";
   const base = `/api/admissions/${admission.id}`;
+
+  // Situação do kit para a barra de etapas, mesmo com outra página aberta.
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admissions/${admission.id}/kit`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: KitState | null) => {
+        if (alive && data) setKitState(data);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [admission.id, kitRefreshKey]);
 
   async function act(fn: () => Promise<unknown>, message: string) {
     try {
@@ -679,7 +695,7 @@ function AdmissionDetail({
         pages={[
           { key: "candidato", label: "Candidato", hint: `${d.filled}/${d.required}`, done: d.filled >= d.required },
           { key: "internos", label: "Dados internos", hint: admission.department ? undefined : "sem empresa", done: !!admission.department },
-          { key: "kit", label: "Kit de início" },
+          { key: "kit", label: "Kit de início", ...kitStepStatus(kitState) },
           {
             key: "documentos",
             label: "Documentos",
@@ -720,7 +736,8 @@ function AdmissionDetail({
       {page === "kit" && (
         <AdmissionKitCard
           admissionId={admission.id}
-          refreshKey={`${admission.department}:${admission.areaId}:${admission.status}`}
+          refreshKey={kitRefreshKey}
+          onState={setKitState}
         />
       )}
 
