@@ -790,6 +790,21 @@ export default function FrequenciaPage() {
                   onOpen={(e) => setProfileId(e.id)}
                   onManageAreas={setAreasCompany}
                   onBrand={setBrandCompany}
+                  onSetHidden={async (company, hidden) => {
+                    try {
+                      const res = await fetch(`/api/frequencia/companies/${company.id}/organograma`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ hidden }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error || "Não foi possível salvar.");
+                      setCompanies((list) => list.map((c) => (c.id === data.id ? data : c)));
+                      toast.success(hidden ? `${sectorName(company)} saiu do organograma.` : `${sectorName(company)} voltou ao organograma.`);
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Erro inesperado.");
+                    }
+                  }}
                 />
               ) : tab === "aniversariantes" ? (
                 <BirthdaysPanel

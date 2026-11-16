@@ -343,6 +343,8 @@ model ContractingCompany {
   logoUpdatedAt DateTime?
   brandColor    String? // #RRGGBB
   accentColor   String? // #RRGGBB
+  // Fora do organograma (continua nos termos do onboarding e no cadastro dos colaboradores).
+  hiddenInOrgChart Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

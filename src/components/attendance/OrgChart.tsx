@@ -7,7 +7,9 @@ import { todayInputValue } from "@/lib/format";
 import { Birthday, isBirthdayOn } from "@/lib/birthdays";
 import { inkOn } from "@/lib/brandColors";
 import { CffLogo } from "../brand";
-import { IconCake, IconEdit, IconUsers } from "../icons";
+import { Button } from "../Button";
+import { Modal } from "../Modal";
+import { IconCake, IconEdit, IconEyeOff, IconUsers } from "../icons";
 import { brandStripe, companyLogoUrl } from "./CompanyBrandModal";
 import { EmptyState } from "./formControls";
 
@@ -27,6 +29,8 @@ interface OrgChartProps {
   onManageAreas: (company: ContractingCompanyInfo) => void;
   /** Abre o logo e as cores da empresa. */
   onBrand: (company: ContractingCompanyInfo) => void;
+  /** Tira a empresa do organograma ou volta a mostrar. */
+  onSetHidden: (company: ContractingCompanyInfo, hidden: boolean) => Promise<void>;
 }
 
 /**
@@ -109,8 +113,11 @@ export function OrgChart({
   onOpen,
   onManageAreas,
   onBrand,
+  onSetHidden,
 }: OrgChartProps) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [hiding, setHiding] = useState<ContractingCompanyInfo | null>(null);
+  const [busy, setBusy] = useState(false);
   // Largura disponível para os cartões das empresas (muda com a janela).
   const [rowWidth, setRowWidth] = useState(0);
   const measureRow = useCallback((el: HTMLDivElement | null) => {
@@ -121,7 +128,15 @@ export function OrgChart({
   }, []);
 
   const companyBySector = new Map<string, ContractingCompanyInfo>();
-  for (const c of companies) if (c.cnpj && !companyBySector.has(sectorName(c))) companyBySector.set(sectorName(c), c);
+  for (const c of companies) {
+    if (c.cnpj && !c.hiddenInOrgChart && !companyBySector.has(sectorName(c))) companyBySector.set(sectorName(c), c);
+  }
+  // Fora do organograma: a empresa e as pessoas dela não aparecem (nem em "Sem setor").
+  const hiddenCompanies = companies
+    .filter((c) => c.cnpj && c.hiddenInOrgChart && !companyBySector.has(sectorName(c)))
+    .sort((a, b) => sectorName(a).localeCompare(sectorName(b), "pt-BR"));
+  const hiddenSectors = new Set(hiddenCompanies.map(sectorName));
+  employees = employees.filter((e) => !(e.department && hiddenSectors.has(e.department)));
 
   const bySector = new Map<string, Employee[]>();
   for (const sector of [...companyBySector.keys()].sort((a, b) => a.localeCompare(b, "pt-BR"))) bySector.set(sector, []);
@@ -163,14 +178,78 @@ export function OrgChart({
     onOpen,
   };
 
+  async function setHidden(company: ContractingCompanyInfo, hidden: boolean) {
+    setBusy(true);
+    try {
+      await onSetHidden(company, hidden);
+      if (hidden) {
+        setHiding(null);
+        setSelected(null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Empresas fora do organograma, com "mostrar" para voltar.
+  const hiddenList = hiddenCompanies.length > 0 && (
+    <div className="flex flex-wrap items-center gap-2 rounded-[14px] border border-dashed border-border-strong px-4 py-3 text-xs text-muted">
+      <span className="font-semibold">Fora do organograma:</span>
+      {hiddenCompanies.map((c) => (
+        <span key={c.id} className="flex items-center gap-1.5 rounded-full border border-border bg-surface py-1 pl-3 pr-1">
+          <span className="font-semibold uppercase tracking-[0.04em] text-ink">{sectorName(c)}</span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setHidden(c, false)}
+            className="rounded-full px-2 py-0.5 font-bold text-accent-strong transition hover:bg-surface-2 disabled:opacity-50"
+          >
+            mostrar
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+
+  const hideModal = (
+    <Modal
+      open={!!hiding}
+      onClose={() => setHiding(null)}
+      title="Tirar do organograma"
+      maxWidthClassName="max-w-md"
+      footer={
+        <>
+          <Button variant="ghost" type="button" onClick={() => setHiding(null)}>
+            Cancelar
+          </Button>
+          <Button type="button" disabled={busy} onClick={() => hiding && setHidden(hiding, true)}>
+            Tirar do organograma
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm text-ink">
+        <strong>{hiding ? sectorName(hiding) : ""}</strong> e as pessoas dela deixam de aparecer no organograma. A empresa continua nos
+        termos do onboarding e no cadastro dos colaboradores, e você pode mostrar de novo quando quiser.
+      </p>
+    </Modal>
+  );
+
   if (sectors.length === 0) {
     return (
-      <div className="rounded-[14px] border border-border bg-surface">
-        <EmptyState
-          icon={<IconUsers className="h-6 w-6" />}
-          title="Nenhuma empresa no organograma"
-          text="Cadastre as empresas com CNPJ no Onboarding (Termos) para montar a estrutura do grupo."
-        />
+      <div className="flex flex-col gap-4">
+        <div className="rounded-[14px] border border-border bg-surface">
+          <EmptyState
+            icon={<IconUsers className="h-6 w-6" />}
+            title="Nenhuma empresa no organograma"
+            text={
+              hiddenCompanies.length > 0
+                ? "Todas as empresas estão fora do organograma. Mostre alguma abaixo."
+                : "Cadastre as empresas com CNPJ no Onboarding (Termos) para montar a estrutura do grupo."
+            }
+          />
+        </div>
+        {hiddenList}
       </div>
     );
   }
@@ -365,6 +444,15 @@ export function OrgChart({
                   <IconEdit className="h-4 w-4" />
                   Organizar áreas
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setHiding(open.company)}
+                  title="A empresa continua nos termos do onboarding e no cadastro dos colaboradores"
+                  className="flex h-9 items-center gap-2 rounded-[10px] border border-border-strong bg-surface px-3 text-xs font-semibold text-muted transition hover:border-critical hover:text-critical"
+                >
+                  <IconEyeOff className="h-4 w-4" />
+                  Tirar do organograma
+                </button>
               </div>
             )}
           </div>
@@ -414,6 +502,9 @@ export function OrgChart({
           </span>
         </section>
       )}
+
+      {hiddenList}
+      {hideModal}
     </div>
   );
 }

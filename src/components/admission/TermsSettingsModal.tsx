@@ -21,7 +21,7 @@ async function send(url: string, method: string, body?: unknown) {
 
 const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.message : "Erro inesperado.");
 
-type CompanyForm = { [K in keyof Omit<ContractingCompanyInfo, "id">]: string };
+type CompanyForm = { [K in keyof Omit<ContractingCompanyInfo, "id" | "hiddenInOrgChart">]: string };
 const EMPTY_COMPANY: CompanyForm = {
   name: "",
   shortName: "",

@@ -233,6 +233,8 @@ export interface ContractingCompanyInfo {
   logoUpdatedAt?: string | null;
   brandColor?: string | null;
   accentColor?: string | null;
+  /** Fora do organograma (continua nos termos e no cadastro). */
+  hiddenInOrgChart?: boolean;
 }
 
 /** A CFFGROUP fica no topo do organograma; as demais empresas do grupo, abaixo dela. */
