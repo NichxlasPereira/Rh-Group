@@ -16,6 +16,7 @@ import {
   IconKey,
   IconPlus,
   IconSearch,
+  IconUserMinus,
   IconUserPlus,
   IconUsers,
 } from "@/components/icons";
@@ -37,6 +38,8 @@ import { EmployeeModal, EmployeeFormValues } from "@/components/attendance/Emplo
 import { AttachmentChanges, OccurrenceModal, OccurrenceFormValues } from "@/components/attendance/OccurrenceModal";
 import { ConfirmDeleteModal } from "@/components/attendance/ConfirmDeleteModal";
 import { OffboardingModal } from "@/components/attendance/OffboardingModal";
+import { OffboardingPanel } from "@/components/attendance/OffboardingPanel";
+import type { ExitKitView } from "@/lib/startKit";
 import {
   CompanyArea,
   Employee,
@@ -96,6 +99,10 @@ const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: strin
   admissoes: {
     title: "Onboarding",
     description: "Admissões digitais: dados, documentos e termos assinados pelo candidato.",
+  },
+  offboarding: {
+    title: "Offboarding",
+    description: "Desligamentos: pedidos de desativação de acessos e devolução de equipamentos enviados no Slack.",
   },
   acessos: { title: "Acessos", description: "Quem pode entrar no RHGroup e os pedidos de cadastro aguardando aprovação." },
 };
@@ -161,6 +168,19 @@ export default function FrequenciaPage() {
   const [providerCreateSignal, setProviderCreateSignal] = useState(0);
   const [providerImportSignal, setProviderImportSignal] = useState(0);
   const [providersAttention, setProvidersAttention] = useState(0);
+  // Offboarding: desligamentos com os pedidos de saída; o número da aba são os que têm pendência.
+  const [offboardings, setOffboardings] = useState<ExitKitView[] | null>(null);
+  const [offboardSearch, setOffboardSearch] = useState("");
+  const [offboardPickSignal, setOffboardPickSignal] = useState(0);
+  const fetchOffboardings = useCallback(async () => {
+    const res = await fetch("/api/offboardings");
+    if (sessionExpired(res) || !res.ok) return;
+    setOffboardings(await res.json());
+  }, []);
+  useEffect(() => {
+    void fetchOffboardings();
+  }, [fetchOffboardings]);
+  const offboardingsPending = useMemo(() => (offboardings ?? []).filter((k) => k.tasks.some((t) => !t.doneAt)).length, [offboardings]);
   // O número da aba aparece antes de abrir Prestadores.
   useEffect(() => {
     fetch("/api/prestadores")
@@ -254,11 +274,12 @@ export default function FrequenciaPage() {
       { key: "prestadores", label: "Prestadores", icon: IconBriefcase, badge: providersAttention },
       { key: "aniversariantes", label: "Aniversariantes", icon: IconCake, badge: birthdaysToday },
       { key: "admissoes", label: "Onboarding", icon: IconUserPlus, badge: onboardingSummary?.toReview },
+      { key: "offboarding", label: "Offboarding", icon: IconUserMinus, badge: offboardingsPending },
       { key: "relatorios", label: "Relatórios", icon: IconChart },
     ];
     if (me?.role === "admin") list.push({ key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests });
     return list;
-  }, [me, onboardingSummary, birthdaysToday, providersAttention]);
+  }, [me, onboardingSummary, birthdaysToday, providersAttention, offboardingsPending]);
 
   const recentOccurrences = useMemo(
     () =>
@@ -611,6 +632,24 @@ export default function FrequenciaPage() {
           Novo onboarding
         </Button>
       </>
+    ) : tab === "offboarding" ? (
+      <>
+        <label className="flex h-10 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-muted focus-within:border-accent">
+          <IconSearch className="h-4 w-4 shrink-0" />
+          <input
+            type="search"
+            value={offboardSearch}
+            onChange={(e) => setOffboardSearch(e.target.value)}
+            placeholder="Buscar colaborador ou empresa"
+            aria-label="Buscar offboarding"
+            className="w-56 bg-transparent text-[13px] text-ink placeholder:text-muted focus:outline-none"
+          />
+        </label>
+        <Button onClick={() => setOffboardPickSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconUserMinus className="h-4 w-4" />
+          Desligar colaborador
+        </Button>
+      </>
     ) : tab === "acessos" ? null : tab === "prestadores" ? (
       <>
         <Button
@@ -685,7 +724,7 @@ export default function FrequenciaPage() {
         hideHeader={showingProfile}
         busy={loading}
       >
-        {!showingProfile && tab !== "aniversariantes" && tab !== "prestadores" && (
+        {!showingProfile && tab !== "aniversariantes" && tab !== "prestadores" && tab !== "offboarding" && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -726,6 +765,21 @@ export default function FrequenciaPage() {
             createSignal={providerCreateSignal}
             importSignal={providerImportSignal}
             onAttentionChange={setProvidersAttention}
+          />
+        ) : tab === "offboarding" ? (
+          <OffboardingPanel
+            kits={offboardings}
+            employees={employees}
+            departments={departments}
+            isAdmin={me?.role === "admin"}
+            search={offboardSearch}
+            pickSignal={offboardPickSignal}
+            onReload={fetchOffboardings}
+            onDeactivate={setTogglingEmployee}
+            onOpenEmployee={(employeeId) => {
+              changeTab("colaboradores");
+              setProfileId(employeeId);
+            }}
           />
         ) : tab === "admissoes" ? (
           <AdmissionsPanel
@@ -911,7 +965,7 @@ export default function FrequenciaPage() {
         employee={togglingEmployee?.active ? togglingEmployee : null}
         onClose={() => setTogglingEmployee(null)}
         onDone={async (emp, kit) => {
-          await fetchEmployees();
+          await Promise.all([fetchEmployees(), fetchOffboardings()]);
           setTogglingEmployee(null);
           if (kit?.slackError) toast.error(`${emp.name} foi desligado(a), mas: ${kit.slackError}`, { duration: 9000 });
           else if (kit && kit.sentCount > 0) toast.success(`${emp.name} foi desligado(a). Offboarding enviado no Slack.`);

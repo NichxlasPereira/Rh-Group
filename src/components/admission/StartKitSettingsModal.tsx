@@ -111,7 +111,18 @@ async function copy(text: string, done: string) {
  * colaborador novo precisa no primeiro dia — cada item com a pessoa do Slack
  * que o recebe por mensagem direta.
  */
-export function StartKitSettingsModal({ open, onClose, departments }: { open: boolean; onClose: () => void; departments: string[] }) {
+export function StartKitSettingsModal({
+  open,
+  onClose,
+  departments,
+  initialList = "inicio",
+}: {
+  open: boolean;
+  onClose: () => void;
+  departments: string[];
+  /** Lista aberta ao entrar (a aba Offboarding abre na de saída). */
+  initialList?: "inicio" | "saida";
+}) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [people, setPeople] = useState<SlackPerson[] | null>(null);
   const [peopleError, setPeopleError] = useState("");
@@ -146,6 +157,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
     if (!open) return;
     setForm(emptyItem);
     setEditingId(null);
+    setList(initialList);
     void load();
     // Áreas de cada empresa, para escolher a área de um item.
     Promise.all([call("/api/frequencia/companies"), call("/api/frequencia/areas")])
@@ -158,7 +170,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
         setAreasBySector(map);
       })
       .catch(() => undefined);
-  }, [open, load]);
+  }, [open, load, initialList]);
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const formAreas = useMemo(() => (form.department ? (areasBySector.get(form.department) ?? []) : []), [form.department, areasBySector]);

@@ -408,6 +408,18 @@ export async function startKitsFor(employeeId: string) {
   return rows.map(toView);
 }
 
+/** Todos os offboardings (o mais novo primeiro), com quem foi desligado — para a aba Offboarding. */
+export async function exitKitsAll() {
+  const rows = await prisma.startKitRequest.findMany({
+    where: { kind: "saida" },
+    orderBy: { createdAt: "desc" },
+    include: { ...VIEW_INCLUDE, employee: { select: { id: true, name: true, department: true, role: true, active: true } } },
+  });
+  return rows.map((r) => ({ ...toView(r), employee: r.employee }));
+}
+
+export type ExitKitView = Awaited<ReturnType<typeof exitKitsAll>>[number];
+
 type ViewRow = NonNullable<Awaited<ReturnType<typeof prisma.startKitRequest.findFirst<{ include: typeof VIEW_INCLUDE }>>>>;
 
 function toView(r: ViewRow) {
