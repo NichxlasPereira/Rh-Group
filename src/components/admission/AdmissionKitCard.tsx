@@ -117,7 +117,8 @@ export function AdmissionKitCard({
         body: JSON.stringify({ action: "atualizar" }),
       });
       await load();
-      if (kits[0]?.slackError) toast.error(kits[0].slackError, { duration: 8000 });
+      const kit = kits.find((k) => k.kind === "inicio");
+      if (kit?.slackError) toast.error(kit.slackError, { duration: 8000 });
       else toast.success("Kit atualizado e enviado no Slack.");
     } catch (err) {
       errorToast(err);
@@ -228,7 +229,7 @@ function Preview({
       {state.items.length === 0 ? (
         <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
           Nenhum item do kit vale para {state.department ? `${state.department}${state.area ? ` › ${state.area}` : ""}` : "quem está sem empresa"}. Cadastre
-          itens em Onboarding › Kit de início (ou deixe os gerais em “Todas as empresas”).
+          itens em Onboarding › Kit e offboarding (ou deixe os gerais em “Todas as empresas”).
         </p>
       ) : (
         <ul className="flex flex-col gap-2">

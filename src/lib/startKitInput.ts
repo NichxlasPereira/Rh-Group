@@ -6,6 +6,7 @@ export interface StartKitItemInput {
   slackUserName: string | null;
   department: string | null;
   area: string | null;
+  kind: "inicio" | "saida"; // kit de início ou offboarding
 }
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
@@ -28,6 +29,7 @@ export function validateStartKitItem(body: unknown): { data: StartKitItemInput }
       slackUserName: mention ? text(b.slackUserName, 120) || null : null,
       department: text(b.department, 80) || null,
       area: text(b.area, 80) || null,
+      kind: b.kind === "saida" ? "saida" : "inicio",
     },
   };
 }

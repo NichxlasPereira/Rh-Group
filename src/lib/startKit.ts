@@ -7,7 +7,14 @@ import { SlackError, slackApi, slackConfig, slackEscape } from "./slack";
  * área dela) e manda, por mensagem direta no Slack, a cada responsável só os
  * itens dele — com um botão "Pronto" por item. Quem resolve marca ali mesmo
  * (ou o RH marca na ficha) e a mensagem se atualiza.
+ *
+ * Offboarding: a mesma estrutura, com uma lista própria de itens (kind
+ * "saida"). Ao desligar o colaborador, cada responsável recebe os pedidos de
+ * desativação/devolução dele; o "startDate" do pedido é o último dia.
  */
+
+export type KitKind = "inicio" | "saida";
+export const kitKind = (v: unknown): KitKind => (v === "saida" ? "saida" : "inicio");
 
 /** Lembrete quando faltar até tantos dias para o início e ainda houver itens. */
 export const REMINDER_DAYS = 3;
@@ -20,6 +27,22 @@ export const SUGGESTED_ITEMS: { name: string; responsible: string }[] = [
   { name: "Crachá", responsible: "RH" },
 ];
 
+export const SUGGESTED_EXIT_ITEMS: { name: string; responsible: string }[] = [
+  { name: "Desativar e-mail corporativo", responsible: "TI" },
+  { name: "Remover do Slack", responsible: "TI" },
+  { name: "Recolher notebook", responsible: "TI" },
+  { name: "Remover acessos aos sistemas da área", responsible: "Gestor" },
+  { name: "Recolher crachá", responsible: "RH" },
+];
+
+/** Onde se configura cada lista (aparece nos avisos). */
+const SETUP_PLACE: Record<KitKind, string> = {
+  inicio: "Onboarding › Kit e offboarding",
+  saida: "Onboarding › Kit e offboarding › Offboarding",
+};
+
+/** Lembrete do offboarding: um dia depois do envio, se ainda houver item pendente. */
+const EXIT_REMINDER_HOURS = 24;
 const REQUEST_INCLUDE = {
   tasks: { orderBy: [{ sortOrder: "asc" as const }, { name: "asc" as const }] },
   messages: true,
@@ -41,9 +64,9 @@ function daysUntil(d: Date): number {
   return Math.round((d.getTime() - today) / 86_400_000);
 }
 
-/** Itens do kit que valem para esta pessoa (empresa e área; vazio = todos). */
-export async function itemsFor(department: string | null, areaName: string | null) {
-  const items = await prisma.startKitItem.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
+/** Itens do kit (ou do offboarding) que valem para esta pessoa (empresa e área; vazio = todos). */
+export async function itemsFor(department: string | null, areaName: string | null, kind: KitKind = "inicio") {
+  const items = await prisma.startKitItem.findMany({ where: { kind }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
   return items.filter((i) => (!i.department || i.department === department) && (!i.area || i.area === areaName));
 }
 
@@ -68,11 +91,13 @@ function tasksByRecipient(tasks: TaskRow[]): Map<string, TaskRow[]> {
 /** Mensagem direta (blocos) para um responsável, só com os itens dele. */
 async function buildMessage(req: RequestRow, tasks: TaskRow[]) {
   const { area, manager } = await contextFor(req);
-  const start = req.startDate ?? req.employee.startDate;
+  const exit = req.kind === "saida";
+  const start = exit ? req.startDate : (req.startDate ?? req.employee.startDate);
   const done = tasks.filter((t) => t.doneAt).length;
   const total = tasks.length;
+  const days = start ? daysUntil(start) : null;
   const when = start
-    ? `${dateBR(start)}${daysUntil(start) >= 0 ? ` (em ${daysUntil(start)} ${daysUntil(start) === 1 ? "dia" : "dias"})` : ""}`
+    ? `${dateBR(start)}${days === 0 ? " (hoje)" : days !== null && days > 0 ? ` (em ${days} ${days === 1 ? "dia" : "dias"})` : ""}`
     : "a definir";
 
   const fields = [
@@ -80,14 +105,22 @@ async function buildMessage(req: RequestRow, tasks: TaskRow[]) {
     ["Cargo", req.employee.role],
     ["Área", area],
     ["Gestor", manager],
-    ["Começa em", when],
+    [exit ? "Último dia" : "Começa em", when],
   ]
     .filter(([, v]) => v)
     .map(([k, v]) => ({ type: "mrkdwn", text: `*${k}*\n${slackEscape(String(v))}` }));
 
   const blocks: Record<string, unknown>[] = [
-    { type: "header", text: { type: "plain_text", text: `Kit de início — ${req.employee.name}`.slice(0, 150) } },
-    { type: "section", text: { type: "mrkdwn", text: "Um colaborador novo está chegando. Estes itens são com você:" } },
+    { type: "header", text: { type: "plain_text", text: `${exit ? "Offboarding" : "Kit de início"} — ${req.employee.name}`.slice(0, 150) } },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: exit
+          ? "Um colaborador foi desligado. Desative ou recolha estes itens, que são com você:"
+          : "Um colaborador novo está chegando. Estes itens são com você:",
+      },
+    },
     { type: "section", fields },
     { type: "divider" },
   ];
@@ -115,7 +148,10 @@ async function buildMessage(req: RequestRow, tasks: TaskRow[]) {
       },
     ],
   });
-  const text = `Kit de início: ${req.employee.name} começa em ${when} — ${total - done} ${total - done === 1 ? "item seu" : "itens seus"} para preparar.`;
+  const left = `${total - done} ${total - done === 1 ? "item seu" : "itens seus"}`;
+  const text = exit
+    ? `Offboarding: ${req.employee.name}${start ? ` (último dia ${dateBR(start)})` : ""} — ${left} para desativar ou recolher.`
+    : `Kit de início: ${req.employee.name} começa em ${when} — ${left} para preparar.`;
   return { blocks, text };
 }
 
@@ -127,11 +163,12 @@ export async function postStartKit(requestId: string): Promise<void> {
   const req = await loadRequest(requestId);
   if (!req) return;
   const problems: string[] = [];
+  const place = SETUP_PLACE[kitKind(req.kind)];
   const withoutPerson = req.tasks.filter((t) => !t.slackMention);
   if (withoutPerson.length) {
-    problems.push(`Sem pessoa no Slack: ${withoutPerson.map((t) => t.name).join(", ")}. Escolha quem recebe em Onboarding › Kit de início.`);
+    problems.push(`Sem pessoa no Slack: ${withoutPerson.map((t) => t.name).join(", ")}. Escolha quem recebe em ${place}.`);
   }
-  if (req.tasks.length === 0) problems.push("Nenhum item do kit vale para esta pessoa. Cadastre itens em Onboarding › Kit de início.");
+  if (req.tasks.length === 0) problems.push(`Nenhum item vale para esta pessoa. Cadastre itens em ${place}.`);
 
   const groups = tasksByRecipient(req.tasks);
   if (groups.size > 0 && !slackConfig()) {
@@ -179,8 +216,9 @@ async function refreshFor(requestId: string, slackUserId: string | null): Promis
  */
 export async function createStartKit(
   employeeId: string,
-  opts: { admissionId?: string | null; startDate?: Date | null; createdBy?: string | null; skipItemIds?: string[] } = {}
+  opts: { admissionId?: string | null; startDate?: Date | null; createdBy?: string | null; skipItemIds?: string[]; kind?: KitKind } = {}
 ): Promise<string | null> {
+  const kind = opts.kind ?? "inicio";
   if (opts.admissionId) {
     const existing = await prisma.startKitRequest.findFirst({ where: { admissionId: opts.admissionId }, select: { id: true } });
     if (existing) return existing.id;
@@ -188,15 +226,17 @@ export async function createStartKit(
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { department: true, areaId: true, startDate: true } });
   if (!employee) return null;
   const area = employee.areaId ? await prisma.companyArea.findUnique({ where: { id: employee.areaId }, select: { name: true } }) : null;
-  const all = await itemsFor(employee.department, area?.name ?? null);
+  const all = await itemsFor(employee.department, area?.name ?? null, kind);
   const skip = new Set(opts.skipItemIds ?? []);
   const items = all.filter((i) => !skip.has(i.id));
   const skippedNames = all.filter((i) => skip.has(i.id)).map((i) => i.name);
   const req = await prisma.startKitRequest.create({
     data: {
       employeeId,
+      kind,
       admissionId: opts.admissionId ?? null,
-      startDate: opts.startDate ?? employee.startDate ?? null,
+      // Offboarding: o último dia; kit de início: o primeiro dia (ou o do cadastro).
+      startDate: kind === "saida" ? (opts.startDate ?? null) : (opts.startDate ?? employee.startDate ?? null),
       createdBy: opts.createdBy ?? null,
       skipped: skippedNames.length ? JSON.stringify(skippedNames) : null,
       tasks: {
@@ -221,10 +261,11 @@ export async function createStartKit(
  * tira os pendentes que não valem mais e nunca foram enviados, e manda no
  * Slack o que faltar. O que já está pronto não muda.
  */
-export async function syncStartKit(employeeId: string, opts: { createIfMissing?: boolean; createdBy?: string | null } = {}) {
-  const latest = await prisma.startKitRequest.findFirst({ where: { employeeId }, orderBy: { createdAt: "desc" }, select: { id: true } });
+export async function syncStartKit(employeeId: string, opts: { createIfMissing?: boolean; createdBy?: string | null; kind?: KitKind } = {}) {
+  const kind = opts.kind ?? "inicio";
+  const latest = await prisma.startKitRequest.findFirst({ where: { employeeId, kind }, orderBy: { createdAt: "desc" }, select: { id: true } });
   if (!latest) {
-    if (opts.createIfMissing) await createStartKit(employeeId, { createdBy: opts.createdBy });
+    if (opts.createIfMissing) await createStartKit(employeeId, { createdBy: opts.createdBy, kind });
     return;
   }
   const req = await loadRequest(latest.id);
@@ -237,7 +278,7 @@ export async function syncStartKit(employeeId: string, opts: { createIfMissing?:
   } catch {
     skipped = [];
   }
-  const items = (await itemsFor(req.employee.department, area?.name ?? null)).filter((i) => !skipped.includes(i.name));
+  const items = (await itemsFor(req.employee.department, area?.name ?? null, kind)).filter((i) => !skipped.includes(i.name));
   const itemByName = new Map(items.map((i) => [i.name, i]));
   const messaged = new Set(req.messages.map((m) => m.slackUserId));
   const wasSent = (t: TaskRow) => !!t.slackMention && messaged.has(t.slackMention);
@@ -274,7 +315,7 @@ export async function syncStartKit(employeeId: string, opts: { createIfMissing?:
     });
     if (item.slackMention) touched.add(item.slackMention);
   }
-  if (!req.startDate && req.employee.startDate) {
+  if (kind === "inicio" && !req.startDate && req.employee.startDate) {
     await prisma.startKitRequest.update({ where: { id: req.id }, data: { startDate: req.employee.startDate } });
   }
 
@@ -305,28 +346,37 @@ export async function sendStartKitReminders(): Promise<number> {
   const now = new Date();
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const limit = new Date(today + REMINDER_DAYS * 86_400_000);
+  const pending = { reminderSentAt: null, messages: { some: {} }, tasks: { some: { doneAt: null } } };
   const due = await prisma.startKitRequest.findMany({
     where: {
-      reminderSentAt: null,
-      messages: { some: {} },
-      startDate: { gte: new Date(today), lte: limit },
-      tasks: { some: { doneAt: null } },
+      OR: [
+        // Kit de início: a até REMINDER_DAYS dias do primeiro dia.
+        { ...pending, kind: "inicio", startDate: { gte: new Date(today), lte: limit } },
+        // Offboarding: um dia depois do envio.
+        { ...pending, kind: "saida", createdAt: { lte: new Date(now.getTime() - EXIT_REMINDER_HOURS * 3_600_000) } },
+      ],
     },
     include: REQUEST_INCLUDE,
   });
   let sent = 0;
   for (const req of due) {
-    const days = daysUntil(req.startDate!);
-    const when = days === 0 ? "hoje" : days === 1 ? "amanhã" : `em ${days} dias`;
+    let lead: string;
+    if (req.kind === "saida") {
+      lead = `Offboarding de ${slackEscape(req.employee.name)}${req.startDate ? ` (último dia ${dateBR(req.startDate)})` : ""}: ainda falta`;
+    } else {
+      const days = daysUntil(req.startDate!);
+      const when = days === 0 ? "hoje" : days === 1 ? "amanhã" : `em ${days} dias`;
+      lead = `${slackEscape(req.employee.name)} começa ${when} e ainda falta`;
+    }
     for (const m of req.messages) {
-      const pending = req.tasks.filter((t) => t.slackMention === m.slackUserId && !t.doneAt);
-      if (pending.length === 0) continue;
+      const open = req.tasks.filter((t) => t.slackMention === m.slackUserId && !t.doneAt);
+      if (open.length === 0) continue;
       try {
         await slackApi("chat.postMessage", {
           channel: m.channel,
           thread_ts: m.ts,
           reply_broadcast: true,
-          text: `:alarm_clock: ${slackEscape(req.employee.name)} começa ${when} e ainda falta:\n${pending.map((t) => `• *${slackEscape(t.name)}*`).join("\n")}`,
+          text: `:alarm_clock: ${lead}:\n${open.map((t) => `• *${slackEscape(t.name)}*`).join("\n")}`,
         });
         sent++;
       } catch (err) {
@@ -348,7 +398,7 @@ const VIEW_INCLUDE = {
 
 /** Kit enviado na conclusão deste onboarding (para o cartão do onboarding). */
 export async function startKitForAdmission(admissionId: string) {
-  const r = await prisma.startKitRequest.findFirst({ where: { admissionId }, orderBy: { createdAt: "desc" }, include: VIEW_INCLUDE });
+  const r = await prisma.startKitRequest.findFirst({ where: { admissionId, kind: "inicio" }, orderBy: { createdAt: "desc" }, include: VIEW_INCLUDE });
   return r ? toView(r) : null;
 }
 
@@ -364,6 +414,7 @@ function toView(r: ViewRow) {
   const sentTo = new Set(r.messages.map((m) => m.slackUserId));
   return {
     id: r.id,
+    kind: kitKind(r.kind),
     startDate: r.startDate?.toISOString() ?? null,
     sentCount: sentTo.size,
     slackError: r.slackError,

@@ -15,7 +15,25 @@ interface Item {
   slackUserName: string | null;
   department: string | null;
   area: string | null;
+  kind: "inicio" | "saida";
 }
+
+type ListKind = Item["kind"];
+
+const LIST_TEXT: Record<ListKind, { label: string; hint: string; placeholder: string; responsible: string }> = {
+  inicio: {
+    label: "Kit de início",
+    hint: "Vai para os responsáveis ao concluir o onboarding.",
+    placeholder: "Item (ex.: Notebook)",
+    responsible: "Área responsável (ex.: TI, Facilities, Gestor)",
+  },
+  saida: {
+    label: "Offboarding",
+    hint: "Vai para os responsáveis ao desligar o colaborador (pedidos de desativação e devolução).",
+    placeholder: "Pedido (ex.: Desativar e-mail, Recolher notebook)",
+    responsible: "Área responsável (ex.: TI, RH, Gestor)",
+  },
+};
 
 interface Settings {
   slack: { configured: boolean; interactive: boolean; ok: boolean; workspace?: string; bot?: string; error?: string };
@@ -103,6 +121,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
   const [busy, setBusy] = useState(false);
   const [areasBySector, setAreasBySector] = useState<Map<string, string[]>>(new Map());
   const [showSetup, setShowSetup] = useState(false);
+  const [list, setList] = useState<ListKind>("inicio");
 
   const load = useCallback(async () => {
     try {
@@ -167,7 +186,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
     e.preventDefault();
     setBusy(true);
     try {
-      await call(editingId ? `/api/frequencia/kit/itens/${editingId}` : "/api/frequencia/kit/itens", editingId ? "PATCH" : "POST", form);
+      await call(editingId ? `/api/frequencia/kit/itens/${editingId}` : "/api/frequencia/kit/itens", editingId ? "PATCH" : "POST", { ...form, kind: list });
       setForm(emptyItem);
       setEditingId(null);
       await load();
@@ -179,7 +198,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
   }
 
   async function removeItem(item: Item) {
-    if (!window.confirm(`Tirar “${item.name}” do kit? Os pedidos já enviados não mudam.`)) return;
+    if (!window.confirm(`Tirar “${item.name}” da lista? Os pedidos já enviados não mudam.`)) return;
     try {
       await call(`/api/frequencia/kit/itens/${item.id}`, "DELETE");
       await load();
@@ -190,7 +209,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
 
   async function useSuggestion() {
     try {
-      await call("/api/frequencia/kit", "PUT", { action: "sugestao" });
+      await call("/api/frequencia/kit", "PUT", { action: "sugestao", kind: list });
       await load();
     } catch (err) {
       errorToast(err);
@@ -198,13 +217,15 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
   }
 
   const slack = settings?.slack;
-  const missingPerson = settings?.items.filter((i) => !i.slackMention).length ?? 0;
+  const items = settings?.items.filter((i) => (i.kind ?? "inicio") === list) ?? [];
+  const missingPerson = items.filter((i) => !i.slackMention).length;
+  const lt = LIST_TEXT[list];
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Kit de início"
+      title="Kit de início e offboarding"
       maxWidthClassName="max-w-3xl"
       footer={
         <Button type="button" onClick={onClose}>
@@ -216,7 +237,8 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
         <p className="text-muted">
           Ao concluir um onboarding, cada responsável recebe no Slack, por <strong className="text-ink">mensagem direta</strong>, só os
           itens dele — com um botão <strong className="text-ink">Pronto</strong> por item. A 3 dias do início, quem ainda tiver item
-          pendente recebe um lembrete. A lista completa aparece na ficha do colaborador.
+          pendente recebe um lembrete. No <strong className="text-ink">offboarding</strong>, ao desligar alguém, cada responsável recebe
+          os pedidos de desativação e devolução, com lembrete um dia depois. Tudo aparece na ficha do colaborador.
         </p>
 
         {/* Slack */}
@@ -300,14 +322,38 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
 
         {/* Itens */}
         <section className="flex flex-col gap-3">
-          <h3 className="font-display text-[15px] font-semibold text-ink">Itens do kit</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-display text-[15px] font-semibold text-ink">Itens</h3>
+            <div role="tablist" aria-label="Lista" className="flex gap-1 rounded-[10px] border border-border bg-surface p-1">
+              {(["inicio", "saida"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={list === k}
+                  onClick={() => {
+                    setList(k);
+                    setEditingId(null);
+                    setForm(emptyItem);
+                  }}
+                  className={`rounded-[8px] px-3 py-1.5 text-xs font-bold transition ${
+                    list === k ? "bg-ink text-bg" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {LIST_TEXT[k].label}
+                  <span className="ml-1.5 tabular-nums opacity-70">{settings?.items.filter((i) => (i.kind ?? "inicio") === k).length ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="-mt-1 text-xs text-muted">{lt.hint}</p>
           {missingPerson > 0 && (
             <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
               {missingPerson} {missingPerson === 1 ? "item está" : "itens estão"} sem pessoa no Slack e não {missingPerson === 1 ? "vai" : "vão"} ser
               enviado{missingPerson === 1 ? "" : "s"}. Clique no lápis para escolher quem recebe.
             </p>
           )}
-          {settings && settings.items.length === 0 && (
+          {settings && items.length === 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-dashed border-border-strong px-4 py-3 text-muted">
               Nenhum item ainda.
               <Button type="button" variant="ghost" className="!px-3 !py-1.5 text-xs" onClick={useSuggestion}>
@@ -315,9 +361,9 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
               </Button>
             </div>
           )}
-          {settings && settings.items.length > 0 && (
+          {settings && items.length > 0 && (
             <ul className="divide-y divide-border rounded-[12px] border border-border bg-surface">
-              {settings.items.map((i) => (
+              {items.map((i) => (
                 <li key={i.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-ink">{i.name}</p>
@@ -349,7 +395,7 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
                   >
                     <IconEdit className="h-4 w-4" />
                   </button>
-                  <button type="button" title="Tirar do kit" onClick={() => removeItem(i)} className="rounded-[8px] p-2 text-muted hover:bg-surface-2 hover:text-critical">
+                  <button type="button" title="Tirar da lista" onClick={() => removeItem(i)} className="rounded-[8px] p-2 text-muted hover:bg-surface-2 hover:text-critical">
                     <IconTrash className="h-4 w-4" />
                   </button>
                 </li>
@@ -358,12 +404,14 @@ export function StartKitSettingsModal({ open, onClose, departments }: { open: bo
           )}
 
           <form onSubmit={saveItem} className="grid grid-cols-1 gap-3 rounded-[12px] border border-border bg-surface p-4 sm:grid-cols-2">
-            <p className="text-xs font-semibold text-muted sm:col-span-2">{editingId ? "Editar item" : "Novo item"}</p>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Item (ex.: Notebook)" maxLength={80} className={inputClass(false)} />
+            <p className="text-xs font-semibold text-muted sm:col-span-2">
+              {editingId ? "Editar item" : list === "saida" ? "Novo pedido de offboarding" : "Novo item do kit de início"}
+            </p>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={lt.placeholder} maxLength={80} className={inputClass(false)} />
             <input
               value={form.responsible}
               onChange={(e) => setForm({ ...form, responsible: e.target.value })}
-              placeholder="Área responsável (ex.: TI, Facilities, Gestor)"
+              placeholder={lt.responsible}
               maxLength={40}
               className={inputClass(false)}
             />

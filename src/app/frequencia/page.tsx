@@ -36,6 +36,7 @@ import { AttendanceReports } from "@/components/attendance/AttendanceReports";
 import { EmployeeModal, EmployeeFormValues } from "@/components/attendance/EmployeeModal";
 import { AttachmentChanges, OccurrenceModal, OccurrenceFormValues } from "@/components/attendance/OccurrenceModal";
 import { ConfirmDeleteModal } from "@/components/attendance/ConfirmDeleteModal";
+import { OffboardingModal } from "@/components/attendance/OffboardingModal";
 import {
   CompanyArea,
   Employee,
@@ -905,8 +906,20 @@ export default function FrequenciaPage() {
         preselectedEmployee={occurrencePreselect}
       />
 
+      {/* Desligar: último dia e offboarding no Slack. Reativar: só a confirmação. */}
+      <OffboardingModal
+        employee={togglingEmployee?.active ? togglingEmployee : null}
+        onClose={() => setTogglingEmployee(null)}
+        onDone={async (emp, kit) => {
+          await fetchEmployees();
+          setTogglingEmployee(null);
+          if (kit?.slackError) toast.error(`${emp.name} foi desligado(a), mas: ${kit.slackError}`, { duration: 9000 });
+          else if (kit && kit.sentCount > 0) toast.success(`${emp.name} foi desligado(a). Offboarding enviado no Slack.`);
+          else toast.success(`${emp.name} foi desligado(a). O histórico continua na ficha.`);
+        }}
+      />
       <ConfirmDeleteModal
-        open={!!togglingEmployee}
+        open={!!togglingEmployee && !togglingEmployee.active}
         title={togglingEmployee?.active ? "Desligar colaborador" : "Reativar colaborador"}
         confirmLabel={togglingEmployee?.active ? "Desligar" : "Reativar"}
         message={

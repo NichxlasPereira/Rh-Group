@@ -321,7 +321,7 @@ export function AdmissionsPanel({
                 onClick={() => setStartKit(true)}
                 className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
               >
-                Kit de início
+                Kit e offboarding
               </button>
               <button
                 type="button"

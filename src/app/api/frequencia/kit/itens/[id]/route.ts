@@ -11,7 +11,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if ("response" in auth) return auth.response;
   const result = validateStartKitItem(await request.json().catch(() => null));
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
-  const updated = await prisma.startKitItem.updateMany({ where: { id: (await params).id }, data: result.data });
+  // O tipo (início ou saída) não muda na edição.
+  const { kind: _kind, ...data } = result.data;
+  void _kind;
+  const updated = await prisma.startKitItem.updateMany({ where: { id: (await params).id }, data });
   if (!updated.count) return NextResponse.json({ error: "Item não encontrado." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

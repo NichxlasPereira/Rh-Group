@@ -414,6 +414,7 @@ model StartKitItem {
   slackUserName String? // nome dela no Slack (para mostrar)
   department    String? // empresa; null = todas
   area         String? // área da empresa; null = todas
+  kind         String   @default("inicio") // "inicio" (kit de início) | "saida" (offboarding)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -425,6 +426,7 @@ model StartKitRequest {
   id             String          @id @default(cuid())
   employeeId     String
   employee       Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kind           String          @default("inicio") // "inicio": startDate = primeiro dia; "saida": startDate = último dia
   admissionId    String?
   startDate      DateTime?
   slackChannel   String?

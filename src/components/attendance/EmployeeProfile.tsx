@@ -669,6 +669,7 @@ export function EmployeeProfile({
 
             {/* Recarrega quando a empresa ou a área mudam (o kit é completado no servidor). */}
             <StartKitCard key={`${employee.department}:${employee.areaId}`} employeeId={employee.id} />
+            <StartKitCard key={`saida:${employee.active}`} employeeId={employee.id} kind="saida" active={employee.active} />
           </div>
         </div>
       )}
