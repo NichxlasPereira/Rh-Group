@@ -274,8 +274,8 @@ body {
 
 .neon-cinza {
   border-color: var(--neon-cinza);
+  /* Só o traço neon, sem sombra espalhada: contorno + um fio de brilho colado nele. */
   box-shadow:
     0 0 0 1px var(--neon-cinza-glow),
-    0 0 16px var(--neon-cinza-glow),
-    inset 0 0 10px rgb(185 187 192 / 0.06);
+    0 0 3px var(--neon-cinza-glow);
 }
