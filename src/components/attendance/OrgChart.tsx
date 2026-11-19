@@ -238,7 +238,7 @@ export function OrgChart({
   if (sectors.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-[14px] border border-border bg-surface">
+        <div className="rounded-[14px] neon-cinza border bg-surface">
           <EmptyState
             icon={<IconUsers className="h-6 w-6" />}
             title="Nenhuma empresa no organograma"
@@ -467,7 +467,7 @@ export function OrgChart({
               <div className="mx-auto flex w-max flex-col items-center pt-1">
                 <div
                   data-theme="light"
-                  className="flex items-center gap-3 rounded-[12px] border border-border bg-surface px-4 py-2.5 shadow-[0_8px_20px_-16px_rgba(0,0,0,0.5)]"
+                  className="flex items-center gap-3 rounded-[12px] neon-cinza border bg-surface px-4 py-2.5"
                 >
                   {openLogo ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -598,7 +598,7 @@ function PersonNode({ employee: e, ctx }: { employee: Employee; ctx: NodeCtx }) 
       type="button"
       onClick={() => ctx.onOpen(e)}
       title={[e.name, e.role, area].filter(Boolean).join(" · ")}
-      className={`flex w-[152px] flex-col items-center gap-1.5 rounded-[12px] border border-border bg-surface px-2.5 py-3 text-center shadow-[0_8px_20px_-16px_rgba(0,0,0,0.5)] transition hover:border-border-strong hover:bg-surface-2 ${
+      className={`flex w-[152px] flex-col items-center gap-1.5 rounded-[12px] neon-cinza border bg-surface px-2.5 py-3 text-center transition hover:border-border-strong hover:bg-surface-2 ${
         e.active ? "" : "opacity-60"
       }`}
     >

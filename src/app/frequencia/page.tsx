@@ -820,7 +820,7 @@ export default function FrequenciaPage() {
 
             <div className="min-w-0">
               {loading ? (
-                <div className="rounded-[14px] border border-border bg-surface">
+                <div className="rounded-[14px] neon-cinza border bg-surface">
                   <SkeletonRows />
                 </div>
               ) : tab === "ocorrencias" ? (

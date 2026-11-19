@@ -171,7 +171,7 @@ export function ProvidersPanel({ departments, areasBySector, isAdmin, createSign
     <div className="flex flex-col gap-4">
       <section aria-label="Resumo dos prestadores" className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         {stats.map((card) => (
-          <div key={card.label} className="flex flex-col gap-2.5 rounded-[14px] border border-border bg-surface p-4">
+          <div key={card.label} className="flex flex-col gap-2.5 rounded-[14px] neon-cinza border bg-surface p-4">
             <span className="flex items-center justify-between gap-2 text-[12.5px] font-semibold text-muted">
               {card.label}
               <card.icon className="h-4 w-4 shrink-0 text-muted" />
@@ -190,7 +190,7 @@ export function ProvidersPanel({ departments, areasBySector, isAdmin, createSign
         ))}
       </section>
 
-      <section aria-label="Filtros" className="flex flex-wrap items-end gap-3 rounded-[14px] border border-border bg-surface px-4 py-3">
+      <section aria-label="Filtros" className="flex flex-wrap items-end gap-3 rounded-[14px] neon-cinza border bg-surface px-4 py-3">
         <FilterField label="Buscar" className="w-full sm:w-64">
           <div className="relative">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -218,7 +218,7 @@ export function ProvidersPanel({ departments, areasBySector, isAdmin, createSign
         </label>
       </section>
 
-      <div className="rounded-[14px] border border-border bg-surface">
+      <div className="rounded-[14px] neon-cinza border bg-surface">
         {providers === null ? (
           <SkeletonRows />
         ) : visible.length === 0 ? (

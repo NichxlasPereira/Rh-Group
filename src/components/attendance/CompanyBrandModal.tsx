@@ -186,7 +186,7 @@ export function CompanyBrandModal({ company, onClose, onChanged }: CompanyBrandM
 
         <section className="flex flex-col gap-2.5">
           <span className="text-sm font-medium text-ink">Prévia no organograma</span>
-          <div className="overflow-clip rounded-[14px] border border-border bg-surface">
+          <div className="overflow-clip rounded-[14px] neon-cinza border bg-surface">
             <div className="h-1.5" style={{ background: brandStripe(brandColor, accentColor) }} />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               {logo ? (

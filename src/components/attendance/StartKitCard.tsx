@@ -102,7 +102,7 @@ export function StartKitCard({ employeeId, kind = "inicio", active = true }: { e
   if (kind === "saida" && kits !== null && !kit && active) return null;
 
   return (
-    <section aria-label={txt.title} className="flex flex-col gap-3.5 rounded-[16px] border border-border bg-surface p-5">
+    <section aria-label={txt.title} className="flex flex-col gap-3.5 rounded-[16px] neon-cinza border bg-surface p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">{txt.title}</h2>
         {kit && kit.tasks.length > 0 && (

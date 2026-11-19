@@ -260,7 +260,7 @@ body {
   }
 }
 
-/* Borda neon cinza (cartões do Onboarding): contorno claro com brilho suave. */
+/* Borda neon cinza (cartões do sistema): contorno claro com brilho suave. */
 :root,
 [data-theme="dark"] {
   --neon-cinza: #b9bbc0;

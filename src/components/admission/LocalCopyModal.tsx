@@ -213,7 +213,7 @@ export function LocalCopyModal({ open, onClose }: { open: boolean; onClose: () =
           </div>
         )}
 
-        <div className="flex flex-col divide-y divide-border rounded-[12px] border border-border bg-surface">
+        <div className="flex flex-col divide-y divide-border rounded-[12px] neon-cinza border bg-surface">
           {devices === null ? (
             <p className="px-4 py-3 text-muted">Carregando…</p>
           ) : devices.length === 0 ? (

@@ -67,7 +67,7 @@ export function BirthdaysPanel({ employees, birthdays, companies, areaNameById, 
   }
 
   return (
-    <section className="rounded-[14px] border border-border bg-surface">
+    <section className="rounded-[14px] neon-cinza border bg-surface">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-warn-soft text-warn">

@@ -29,7 +29,7 @@ export function EmployeesTable({
   onOpen,
 }: EmployeesTableProps) {
   return (
-    <div className="rounded-[14px] border border-border bg-surface">
+    <div className="rounded-[14px] neon-cinza border bg-surface">
       {employees.length === 0 ? (
         <EmptyState
           icon={<IconUsers className="h-6 w-6" />}

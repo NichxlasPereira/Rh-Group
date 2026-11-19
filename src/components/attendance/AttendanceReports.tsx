@@ -81,7 +81,7 @@ export function AttendanceReports({ occurrences, month, months, onOpenOccurrence
 
   if (inMonth.length === 0) {
     return (
-      <div className="rounded-[14px] border border-border bg-surface px-6 py-16 text-center">
+      <div className="rounded-[14px] neon-cinza border bg-surface px-6 py-16 text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-muted">
           <IconCalendarPlus className="h-6 w-6" />
         </div>
@@ -96,7 +96,7 @@ export function AttendanceReports({ occurrences, month, months, onOpenOccurrence
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3 rounded-[14px] border border-border bg-surface px-4 py-3 text-sm text-muted">
+      <div className="flex items-start gap-3 rounded-[14px] neon-cinza border bg-surface px-4 py-3 text-sm text-muted">
         <IconInfo className="mt-0.5 h-5 w-5 shrink-0 text-accent-strong" />
         <p>
           {monthKeyLabel(month)}: {inMonth.length} {inMonth.length === 1 ? "ocorrência" : "ocorrências"} de{" "}
@@ -105,7 +105,7 @@ export function AttendanceReports({ occurrences, month, months, onOpenOccurrence
         </p>
       </div>
 
-      <div className="rounded-[14px] border border-border bg-surface">
+      <div className="rounded-[14px] neon-cinza border bg-surface">
         <h3 className="px-5 pt-5 font-display text-lg font-semibold text-ink">Por colaborador</h3>
         <p className="px-5 pb-3 text-xs text-muted">Ordenado por faltas não justificadas, depois faltas e dias de atestado.</p>
         <div className="overflow-x-auto">
@@ -226,7 +226,7 @@ function Num({ value, highlight }: { value: number; highlight?: boolean }) {
 
 function ChartCard({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[14px] border border-border bg-surface p-5">
+    <div className="rounded-[14px] neon-cinza border bg-surface p-5">
       <h3 className={`font-display text-lg font-semibold text-ink ${hint ? "" : "mb-4"}`}>{title}</h3>
       {hint && <p className="mb-4 text-xs text-muted">{hint}</p>}
       {children}

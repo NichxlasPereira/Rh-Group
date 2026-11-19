@@ -83,7 +83,7 @@ export function AccessPanel({ currentUserId, onChanged }: AccessPanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border bg-surface px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] neon-cinza border bg-surface px-4 py-3">
         <p className="max-w-xl text-sm text-muted">
           Só as pessoas desta lista entram no RHGroup, cada uma com o próprio e-mail e senha.
           Bloquear ou remover alguém encerra o acesso na hora.
@@ -133,7 +133,7 @@ export function AccessPanel({ currentUserId, onChanged }: AccessPanelProps) {
         </div>
       )}
 
-      <div className="rounded-[14px] border border-border bg-surface">
+      <div className="rounded-[14px] neon-cinza border bg-surface">
         {members === null ? (
           <SkeletonRows rows={4} />
         ) : members.length === 0 ? (

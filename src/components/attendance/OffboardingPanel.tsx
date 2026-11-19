@@ -142,7 +142,7 @@ export function OffboardingPanel({
 
   return (
     <div className="flex flex-wrap items-start gap-4">
-      <section aria-label="Offboardings" className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-[16px] border border-border bg-surface">
+      <section aria-label="Offboardings" className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-[16px] neon-cinza border bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por situação">
             {filters.map((f) => (
@@ -301,7 +301,7 @@ export function OffboardingPanel({
       </section>
 
       <aside className="flex min-w-[260px] flex-[1_1_280px] flex-col gap-4">
-        <section aria-label="Pendências por responsável" className="flex flex-col gap-3 rounded-[16px] border border-border bg-surface p-4">
+        <section aria-label="Pendências por responsável" className="flex flex-col gap-3 rounded-[16px] neon-cinza border bg-surface p-4">
           <h3 className="font-display text-[15px] font-semibold text-ink">Pendências por responsável</h3>
           {kits === null ? (
             <p className="text-sm text-muted">Carregando…</p>

@@ -57,7 +57,7 @@ export function AttendanceStats({ activeEmployees, totals, periodLabel, onboardi
   return (
     <section aria-label="Resumo do período" className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
       {cards.map((card) => (
-        <div key={card.label} className="flex flex-col gap-2.5 rounded-[14px] border border-border bg-surface p-4">
+        <div key={card.label} className="flex flex-col gap-2.5 rounded-[14px] neon-cinza border bg-surface p-4">
           <span className="flex items-center justify-between gap-2 text-[12.5px] font-semibold text-muted">
             {card.label}
             <card.icon className="h-4 w-4 shrink-0 text-muted" />

@@ -104,7 +104,7 @@ function DataTab({ provider: p }: { provider: ProviderDetail }) {
 
 function DataList({ title, rows }: { title: string; rows: [string, string | null][] }) {
   return (
-    <section className="rounded-[12px] border border-border bg-surface">
+    <section className="rounded-[12px] neon-cinza border bg-surface">
       <h3 className="border-b border-border px-4 py-2.5 font-display text-[15px] font-semibold text-ink">{title}</h3>
       <dl className="grid grid-cols-1 gap-x-6 gap-y-2.5 px-4 py-3 sm:grid-cols-2">
         {rows.map(([label, value]) => (
@@ -159,7 +159,7 @@ function DocumentsTab({ provider, onChanged }: { provider: ProviderDetail; onCha
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={upload} className="grid grid-cols-1 items-end gap-3 rounded-[12px] border border-border bg-surface p-4 sm:grid-cols-[1fr_1fr_auto]">
+      <form onSubmit={upload} className="grid grid-cols-1 items-end gap-3 rounded-[12px] neon-cinza border bg-surface p-4 sm:grid-cols-[1fr_1fr_auto]">
         <Field label="Documento">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Contrato assinado" maxLength={80} className={inputClass(false)} />
         </Field>
@@ -174,7 +174,7 @@ function DocumentsTab({ provider, onChanged }: { provider: ProviderDetail; onCha
       {provider.documents.length === 0 ? (
         <p className="text-muted">Nenhum documento ainda. Envie o contrato assinado, o cartão CNPJ ou outros arquivos do prestador.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-[12px] border border-border bg-surface">
+        <ul className="divide-y divide-border rounded-[12px] neon-cinza border bg-surface">
           {provider.documents.map((d) => (
             <li key={d.id} className="flex items-center gap-3 px-4 py-3">
               <IconPaperclip className="h-4 w-4 shrink-0 text-muted" />

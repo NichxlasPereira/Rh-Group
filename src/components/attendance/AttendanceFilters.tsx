@@ -43,7 +43,7 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
   return (
     <section
       aria-label="Filtros"
-      className="flex flex-wrap items-end gap-3 rounded-[14px] border border-border bg-surface px-4 py-3"
+      className="flex flex-wrap items-end gap-3 rounded-[14px] neon-cinza border bg-surface px-4 py-3"
     >
       {/* Aniversariantes troca de mês no próprio cartão. */}
       {tab !== "aniversariantes" && (

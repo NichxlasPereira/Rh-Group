@@ -160,14 +160,14 @@ export function OccurrenceDrillModal({ open, onClose, occurrences, month, type, 
         </div>
 
         {groups.length === 0 ? (
-          <p className="rounded-[12px] border border-border bg-surface px-4 py-6 text-center text-muted">
+          <p className="rounded-[12px] neon-cinza border bg-surface px-4 py-6 text-center text-muted">
             Nenhuma ocorrência {type ? `de ${OCCURRENCE_LABEL[type].toLowerCase()} ` : ""}
             {day !== null ? `${onWeekday(day)} ` : ""}
             {sector ? `em ${sector} ` : ""}neste mês.
           </p>
         ) : (
           groups.map((g) => (
-            <section key={g.name} className="rounded-[12px] border border-border bg-surface">
+            <section key={g.name} className="rounded-[12px] neon-cinza border bg-surface">
               <header className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-3">
                 <h3 className="font-display text-base font-semibold text-ink">{g.name}</h3>
                 <span className="text-xs text-muted">

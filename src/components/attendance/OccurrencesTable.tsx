@@ -15,7 +15,7 @@ interface OccurrencesTableProps {
 
 export function OccurrencesTable({ occurrences, hasAny, onEdit, onDelete }: OccurrencesTableProps) {
   return (
-    <div className="rounded-[14px] border border-border bg-surface">
+    <div className="rounded-[14px] neon-cinza border bg-surface">
       {occurrences.length === 0 ? (
         <EmptyState
           icon={<IconCalendarPlus className="h-6 w-6" />}

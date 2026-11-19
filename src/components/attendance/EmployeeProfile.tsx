@@ -241,7 +241,7 @@ export function EmployeeProfile({
         </button>
         {/* Esqueleto da ficha: faixa do cabeçalho e os cartões abaixo. */}
         <div role="status" aria-label="Carregando a ficha" className="flex flex-col gap-4">
-          <div className="flex items-center gap-5 rounded-[18px] border border-border bg-surface px-5 py-6 sm:px-7">
+          <div className="flex items-center gap-5 rounded-[18px] neon-cinza border bg-surface px-5 py-6 sm:px-7">
             <span className="rh-skeleton h-[104px] w-[104px] shrink-0 rounded-[22px]" />
             <span className="flex flex-1 flex-col gap-3">
               <span className="rh-skeleton h-6 w-1/2 rounded-full" />
@@ -587,7 +587,7 @@ export function EmployeeProfile({
           </div>
 
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-4">
-            <section aria-label="Saldo de folgas" className="flex items-center gap-4 rounded-[16px] border border-border bg-surface p-5">
+            <section aria-label="Saldo de folgas" className="flex items-center gap-4 rounded-[16px] neon-cinza border bg-surface p-5">
               <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label={`${folgaRemaining} de ${employee.folgaAllowance} dias de folga disponíveis`}>
                 <circle cx="50" cy="50" r="40" fill="none" stroke="var(--surface-2)" strokeWidth="10" />
                 <circle
@@ -720,7 +720,7 @@ function CollapsibleCard({
 }) {
   const contentId = useId();
   return (
-    <section aria-label={title} className="rounded-[16px] border border-border bg-surface">
+    <section aria-label={title} className="rounded-[16px] neon-cinza border bg-surface">
       <h2>
         <button
           type="button"
@@ -766,7 +766,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section aria-label={title} className="flex flex-col gap-3.5 rounded-[16px] border border-border bg-surface p-5">
+    <section aria-label={title} className="flex flex-col gap-3.5 rounded-[16px] neon-cinza border bg-surface p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-[17px] font-semibold uppercase tracking-[0.06em] text-ink">{title}</h2>
         {badge}
