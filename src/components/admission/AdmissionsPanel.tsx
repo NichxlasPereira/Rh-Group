@@ -295,7 +295,7 @@ export function AdmissionsPanel({
 
   return (
     <div className="flex flex-wrap items-start gap-4">
-      <section aria-label="Onboardings" className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-[16px] border border-border bg-surface">
+      <section aria-label="Onboardings" className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-[16px] neon-cinza border bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por situação">
             {filters.map((f) => (
@@ -342,7 +342,7 @@ export function AdmissionsPanel({
         </div>
 
         {admissions === null ? (
-          <div className="rounded-[14px] border border-border bg-surface">
+          <div className="rounded-[14px] neon-cinza border bg-surface">
             <SkeletonRows rows={4} />
           </div>
         ) : visible.length === 0 ? (
@@ -419,7 +419,7 @@ export function AdmissionsPanel({
       </section>
 
       <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
-        <section aria-label="Pendências" className="flex flex-col gap-3 rounded-[16px] border border-border bg-surface p-4">
+        <section aria-label="Pendências" className="flex flex-col gap-3 rounded-[16px] neon-cinza border bg-surface p-4">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-[17px] font-bold text-ink">Pendências</h2>
             <span className="text-xs text-muted">{todo.length === 0 ? "nada agora" : `${todo.length} ${todo.length === 1 ? "item" : "itens"}`}</span>
@@ -448,7 +448,7 @@ export function AdmissionsPanel({
           )}
         </section>
 
-        <section aria-label="Ocorrências recentes" className="flex flex-col rounded-[16px] border border-border bg-surface p-4">
+        <section aria-label="Ocorrências recentes" className="flex flex-col rounded-[16px] neon-cinza border bg-surface p-4">
           <div className="flex items-baseline justify-between pb-2">
             <h2 className="font-display text-[17px] font-bold text-ink">Ocorrências recentes</h2>
             <button
@@ -597,7 +597,7 @@ function AdmissionDetail({
         ← Todos os onboardings
       </button>
 
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-[14px] border border-border bg-surface p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-[14px] neon-cinza border bg-surface p-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className={`font-display text-2xl font-bold ${admission.candidateName ? "text-ink" : "italic text-muted"}`}>
@@ -758,7 +758,7 @@ function AdmissionDetail({
           />
           <ul className="flex flex-col gap-3">
             {admission.documents.map((doc) => (
-              <li key={doc.id} className="rounded-[14px] border border-border bg-surface p-4">
+              <li key={doc.id} className="rounded-[14px] neon-cinza border bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-ink">
@@ -1001,7 +1001,7 @@ function DetailTabs({
       id="onboarding-secoes"
       role="tablist"
       aria-label="Seções do onboarding"
-      className="grid scroll-mt-4 grid-cols-2 gap-1.5 rounded-[14px] border border-border bg-surface p-1.5 lg:grid-cols-4"
+      className="grid scroll-mt-4 grid-cols-2 gap-1.5 rounded-[14px] neon-cinza border bg-surface p-1.5 lg:grid-cols-4"
     >
       {pages.map((t, i) => {
         const active = page === t.key;
@@ -1187,7 +1187,7 @@ function CandidateDataCard({
   const missingPresets = DEFAULT_FIELDS.filter((preset) => !fields.some((f) => f.key === preset.key));
 
   return (
-    <section className="rounded-[14px] border border-border bg-surface p-5">
+    <section className="rounded-[14px] neon-cinza border bg-surface p-5">
       <h3 className="font-display text-lg font-semibold text-ink">Dados do candidato</h3>
       <p className="mb-3 text-xs text-muted">Preenchidos pelo próprio candidato no link.</p>
       {fields.length === 0 ? (
@@ -1284,7 +1284,7 @@ function InternalInfoCard({
 
   if (!editing) {
     return (
-      <section className="flex flex-wrap items-start justify-between gap-3 rounded-[14px] border border-border bg-surface p-5">
+      <section className="flex flex-wrap items-start justify-between gap-3 rounded-[14px] neon-cinza border bg-surface p-5">
         <div className="min-w-0">
           <h3 className="font-display text-lg font-semibold text-ink">Dados internos</h3>
           <p className="text-sm text-muted">
@@ -1320,7 +1320,7 @@ function InternalInfoCard({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-[14px] border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4"
+      className="grid grid-cols-1 gap-4 rounded-[14px] neon-cinza border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4"
       onSubmit={async (e) => {
         e.preventDefault();
         // A rota grava o registro inteiro: manda junto o que o candidato preencheu.
@@ -1477,7 +1477,7 @@ function NdaCompanyCard({
   const signed = admission.documents.filter((d) => isGeneratedDocument(d.kind) && d.files.length > 0);
 
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border bg-surface p-4">
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] neon-cinza border bg-surface p-4">
       <div className="min-w-0">
         <p className="font-medium text-ink">Empresa contratante</p>
         <p className="text-xs text-muted">

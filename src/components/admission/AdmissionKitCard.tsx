@@ -128,7 +128,7 @@ export function AdmissionKitCard({
   }
 
   return (
-    <section aria-label="Kit de início" className="flex flex-col gap-3 rounded-[14px] border border-border bg-surface p-5">
+    <section aria-label="Kit de início" className="flex flex-col gap-3 rounded-[14px] neon-cinza border bg-surface p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-lg font-semibold text-ink">Kit de início</h3>
         {state?.stage === "enviado" && state.kit && state.kit.tasks.length > 0 && (

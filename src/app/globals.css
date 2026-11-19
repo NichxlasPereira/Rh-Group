@@ -259,3 +259,23 @@ body {
     transition: none;
   }
 }
+
+/* Borda neon cinza (cartões do Onboarding): contorno claro com brilho suave. */
+:root,
+[data-theme="dark"] {
+  --neon-cinza: #b9bbc0;
+  --neon-cinza-glow: rgb(185 187 192 / 0.45);
+}
+
+[data-theme="light"] {
+  --neon-cinza: #8a8d93;
+  --neon-cinza-glow: rgb(110 113 119 / 0.42);
+}
+
+.neon-cinza {
+  border-color: var(--neon-cinza);
+  box-shadow:
+    0 0 0 1px var(--neon-cinza-glow),
+    0 0 16px var(--neon-cinza-glow),
+    inset 0 0 10px rgb(185 187 192 / 0.06);
+}
