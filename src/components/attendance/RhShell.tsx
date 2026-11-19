@@ -87,28 +87,6 @@ export function RhShell<K extends string>({
     });
   }
 
-  // Marca da seção atual: desliza até o item clicado (medida no próprio menu).
-  const listRef = useRef<HTMLDivElement>(null);
-  const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  // Só anima depois da primeira medida, para a marca não "voar" ao abrir a página.
-  const [pillMoves, setPillMoves] = useState(false);
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const measure = () => {
-      const el = list.querySelector<HTMLElement>('[aria-current="page"]');
-      setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, [active, sections, topMenu]);
-  useEffect(() => {
-    const timer = setTimeout(() => setPillMoves(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Menu recolhido (só os ícones), lembrado neste navegador.
   const [collapsed, setCollapsed] = useState(false);
   // Desliza só quando a pessoa clica (ao abrir a página já vem no tamanho certo).
@@ -128,8 +106,36 @@ export function RhShell<K extends string>({
       return !v;
     });
   }
+  // Marca da seção atual: desliza até o item clicado (medida no próprio menu).
+  const listRef = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Só anima depois da primeira medida, para a marca não "voar" ao abrir a página.
+  const [pillMoves, setPillMoves] = useState(false);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const measure = () => {
+      const el = list.querySelector<HTMLElement>('[aria-current="page"]');
+      setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
+    };
+    measure();
+    // Observa também cada item: no menu do topo os nomes encolhem ao recolher e a marca acompanha.
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    for (const item of list.querySelectorAll("button")) observer.observe(item);
+    return () => observer.disconnect();
+  }, [active, sections, topMenu, collapsed]);
+  useEffect(() => {
+    const timer = setTimeout(() => setPillMoves(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Rótulos somem por opacidade enquanto a largura desliza (o menu corta o resto).
   const label = `whitespace-nowrap transition-opacity duration-200 ${collapsed ? "lg:opacity-0" : ""}`;
+  // Menu no topo: o nome encolhe e some junto, só quando a pessoa clica.
+  const topLabelMoves = collapseMoves
+    ? "lg:transition-[max-width,opacity,margin] lg:duration-300 lg:ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
+    : "";
 
   const content = (
       <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
@@ -193,7 +199,7 @@ export function RhShell<K extends string>({
             </div>
           </div>
 
-          <nav aria-label={`Seções do ${moduleLabel}`} className="min-w-0 lg:flex-1">
+          <nav aria-label={`Seções do ${moduleLabel}`} className="min-w-0">
             <div ref={listRef} className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:pb-0 lg:[scrollbar-width:none]">
               {pill && (
                 <span
@@ -213,19 +219,34 @@ export function RhShell<K extends string>({
                     onClick={() => onChange(s.key)}
                     aria-current={current ? "page" : undefined}
                     title={s.label}
-                    className={`relative flex shrink-0 items-center gap-1.5 rounded-[9px] px-2 py-2 text-[13px] transition ${
+                    className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition ${
                       current
                         ? `font-bold text-ink ${pill ? "" : "bg-accent-soft"}`
                         : "font-semibold text-muted hover:bg-surface-2 hover:text-ink active:bg-border"
                     }`}
                   >
                     <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
-                    {/* Computador estreito: só o ícone (nome no title), menos na seção atual. */}
-                    <span className={`whitespace-nowrap ${current ? "" : "lg:hidden xl:inline"}`}>{s.label}</span>
+                    {/* Computador estreito: só o ícone (nome no title), menos na seção atual.
+                        Recolhido: todos só com o ícone, e o nome encolhe deslizando. */}
+                    <span
+                      className={`ml-1.5 inline-block max-w-[14rem] overflow-hidden whitespace-nowrap ${
+                        current ? "" : "lg:hidden xl:inline-block"
+                      } ${collapsed ? "lg:ml-0 lg:max-w-0 lg:opacity-0" : ""} ${topLabelMoves}`}
+                    >
+                      {s.label}
+                    </span>
                     {!!s.badge && (
-                      <span className="min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white">
+                      <span
+                        className={`ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white ${
+                          collapsed ? "lg:hidden" : ""
+                        }`}
+                      >
                         {s.badge}
                       </span>
+                    )}
+                    {/* Recolhido: o contador vira um ponto no canto do ícone. */}
+                    {!!s.badge && collapsed && (
+                      <span className="absolute left-[21px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
                     )}
                   </button>
                 );
@@ -233,7 +254,21 @@ export function RhShell<K extends string>({
             </div>
           </nav>
 
-          <div className="flex shrink-0 items-center justify-end gap-1 px-1 lg:px-0">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Mostrar os nomes" : "Recolher menu"}
+            title={collapsed ? "Mostrar os nomes" : "Recolher menu"}
+            aria-expanded={!collapsed}
+            className="hidden h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] text-muted transition hover:bg-surface-2 hover:text-ink active:bg-border lg:-ml-3.5 lg:flex"
+          >
+            <IconChevronLeft
+              className={`h-4 w-4 ${collapseMoves ? "transition-transform duration-300 motion-reduce:transition-none" : ""} ${collapsed ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {/* A seta fica colada nas seções; o resto da barra vai para a direita. */}
+          <div className="flex shrink-0 items-center justify-end gap-1 px-1 lg:ml-auto lg:px-0">
             {otherModules.map((m) => (
               <Link
                 key={m.href}
@@ -243,7 +278,7 @@ export function RhShell<K extends string>({
                 className="hidden items-center gap-2 rounded-[9px] px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-surface-2 hover:text-ink lg:flex"
               >
                 <m.icon className="h-[18px] w-[18px] shrink-0" />
-                <span className="hidden whitespace-nowrap 2xl:inline">{m.label}</span>
+                <span className={`hidden whitespace-nowrap ${collapsed ? "" : "2xl:inline"}`}>{m.label}</span>
               </Link>
             ))}
             <span className="mx-1 hidden h-6 border-l border-border lg:block" aria-hidden="true" />
