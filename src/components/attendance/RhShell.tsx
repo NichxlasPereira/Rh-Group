@@ -50,6 +50,8 @@ function initials(name: string): string {
 
 const COLLAPSED_KEY = "menuLateralRecolhido";
 const TOP_MENU_KEY = "menuNoTopo";
+// Duração da troca de seção no menu do topo recolhido (marca e nomes juntos).
+const GLIDE_MS = 360;
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
@@ -111,36 +113,71 @@ export function RhShell<K extends string>({
   const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   // Só anima depois da primeira medida, para a marca não "voar" ao abrir a página.
   const [pillMoves, setPillMoves] = useState(false);
+  // Menu do topo recolhido: ao trocar de seção, a marca desliza da seção anterior até a
+  // nova acompanhando quadro a quadro os nomes que fecham e abrem (os ícones andam junto).
+  const prevActive = useRef(active);
+  const gliding = useRef(false);
+  const [glide, setGlide] = useState(false);
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) return;
     const measure = () => {
+      if (gliding.current) return;
       const el = list.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!el) return setPill(null);
-      // Menu do topo recolhido: o nome da seção nova abre enquanto o da anterior fecha.
-      // A marca vai direto para onde a seção nova vai terminar, sem esperar os nomes.
-      if (topMenu && collapsed && window.matchMedia("(min-width: 1024px)").matches) {
-        const items = [...list.querySelectorAll<HTMLElement>(":scope > button")];
-        const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
-        let x = items[0]?.offsetLeft ?? 0;
-        for (const item of items) {
-          const name = item.querySelector<HTMLElement>("[data-nome]");
-          const nameNow = name ? name.offsetWidth + (parseFloat(getComputedStyle(name).marginLeft) || 0) : 0;
-          const nameEnd = item === el && name ? name.scrollWidth + 6 : 0;
-          const w = item.offsetWidth - nameNow + nameEnd;
-          if (item === el) return setPill({ x, y: el.offsetTop, w, h: el.offsetHeight });
-          x += w + gap;
-        }
-      }
-      setPill({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
+      setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
     };
-    measure();
     // Observa também cada item: no menu do topo os nomes encolhem ao recolher e a marca acompanha.
     const observer = new ResizeObserver(measure);
     observer.observe(list);
     for (const item of list.querySelectorAll("button")) observer.observe(item);
-    return () => observer.disconnect();
-  }, [active, sections, topMenu, collapsed]);
+
+    const prev = prevActive.current;
+    prevActive.current = active;
+    const items = list.querySelectorAll<HTMLElement>(":scope > button");
+    const from = items[sections.findIndex((s) => s.key === prev)];
+    const to = items[sections.findIndex((s) => s.key === active)];
+    let frame = 0;
+    if (
+      topMenu &&
+      collapsed &&
+      pillMoves &&
+      prev !== active &&
+      from &&
+      to &&
+      window.matchMedia("(min-width: 1024px)").matches &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      gliding.current = true;
+      setGlide(true);
+      const start = performance.now();
+      const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+      const step = () => {
+        const t = Math.min(1, (performance.now() - start) / GLIDE_MS);
+        const e = ease(t);
+        // As duas pontas da marca vão da seção anterior à nova, nas posições de agora.
+        const left = from.offsetLeft + (to.offsetLeft - from.offsetLeft) * e;
+        const right =
+          from.offsetLeft + from.offsetWidth + (to.offsetLeft + to.offsetWidth - from.offsetLeft - from.offsetWidth) * e;
+        setPill({ x: left, y: to.offsetTop, w: right - left, h: to.offsetHeight });
+        if (t < 1) frame = requestAnimationFrame(step);
+        else {
+          gliding.current = false;
+          setGlide(false);
+          measure();
+        }
+      };
+      step();
+    } else measure();
+
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      if (gliding.current) {
+        gliding.current = false;
+        setGlide(false);
+      }
+    };
+  }, [active, sections, topMenu, collapsed, pillMoves]);
   useEffect(() => {
     const timer = setTimeout(() => setPillMoves(true), 100);
     return () => clearTimeout(timer);
@@ -151,7 +188,7 @@ export function RhShell<K extends string>({
   // Menu no topo: o nome encolhe e some junto quando a pessoa recolhe; recolhido, o nome
   // passa de uma seção para a outra a cada clique (não ao abrir a página).
   const topLabelMoves = collapseMoves || (collapsed && pillMoves)
-    ? "lg:transition-[max-width,opacity,margin] lg:duration-300 lg:ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
+    ? "lg:transition-[max-width,opacity,margin] lg:duration-[360ms] lg:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none"
     : "";
 
   const content = (
@@ -221,7 +258,7 @@ export function RhShell<K extends string>({
               {pill && (
                 <span
                   aria-hidden="true"
-                  className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves ? "rh-pill" : ""}`}
+                  className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves && !glide ? "rh-pill" : ""}`}
                   style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }}
                 >
                   <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
