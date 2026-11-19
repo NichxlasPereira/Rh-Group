@@ -113,7 +113,7 @@ export function RhShell<K extends string>({
   const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   // Só anima depois da primeira medida, para a marca não "voar" ao abrir a página.
   const [pillMoves, setPillMoves] = useState(false);
-  // Menu do topo recolhido: ao trocar de seção, a marca desliza da seção anterior até a
+  // Menu do topo: ao trocar de seção, a marca desliza da seção anterior até a
   // nova acompanhando quadro a quadro os nomes que fecham e abrem (os ícones andam junto).
   const prevActive = useRef(active);
   const gliding = useRef(false);
@@ -139,7 +139,6 @@ export function RhShell<K extends string>({
     let frame = 0;
     if (
       topMenu &&
-      collapsed &&
       pillMoves &&
       prev !== active &&
       from &&
@@ -185,9 +184,8 @@ export function RhShell<K extends string>({
 
   // Rótulos somem por opacidade enquanto a largura desliza (o menu corta o resto).
   const label = `whitespace-nowrap transition-opacity duration-200 ${collapsed ? "lg:opacity-0" : ""}`;
-  // Menu no topo: o nome encolhe e some junto quando a pessoa recolhe; recolhido, o nome
-  // passa de uma seção para a outra a cada clique (não ao abrir a página).
-  const topLabelMoves = collapseMoves || (collapsed && pillMoves)
+  // Menu no topo: o nome passa de uma seção para a outra a cada clique (não ao abrir a página).
+  const topLabelMoves = pillMoves
     ? "lg:transition-[max-width,opacity,margin] lg:duration-[360ms] lg:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none"
     : "";
 
@@ -280,12 +278,12 @@ export function RhShell<K extends string>({
                     }`}
                   >
                     <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
-                    {/* Computador estreito: só o ícone (nome no title), menos na seção atual.
-                        Recolhido: só a seção atual mostra o nome, que desliza para a seção clicada. */}
+                    {/* Só a seção atual mostra o nome (as outras, o ícone com o nome no title);
+                        ao clicar em outra, o nome fecha numa e abre na outra. */}
                     <span
                       data-nome
                       className={`ml-1.5 inline-block max-w-[14rem] overflow-hidden whitespace-nowrap align-middle ${
-                        current ? "" : collapsed ? "lg:ml-0 lg:max-w-0 lg:opacity-0" : "lg:hidden xl:inline-block"
+                        current ? "" : "lg:ml-0 lg:max-w-0 lg:opacity-0"
                       } ${topLabelMoves}`}
                     >
                       {s.label}
@@ -293,14 +291,14 @@ export function RhShell<K extends string>({
                     {!!s.badge && (
                       <span
                         className={`ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white ${
-                          collapsed && !current ? "lg:hidden" : ""
+                          current ? "" : "lg:hidden"
                         }`}
                       >
                         {s.badge}
                       </span>
                     )}
-                    {/* Recolhido: o contador vira um ponto no canto do ícone. */}
-                    {!!s.badge && collapsed && !current && (
+                    {/* Nas outras seções, o contador vira um ponto no canto do ícone. */}
+                    {!!s.badge && !current && (
                       <span className="absolute left-[21px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
                     )}
                   </button>
@@ -309,20 +307,7 @@ export function RhShell<K extends string>({
             </div>
           </nav>
 
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? "Mostrar os nomes" : "Recolher menu"}
-            title={collapsed ? "Mostrar os nomes" : "Recolher menu"}
-            aria-expanded={!collapsed}
-            className="hidden h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] text-muted transition hover:bg-surface-2 hover:text-ink active:bg-border lg:-ml-3.5 lg:flex"
-          >
-            <IconChevronLeft
-              className={`h-4 w-4 ${collapseMoves ? "transition-transform duration-300 motion-reduce:transition-none" : ""} ${collapsed ? "rotate-180" : ""}`}
-            />
-          </button>
-
-          {/* A seta fica colada nas seções; o resto da barra vai para a direita. */}
+          {/* O resto da barra vai para a direita. */}
           <div className="flex shrink-0 items-center justify-end gap-1 px-1 lg:ml-auto lg:px-0">
             {otherModules.map((m) => (
               <Link
@@ -333,7 +318,7 @@ export function RhShell<K extends string>({
                 className="hidden items-center gap-2 rounded-[9px] px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-surface-2 hover:text-ink lg:flex"
               >
                 <m.icon className="h-[18px] w-[18px] shrink-0" />
-                <span className={`hidden whitespace-nowrap ${collapsed ? "" : "2xl:inline"}`}>{m.label}</span>
+                <span className="hidden whitespace-nowrap 2xl:inline">{m.label}</span>
               </Link>
             ))}
             <span className="mx-1 hidden h-6 border-l border-border lg:block" aria-hidden="true" />
