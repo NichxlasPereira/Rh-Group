@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "../ThemeToggle";
-import { IconBox, IconChevronLeft, IconKey, IconLogout } from "../icons";
+import { IconBox, IconChevronLeft, IconKey, IconLayoutSide, IconLayoutTop, IconLogout } from "../icons";
 import { BrandArt, BrandDot, CffLogo } from "../brand";
 
 export interface RhSection<K extends string> {
@@ -49,6 +49,7 @@ function initials(name: string): string {
 }
 
 const COLLAPSED_KEY = "menuLateralRecolhido";
+const TOP_MENU_KEY = "menuNoTopo";
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
@@ -70,6 +71,22 @@ export function RhShell<K extends string>({
   busy = false,
   children,
 }: RhShellProps<K>) {
+  // Menu no topo (barra horizontal) em vez da barra lateral, lembrado neste navegador.
+  const [topMenu, setTopMenu] = useState(false);
+  useEffect(() => {
+    try {
+      setTopMenu(localStorage.getItem(TOP_MENU_KEY) === "1");
+    } catch {}
+  }, []);
+  function toggleTopMenu() {
+    setTopMenu((v) => {
+      try {
+        localStorage.setItem(TOP_MENU_KEY, v ? "0" : "1");
+      } catch {}
+      return !v;
+    });
+  }
+
   // Marca da seção atual: desliza até o item clicado (medida no próprio menu).
   const listRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -86,7 +103,7 @@ export function RhShell<K extends string>({
     const observer = new ResizeObserver(measure);
     observer.observe(list);
     return () => observer.disconnect();
-  }, [active, sections]);
+  }, [active, sections, topMenu]);
   useEffect(() => {
     const timer = setTimeout(() => setPillMoves(true), 100);
     return () => clearTimeout(timer);
@@ -114,6 +131,166 @@ export function RhShell<K extends string>({
   // Rótulos somem por opacidade enquanto a largura desliza (o menu corta o resto).
   const label = `whitespace-nowrap transition-opacity duration-200 ${collapsed ? "lg:opacity-0" : ""}`;
 
+  const content = (
+      <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
+        {busy && (
+          <span
+            role="progressbar"
+            aria-label="Carregando"
+            className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden ${topMenu ? "" : collapsed ? "lg:left-[62px]" : "lg:left-60"}`}
+          >
+            <span className="rh-progress block h-full w-2/5 rounded-full bg-ink/70" />
+          </span>
+        )}
+        {/* Cada seção (e a ficha) aparece em cascata curta: cabeçalho, indicadores e conteúdo. */}
+        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-stagger flex min-w-0 flex-col gap-6">
+        {!hideHeader && (
+          <>
+        {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
+        <header
+          data-theme="dark"
+          className="brand-band relative flex flex-wrap items-end justify-between gap-4 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7"
+        >
+          <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[340px] text-white/[0.12] sm:block" />
+          <div className="relative flex flex-col gap-2">
+            <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/75">
+              CFF Group · {moduleLabel}
+            </span>
+            <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
+              {title}
+              <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
+            </h1>
+            <p className="max-w-[62ch] text-sm text-white/85">{description}</p>
+          </div>
+          <div className="relative flex flex-wrap items-center gap-2.5">
+            <div className="hidden lg:block">
+              <ThemeToggle />
+            </div>
+            {actions}
+          </div>
+        </header>
+          </>
+        )}
+        {children}
+        </div>
+      </main>
+  );
+
+  if (topMenu) {
+    return (
+      <div className="flex flex-1 flex-col">
+        {/* Menu no topo: logo, seções lado a lado, outros módulos e a conta, numa barra só. */}
+        <div className="flex flex-col gap-3 border-b border-border bg-surface px-3 py-3 lg:sticky lg:top-0 lg:z-40 lg:flex-row lg:items-center lg:gap-5 lg:px-6 lg:py-2">
+          <div className="flex items-center justify-between gap-3 px-2 lg:px-0">
+            <div className="flex items-center gap-3">
+              <CffLogo className="h-7 w-auto text-ink" />
+              <span className="border-l border-border-strong pl-3 font-display text-[13px] font-medium uppercase tracking-[0.18em] text-muted">
+                {moduleLabel}
+              </span>
+            </div>
+            <div className="lg:hidden">
+              <ThemeToggle />
+            </div>
+          </div>
+
+          <nav aria-label={`Seções do ${moduleLabel}`} className="min-w-0 lg:flex-1">
+            <div ref={listRef} className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:pb-0 lg:[scrollbar-width:none]">
+              {pill && (
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves ? "rh-pill" : ""}`}
+                  style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }}
+                >
+                  <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
+                </span>
+              )}
+              {sections.map((s) => {
+                const current = s.key === active;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => onChange(s.key)}
+                    aria-current={current ? "page" : undefined}
+                    title={s.label}
+                    className={`relative flex shrink-0 items-center gap-1.5 rounded-[9px] px-2 py-2 text-[13px] transition ${
+                      current
+                        ? `font-bold text-ink ${pill ? "" : "bg-accent-soft"}`
+                        : "font-semibold text-muted hover:bg-surface-2 hover:text-ink active:bg-border"
+                    }`}
+                  >
+                    <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
+                    {/* Computador estreito: só o ícone (nome no title), menos na seção atual. */}
+                    <span className={`whitespace-nowrap ${current ? "" : "lg:hidden xl:inline"}`}>{s.label}</span>
+                    {!!s.badge && (
+                      <span className="min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white">
+                        {s.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          <div className="flex shrink-0 items-center justify-end gap-1 px-1 lg:px-0">
+            {otherModules.map((m) => (
+              <Link
+                key={m.href}
+                href={m.href}
+                prefetch={false}
+                title={m.label}
+                className="hidden items-center gap-2 rounded-[9px] px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-surface-2 hover:text-ink lg:flex"
+              >
+                <m.icon className="h-[18px] w-[18px] shrink-0" />
+                <span className="hidden whitespace-nowrap 2xl:inline">{m.label}</span>
+              </Link>
+            ))}
+            <span className="mx-1 hidden h-6 border-l border-border lg:block" aria-hidden="true" />
+            {user ? (
+              <span
+                title={`${user.name} · ${user.role === "admin" ? "Administrador" : "Acesso RH"}`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong"
+              >
+                {initials(user.name)}
+              </span>
+            ) : null}
+            {onChangePassword && (
+              <button
+                type="button"
+                onClick={onChangePassword}
+                aria-label="Trocar minha senha"
+                title="Trocar minha senha"
+                className="rounded-[8px] p-2 text-muted transition hover:bg-surface-2 hover:text-ink"
+              >
+                <IconKey className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onLogout}
+              aria-label="Sair"
+              title="Sair"
+              className="rounded-[8px] p-2 text-muted transition hover:bg-surface-2 hover:text-ink"
+            >
+              <IconLogout className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleTopMenu}
+              aria-label="Menu lateral"
+              title="Menu lateral"
+              className="hidden rounded-[8px] p-2 text-muted transition hover:bg-surface-2 hover:text-ink lg:block"
+            >
+              <IconLayoutSide className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        {content}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col lg:flex-row">
       <aside
@@ -131,6 +308,15 @@ export function RhShell<K extends string>({
           <div className="lg:hidden">
             <ThemeToggle />
           </div>
+          <button
+            type="button"
+            onClick={toggleTopMenu}
+            aria-label="Menu no topo"
+            title="Menu no topo"
+            className={`hidden h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[9px] text-muted transition hover:bg-surface-2 hover:text-ink active:bg-border ${collapsed ? "" : "lg:flex"}`}
+          >
+            <IconLayoutTop className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -269,48 +455,7 @@ export function RhShell<K extends string>({
         )}
       </aside>
 
-      <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
-        {busy && (
-          <span
-            role="progressbar"
-            aria-label="Carregando"
-            className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden ${collapsed ? "lg:left-[62px]" : "lg:left-60"}`}
-          >
-            <span className="rh-progress block h-full w-2/5 rounded-full bg-ink/70" />
-          </span>
-        )}
-        {/* Cada seção (e a ficha) aparece em cascata curta: cabeçalho, indicadores e conteúdo. */}
-        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-stagger flex min-w-0 flex-col gap-6">
-        {!hideHeader && (
-          <>
-        {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
-        <header
-          data-theme="dark"
-          className="brand-band relative flex flex-wrap items-end justify-between gap-4 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7"
-        >
-          <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[340px] text-white/[0.12] sm:block" />
-          <div className="relative flex flex-col gap-2">
-            <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/75">
-              CFF Group · {moduleLabel}
-            </span>
-            <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
-              {title}
-              <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
-            </h1>
-            <p className="max-w-[62ch] text-sm text-white/85">{description}</p>
-          </div>
-          <div className="relative flex flex-wrap items-center gap-2.5">
-            <div className="hidden lg:block">
-              <ThemeToggle />
-            </div>
-            {actions}
-          </div>
-        </header>
-          </>
-        )}
-        {children}
-        </div>
-      </main>
+      {content}
     </div>
   );
 }
