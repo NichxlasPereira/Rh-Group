@@ -116,7 +116,23 @@ export function RhShell<K extends string>({
     if (!list) return;
     const measure = () => {
       const el = list.querySelector<HTMLElement>('[aria-current="page"]');
-      setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
+      if (!el) return setPill(null);
+      // Menu do topo recolhido: o nome da seção nova abre enquanto o da anterior fecha.
+      // A marca vai direto para onde a seção nova vai terminar, sem esperar os nomes.
+      if (topMenu && collapsed && window.matchMedia("(min-width: 1024px)").matches) {
+        const items = [...list.querySelectorAll<HTMLElement>(":scope > button")];
+        const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+        let x = items[0]?.offsetLeft ?? 0;
+        for (const item of items) {
+          const name = item.querySelector<HTMLElement>("[data-nome]");
+          const nameNow = name ? name.offsetWidth + (parseFloat(getComputedStyle(name).marginLeft) || 0) : 0;
+          const nameEnd = item === el && name ? name.scrollWidth + 6 : 0;
+          const w = item.offsetWidth - nameNow + nameEnd;
+          if (item === el) return setPill({ x, y: el.offsetTop, w, h: el.offsetHeight });
+          x += w + gap;
+        }
+      }
+      setPill({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
     };
     measure();
     // Observa também cada item: no menu do topo os nomes encolhem ao recolher e a marca acompanha.
@@ -132,8 +148,9 @@ export function RhShell<K extends string>({
 
   // Rótulos somem por opacidade enquanto a largura desliza (o menu corta o resto).
   const label = `whitespace-nowrap transition-opacity duration-200 ${collapsed ? "lg:opacity-0" : ""}`;
-  // Menu no topo: o nome encolhe e some junto, só quando a pessoa clica.
-  const topLabelMoves = collapseMoves
+  // Menu no topo: o nome encolhe e some junto quando a pessoa recolhe; recolhido, o nome
+  // passa de uma seção para a outra a cada clique (não ao abrir a página).
+  const topLabelMoves = collapseMoves || (collapsed && pillMoves)
     ? "lg:transition-[max-width,opacity,margin] lg:duration-300 lg:ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
     : "";
 
@@ -227,25 +244,26 @@ export function RhShell<K extends string>({
                   >
                     <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
                     {/* Computador estreito: só o ícone (nome no title), menos na seção atual.
-                        Recolhido: todos só com o ícone, e o nome encolhe deslizando. */}
+                        Recolhido: só a seção atual mostra o nome, que desliza para a seção clicada. */}
                     <span
-                      className={`ml-1.5 inline-block max-w-[14rem] overflow-hidden whitespace-nowrap ${
-                        current ? "" : "lg:hidden xl:inline-block"
-                      } ${collapsed ? "lg:ml-0 lg:max-w-0 lg:opacity-0" : ""} ${topLabelMoves}`}
+                      data-nome
+                      className={`ml-1.5 inline-block max-w-[14rem] overflow-hidden whitespace-nowrap align-middle ${
+                        current ? "" : collapsed ? "lg:ml-0 lg:max-w-0 lg:opacity-0" : "lg:hidden xl:inline-block"
+                      } ${topLabelMoves}`}
                     >
                       {s.label}
                     </span>
                     {!!s.badge && (
                       <span
                         className={`ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white ${
-                          collapsed ? "lg:hidden" : ""
+                          collapsed && !current ? "lg:hidden" : ""
                         }`}
                       >
                         {s.badge}
                       </span>
                     )}
                     {/* Recolhido: o contador vira um ponto no canto do ícone. */}
-                    {!!s.badge && collapsed && (
+                    {!!s.badge && collapsed && !current && (
                       <span className="absolute left-[21px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
                     )}
                   </button>
