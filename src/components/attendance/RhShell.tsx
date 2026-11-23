@@ -50,8 +50,6 @@ function initials(name: string): string {
 
 const COLLAPSED_KEY = "menuLateralRecolhido";
 const TOP_MENU_KEY = "menuNoTopo";
-// Duração da troca de seção no menu do topo recolhido (marca e nomes juntos).
-const GLIDE_MS = 360;
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
@@ -113,70 +111,18 @@ export function RhShell<K extends string>({
   const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   // Só anima depois da primeira medida, para a marca não "voar" ao abrir a página.
   const [pillMoves, setPillMoves] = useState(false);
-  // Menu do topo: ao trocar de seção, a marca desliza da seção anterior até a
-  // nova acompanhando quadro a quadro os nomes que fecham e abrem (os ícones andam junto).
-  const prevActive = useRef(active);
-  const gliding = useRef(false);
-  const [glide, setGlide] = useState(false);
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) return;
     const measure = () => {
-      if (gliding.current) return;
       const el = list.querySelector<HTMLElement>('[aria-current="page"]');
       setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
     };
-    // Observa também cada item: no menu do topo os nomes encolhem ao recolher e a marca acompanha.
+    measure();
     const observer = new ResizeObserver(measure);
     observer.observe(list);
-    for (const item of list.querySelectorAll("button")) observer.observe(item);
-
-    const prev = prevActive.current;
-    prevActive.current = active;
-    const items = list.querySelectorAll<HTMLElement>(":scope > button");
-    const from = items[sections.findIndex((s) => s.key === prev)];
-    const to = items[sections.findIndex((s) => s.key === active)];
-    let frame = 0;
-    if (
-      topMenu &&
-      pillMoves &&
-      prev !== active &&
-      from &&
-      to &&
-      window.matchMedia("(min-width: 1024px)").matches &&
-      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      gliding.current = true;
-      setGlide(true);
-      const start = performance.now();
-      const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-      const step = () => {
-        const t = Math.min(1, (performance.now() - start) / GLIDE_MS);
-        const e = ease(t);
-        // As duas pontas da marca vão da seção anterior à nova, nas posições de agora.
-        const left = from.offsetLeft + (to.offsetLeft - from.offsetLeft) * e;
-        const right =
-          from.offsetLeft + from.offsetWidth + (to.offsetLeft + to.offsetWidth - from.offsetLeft - from.offsetWidth) * e;
-        setPill({ x: left, y: to.offsetTop, w: right - left, h: to.offsetHeight });
-        if (t < 1) frame = requestAnimationFrame(step);
-        else {
-          gliding.current = false;
-          setGlide(false);
-          measure();
-        }
-      };
-      step();
-    } else measure();
-
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(frame);
-      if (gliding.current) {
-        gliding.current = false;
-        setGlide(false);
-      }
-    };
-  }, [active, sections, topMenu, collapsed, pillMoves]);
+    return () => observer.disconnect();
+  }, [active, sections, topMenu]);
   useEffect(() => {
     const timer = setTimeout(() => setPillMoves(true), 100);
     return () => clearTimeout(timer);
@@ -184,10 +130,6 @@ export function RhShell<K extends string>({
 
   // Rótulos somem por opacidade enquanto a largura desliza (o menu corta o resto).
   const label = `whitespace-nowrap transition-opacity duration-200 ${collapsed ? "lg:opacity-0" : ""}`;
-  // Menu no topo: o nome passa de uma seção para a outra a cada clique (não ao abrir a página).
-  const topLabelMoves = pillMoves
-    ? "lg:transition-[max-width,opacity,margin] lg:duration-[360ms] lg:ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none"
-    : "";
 
   const content = (
       <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
@@ -256,7 +198,7 @@ export function RhShell<K extends string>({
               {pill && (
                 <span
                   aria-hidden="true"
-                  className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves && !glide ? "rh-pill" : ""}`}
+                  className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves ? "rh-pill-suave" : ""}`}
                   style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }}
                 >
                   <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
@@ -271,35 +213,24 @@ export function RhShell<K extends string>({
                     onClick={() => onChange(s.key)}
                     aria-current={current ? "page" : undefined}
                     title={s.label}
-                    className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition ${
+                    aria-label={s.label}
+                    className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:px-2.5 ${
                       current
                         ? `font-bold text-ink ${pill ? "" : "bg-accent-soft"}`
                         : "font-semibold text-muted hover:bg-surface-2 hover:text-ink active:bg-border"
                     }`}
                   >
                     <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
-                    {/* Só a seção atual mostra o nome (as outras, o ícone com o nome no title);
-                        ao clicar em outra, o nome fecha numa e abre na outra. */}
-                    <span
-                      data-nome
-                      className={`ml-1.5 inline-block max-w-[14rem] overflow-hidden whitespace-nowrap align-middle ${
-                        current ? "" : "lg:ml-0 lg:max-w-0 lg:opacity-0"
-                      } ${topLabelMoves}`}
-                    >
-                      {s.label}
-                    </span>
+                    {/* Computador: só os ícones, parados; o nome fica no title. No celular, com o nome. */}
+                    <span className="ml-1.5 whitespace-nowrap lg:hidden">{s.label}</span>
                     {!!s.badge && (
-                      <span
-                        className={`ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white ${
-                          current ? "" : "lg:hidden"
-                        }`}
-                      >
+                      <span className="ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white lg:hidden">
                         {s.badge}
                       </span>
                     )}
-                    {/* Nas outras seções, o contador vira um ponto no canto do ícone. */}
-                    {!!s.badge && !current && (
-                      <span className="absolute left-[21px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
+                    {/* No computador, o contador vira um ponto no canto do ícone. */}
+                    {!!s.badge && (
+                      <span className="absolute left-[23px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
                     )}
                   </button>
                 );

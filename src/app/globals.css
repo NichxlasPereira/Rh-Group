@@ -279,3 +279,15 @@ body {
     0 0 0 1px var(--neon-cinza-glow),
     0 0 3px var(--neon-cinza-glow);
 }
+
+/* Menu no topo: a caixinha de destaque desliza devagar entre os ícones (eles não se mexem). */
+.rh-pill-suave {
+  transition:
+    transform 0.45s cubic-bezier(0.45, 0, 0.2, 1),
+    width 0.45s cubic-bezier(0.45, 0, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rh-pill-suave {
+    transition: none;
+  }
+}
