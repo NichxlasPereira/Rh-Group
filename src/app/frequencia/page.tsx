@@ -14,6 +14,8 @@ import {
   IconCamera,
   IconChart,
   IconKey,
+  IconLayoutDashboard,
+  IconMegaphone,
   IconPlus,
   IconSearch,
   IconUserMinus,
@@ -22,6 +24,7 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection } from "@/components/attendance/RhShell";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
+import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
 import { ProvidersPanel } from "@/components/providers/ProvidersPanel";
 import { Provider, needsAttention } from "@/lib/providers";
 import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/components/attendance/AttendanceFilters";
@@ -85,6 +88,8 @@ interface SessionUser {
 }
 
 const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: string }> = {
+  // O Mural troca título e descrição pela saudação (ver muralCopy).
+  mural: { title: "Mural", description: "O que precisa de você hoje, a agenda da semana e os recados do RH." },
   ocorrencias: { title: "Ocorrências", description: "Faltas, atestados e folgas da equipe, com anexos e saldo de folgas." },
   colaboradores: { title: "Colaboradores", description: "Cadastro da equipe: setores, cargos e saldo de folgas de cada pessoa." },
   prestadores: {
@@ -106,6 +111,24 @@ const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: strin
   },
   acessos: { title: "Acessos", description: "Quem pode entrar no RHGroup e os pedidos de cadastro aguardando aprovação." },
 };
+
+/** Saudação do Mural: "Bom dia, Ana" e o dia com as pendências. */
+function muralCopy(name: string | null, pending: number, loading: boolean) {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const first = name?.trim().split(/\s+/)[0];
+  const day = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(now);
+  const summary = loading
+    ? ""
+    : pending === 0
+      ? " · tudo em dia"
+      : ` · ${pending} ${pending === 1 ? "pendência aguardando" : "pendências aguardando"} você`;
+  return {
+    title: first ? `${greeting}, ${first}` : greeting,
+    description: `${day.charAt(0).toUpperCase()}${day.slice(1)}${summary}`,
+  };
+}
 
 /** Sessão da frequência expirou (12h): volta para a tela de senha. */
 function sessionExpired(res: Response): boolean {
@@ -130,7 +153,7 @@ export default function FrequenciaPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<AttendanceTabKey>("ocorrencias");
+  const [tab, setTab] = useState<AttendanceTabKey>("mural");
   const [me, setMe] = useState<SessionUser | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
 
@@ -168,6 +191,9 @@ export default function FrequenciaPage() {
   const [providerCreateSignal, setProviderCreateSignal] = useState(0);
   const [providerImportSignal, setProviderImportSignal] = useState(0);
   const [providersAttention, setProvidersAttention] = useState(0);
+  // Lista de prestadores para o Mural (contratos vencendo na agenda e nas pendências).
+  const [providers, setProviders] = useState<Provider[] | null>(null);
+  const [noticeSignal, setNoticeSignal] = useState(0);
   // Offboarding: desligamentos com os pedidos de saída; o número da aba são os que têm pendência.
   const [offboardings, setOffboardings] = useState<ExitKitView[] | null>(null);
   const [offboardSearch, setOffboardSearch] = useState("");
@@ -185,7 +211,10 @@ export default function FrequenciaPage() {
   useEffect(() => {
     fetch("/api/prestadores")
       .then((r) => (r.ok ? r.json() : []))
-      .then((list: Provider[]) => setProvidersAttention(list.filter((p) => needsAttention(p)).length))
+      .then((list: Provider[]) => {
+        setProviders(list);
+        setProvidersAttention(list.filter((p) => needsAttention(p)).length);
+      })
       .catch(() => undefined);
   }, []);
 
@@ -269,6 +298,7 @@ export default function FrequenciaPage() {
 
   const sections = useMemo<RhSection<AttendanceTabKey>[]>(() => {
     const list: RhSection<AttendanceTabKey>[] = [
+      { key: "mural", label: "Mural", icon: IconLayoutDashboard },
       { key: "ocorrencias", label: "Ocorrências", icon: IconCalendarX },
       { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
       { key: "prestadores", label: "Prestadores", icon: IconBriefcase, badge: providersAttention },
@@ -612,7 +642,20 @@ export default function FrequenciaPage() {
 
   // A ficha abre por cima da aba Colaboradores ou Aniversariantes; "Voltar" retorna a ela.
   const showingProfile = !!profileId && (tab === "colaboradores" || tab === "aniversariantes");
-  const copy = SECTION_COPY[tab];
+  // Mural: pendências (mesma conta do painel) para a saudação do cabeçalho.
+  const muralPending = useMemo(
+    () =>
+      muralTasks({
+        employees,
+        admissions,
+        offboardings,
+        providers,
+        isAdmin: me?.role === "admin",
+        pendingAccess: me?.pendingRequests ?? 0,
+      }).reduce((n, t) => n + t.count, 0),
+    [employees, admissions, offboardings, providers, me]
+  );
+  const copy = tab === "mural" ? muralCopy(me?.name ?? null, muralPending, loading) : SECTION_COPY[tab];
   const actions =
     tab === "admissoes" ? (
       <>
@@ -650,7 +693,18 @@ export default function FrequenciaPage() {
           Desligar colaborador
         </Button>
       </>
-    ) : tab === "acessos" ? null : tab === "prestadores" ? (
+    ) : tab === "acessos" ? null : tab === "mural" ? (
+      <>
+        <Button variant="ghost" onClick={() => setNoticeSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconMegaphone className="h-4 w-4" />
+          Publicar recado
+        </Button>
+        <Button onClick={openNewEmployee} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconPlus className="h-4 w-4" />
+          Novo colaborador
+        </Button>
+      </>
+    ) : tab === "prestadores" ? (
       <>
         <Button
           variant="ghost"
@@ -724,7 +778,7 @@ export default function FrequenciaPage() {
         hideHeader={showingProfile}
         busy={loading}
       >
-        {!showingProfile && tab !== "aniversariantes" && tab !== "prestadores" && tab !== "offboarding" && (
+        {!showingProfile && tab !== "mural" && tab !== "aniversariantes" && tab !== "prestadores" && tab !== "offboarding" && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -754,6 +808,24 @@ export default function FrequenciaPage() {
               setOccurrenceModalOpen(true);
             }}
             onDeleteOccurrence={setDeletingOccurrence}
+          />
+        ) : tab === "mural" ? (
+          <MuralPanel
+            loading={loading}
+            employees={employees}
+            occurrences={occurrences}
+            admissions={admissions}
+            birthdays={birthdays}
+            offboardings={offboardings}
+            providers={providers}
+            isAdmin={me?.role === "admin"}
+            pendingAccess={me?.pendingRequests ?? 0}
+            publishSignal={noticeSignal}
+            onNavigate={changeTab}
+            onOpenEmployee={(employeeId, from) => {
+              changeTab(from === "aniversariantes" ? "aniversariantes" : "colaboradores");
+              setProfileId(employeeId);
+            }}
           />
         ) : tab === "acessos" && me?.role === "admin" ? (
           <AccessPanel currentUserId={me.id} onChanged={fetchMe} />

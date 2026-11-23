@@ -281,3 +281,22 @@ export const IconBriefcase = strokeIcon("M4 8h16v11H4zM9 8V5.5A1.5 1.5 0 0 1 10.
 export const IconEyeOff = strokeIcon("M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6-.4.9-1.3 2.2-2.6 3.4M6.6 6.6C4.6 7.9 3.2 9.8 2.5 12c1 2 4.5 6 9.5 6 1.9 0 3.6-.6 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2");
 export const IconLayoutTop = strokeIcon("M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM3 9h18");
 export const IconLayoutSide = strokeIcon("M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM9 4v16");
+export const IconLayoutDashboard = strokeIcon(
+  "M4 4h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 15h6a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1zM14 4h6a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM14 12h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"
+);
+export const IconMegaphone = strokeIcon(
+  "M18 8a3 3 0 0 1 0 6M10 8v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-5M12 8l4.6-3.8A.9.9 0 0 1 18 5v12a.9.9 0 0 1-1.4.8L12 14H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h8"
+);
+export const IconCalendar = strokeIcon(
+  "M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"
+);
+export const IconClipboardCheck = strokeIcon(
+  "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2zM9 14l2 2 4-4"
+);
+export const IconTrendUp = strokeIcon("M3 17l6-6 4 4 8-8M15 7h6v6");
+export const IconTrendDown = strokeIcon("M3 7l6 6 4-4 8 8M15 17h6v-6");
+export const IconDoorEnter = strokeIcon("M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M3 12h11M10 8l4 4-4 4");
+export const IconDoorExit = strokeIcon("M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M10 12h11M17 8l4 4-4 4");
+export const IconFileWarning = strokeIcon(
+  "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 11v4M12 18h.01"
+);

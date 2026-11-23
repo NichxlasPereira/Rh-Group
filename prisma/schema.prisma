@@ -470,3 +470,16 @@ model StartKitMessage {
 
   @@unique([requestId, slackUserId])
 }
+
+// Recado do mural do RH: aviso curto que aparece no Mural até o dia escolhido
+// (até = último dia visível; sem data, fica até alguém tirar).
+model MuralNotice {
+  id        String    @id @default(cuid())
+  title     String
+  body      String?
+  until     DateTime?
+  createdBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([until])
+}
