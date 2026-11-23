@@ -24,7 +24,7 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection } from "@/components/attendance/RhShell";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
-import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
+import { MuralPanel, MuralShortcut, muralTasks } from "@/components/attendance/MuralPanel";
 import { ProvidersPanel } from "@/components/providers/ProvidersPanel";
 import { Provider, needsAttention } from "@/lib/providers";
 import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/components/attendance/AttendanceFilters";
@@ -656,6 +656,34 @@ export default function FrequenciaPage() {
     [employees, admissions, offboardings, providers, me]
   );
   const copy = tab === "mural" ? muralCopy(me?.name ?? null, muralPending, loading) : SECTION_COPY[tab];
+
+  // Mural: "Acesso rápido" a cada seção, com um resumo dela.
+  const muralShortcuts = useMemo<MuralShortcut[]>(() => {
+    const month = currentMonthKey();
+    const activeCount = employees.filter((e) => e.active).length;
+    const birthdaysThisMonth = birthdays.filter(
+      (b) => b.month === new Date().getMonth() + 1 && employees.some((e) => e.id === b.employeeId && e.active)
+    ).length;
+    const occurrencesThisMonth = occurrences.filter((o) => overlapsMonth(o, month)).length;
+    const activeProviders = (providers ?? []).filter((p) => p.active).length;
+    const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+    const detail: Partial<Record<AttendanceTabKey, string>> = {
+      ocorrencias: count(occurrencesThisMonth, "neste mês", "neste mês"),
+      colaboradores: count(activeCount, "ativo", "ativos"),
+      prestadores:
+        providersAttention > 0
+          ? `${count(activeProviders, "ativo", "ativos")} · ${providersAttention} vencendo`
+          : count(activeProviders, "ativo", "ativos"),
+      aniversariantes: birthdaysToday > 0 ? count(birthdaysToday, "faz aniversário hoje", "fazem aniversário hoje") : count(birthdaysThisMonth, "neste mês", "neste mês"),
+      admissoes: onboardingSummary ? count(onboardingSummary.open, "em andamento", "em andamento") : "Admissões digitais",
+      offboarding: offboardingsPending > 0 ? count(offboardingsPending, "com pedidos em aberto", "com pedidos em aberto") : "Sem pedidos em aberto",
+      relatorios: "Indicadores do mês",
+      acessos: me?.pendingRequests ? count(me.pendingRequests, "pedido aguardando", "pedidos aguardando") : "Quem entra no RHGroup",
+    };
+    return sections
+      .filter((s) => s.key !== "mural")
+      .map((s) => ({ ...s, detail: detail[s.key] ?? SECTION_COPY[s.key].title }));
+  }, [sections, employees, birthdays, occurrences, providers, providersAttention, birthdaysToday, onboardingSummary, offboardingsPending, me]);
   const actions =
     tab === "admissoes" ? (
       <>
@@ -821,7 +849,13 @@ export default function FrequenciaPage() {
             isAdmin={me?.role === "admin"}
             pendingAccess={me?.pendingRequests ?? 0}
             publishSignal={noticeSignal}
+            shortcuts={muralShortcuts}
             onNavigate={changeTab}
+            onOpenOccurrences={(type) => {
+              changeTab("ocorrencias");
+              setMonth(currentMonthKey());
+              setTypeFilter(type);
+            }}
             onOpenEmployee={(employeeId, from) => {
               changeTab(from === "aniversariantes" ? "aniversariantes" : "colaboradores");
               setProfileId(employeeId);

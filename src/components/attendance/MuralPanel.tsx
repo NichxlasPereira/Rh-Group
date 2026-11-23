@@ -344,8 +344,20 @@ const OCCURRENCE_TONE: Record<OccurrenceType, string> = {
   horas: "bg-warn-soft text-warn",
 };
 
+/** Atalho do "Acesso rápido": uma seção do RHGroup com o resumo dela. */
+export interface MuralShortcut {
+  key: AttendanceTabKey;
+  label: string;
+  icon: (props: { className?: string }) => React.ReactNode;
+  badge?: number;
+  detail: string;
+}
+
 interface MuralPanelProps extends MuralData {
   loading: boolean;
+  shortcuts: MuralShortcut[];
+  /** Abre Ocorrências do mês já filtradas pelo tipo. */
+  onOpenOccurrences: (type: OccurrenceType) => void;
   occurrences: Occurrence[];
   birthdays: Birthday[];
   /** Muda a cada clique em "Publicar recado" no cabeçalho. */
@@ -357,7 +369,7 @@ interface MuralPanelProps extends MuralData {
 const cardClass = "rounded-[14px] neon-cinza border bg-surface";
 
 export function MuralPanel(props: MuralPanelProps) {
-  const { loading, employees, occurrences, admissions, onNavigate, onOpenEmployee } = props;
+  const { loading, employees, occurrences, admissions, shortcuts, onNavigate, onOpenEmployee, onOpenOccurrences } = props;
   const [now] = useState(() => new Date());
   const today = dayKey(now);
 
@@ -395,16 +407,28 @@ export function MuralPanel(props: MuralPanelProps) {
         <StatCard
           label="Colaboradores ativos"
           icon={IconUsers}
+          onClick={() => onNavigate("colaboradores")}
           value={stats.active}
           detail={stats.joined > 0 ? `${plural(stats.joined, "entrou", "entraram")} este mês` : "nenhuma entrada este mês"}
           tone={stats.joined > 0 ? "ok" : "neutral"}
           trend={stats.joined > 0 ? "up" : undefined}
         />
-        <StatCard label="Faltas no mês" icon={IconUserX} {...compare(stats.cur.faltas, stats.last.faltas)} />
-        <StatCard label="Atestados no mês" icon={IconMedical} {...compare(stats.cur.atestados, stats.last.atestados)} />
+        <StatCard
+          label="Faltas no mês"
+          icon={IconUserX}
+          onClick={() => onOpenOccurrences("falta")}
+          {...compare(stats.cur.faltas, stats.last.faltas)}
+        />
+        <StatCard
+          label="Atestados no mês"
+          icon={IconMedical}
+          onClick={() => onOpenOccurrences("atestado")}
+          {...compare(stats.cur.atestados, stats.last.atestados)}
+        />
         <StatCard
           label="Onboardings"
           icon={IconUserPlus}
+          onClick={() => onNavigate("admissoes")}
           value={stats.open}
           detail={
             stats.startingSoon > 0
@@ -414,6 +438,35 @@ export function MuralPanel(props: MuralPanelProps) {
           tone="neutral"
         />
       </section>
+
+      {shortcuts.length > 0 && (
+        <nav aria-label="Acesso rápido" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {shortcuts.map((sc) => (
+            <button
+              key={sc.key}
+              type="button"
+              onClick={() => onNavigate(sc.key)}
+              className={`group flex items-center gap-3 px-3.5 py-3 text-left transition hover:bg-surface-2 ${cardClass}`}
+            >
+              <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-surface-2 text-ink group-hover:bg-surface">
+                <sc.icon className="h-[18px] w-[18px]" />
+                {!!sc.badge && (
+                  <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[10.5px] font-bold tabular-nums text-white ring-2 ring-surface">
+                    {sc.badge}
+                  </span>
+                )}
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm font-semibold text-ink">{sc.label}</span>
+                <span className="truncate text-xs text-muted" title={sc.detail}>
+                  {sc.detail}
+                </span>
+              </span>
+              <IconChevronRight className="h-4 w-4 shrink-0 text-muted opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+            </button>
+          ))}
+        </nav>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className={cardClass}>
@@ -590,6 +643,7 @@ function StatCard({
   detail,
   tone,
   trend,
+  onClick,
 }: {
   label: string;
   icon: (props: { className?: string }) => React.ReactNode;
@@ -597,13 +651,18 @@ function StatCard({
   detail: string;
   tone: Tone;
   trend?: "up" | "down";
+  onClick: () => void;
 }) {
   const color = tone === "ok" ? "text-ok" : tone === "warn" ? "text-warn" : tone === "critical" ? "text-critical" : "text-muted";
   return (
-    <div className={`flex flex-col gap-2.5 p-4 ${cardClass}`}>
-      <span className="flex items-center justify-between gap-2 text-[12.5px] font-semibold text-muted">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group flex flex-col gap-2.5 p-4 text-left transition hover:bg-surface-2 ${cardClass}`}
+    >
+      <span className="flex w-full items-center justify-between gap-2 text-[12.5px] font-semibold text-muted">
         {label}
-        <Icon className="h-4 w-4 shrink-0 text-muted" />
+        <Icon className="h-4 w-4 shrink-0 text-muted group-hover:text-ink" />
       </span>
       <span className="font-display text-[30px] font-bold leading-none tabular-nums text-ink">{value}</span>
       <span className={`flex items-center gap-1 truncate text-xs ${color}`} title={detail}>
@@ -611,7 +670,7 @@ function StatCard({
         {trend === "down" && <IconTrendDown className="h-3.5 w-3.5 shrink-0" />}
         {detail}
       </span>
-    </div>
+    </button>
   );
 }
 
