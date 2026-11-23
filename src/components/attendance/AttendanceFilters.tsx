@@ -90,20 +90,23 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
         </Field>
       )}
 
-      <Field label="Setor" className="w-full sm:w-44">
-        <select
-          value={props.department}
-          onChange={(e) => props.onDepartmentChange(e.target.value)}
-          className={selectClass}
-        >
-          <option value="">Todos os setores</option>
-          {props.departments.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {/* Em Colaboradores o setor se escolhe na faixa de setores. */}
+      {tab !== "colaboradores" && (
+        <Field label="Setor" className="w-full sm:w-44">
+          <select
+            value={props.department}
+            onChange={(e) => props.onDepartmentChange(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Todos os setores</option>
+            {props.departments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       {tab === "colaboradores" && (
         <label className="flex h-10 items-center gap-2 text-sm text-muted">

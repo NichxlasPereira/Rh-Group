@@ -328,3 +328,30 @@ body {
     transition: none;
   }
 }
+
+/* Aba Colaboradores: a lista do setor entra deslizando do lado do setor escolhido
+   (mesmo tempo e curva da troca de seção no menu do topo). */
+@keyframes rh-slide-next {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+}
+@keyframes rh-slide-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+.rh-slide-next {
+  animation: rh-slide-next 0.34s cubic-bezier(0.33, 1, 0.68, 1) backwards;
+}
+.rh-slide-prev {
+  animation: rh-slide-prev 0.34s cubic-bezier(0.33, 1, 0.68, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rh-slide-next,
+  .rh-slide-prev {
+    animation: none;
+  }
+}

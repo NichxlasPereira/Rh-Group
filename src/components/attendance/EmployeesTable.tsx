@@ -15,7 +15,14 @@ interface EmployeesTableProps {
   onDelete: (employee: Employee) => void;
   /** Abre a ficha do colaborador. */
   onOpen: (employee: Employee) => void;
+  /** Todos os setores: lista agrupada por setor, com um título por grupo (clicar abre o setor). */
+  groupBySector?: boolean;
+  onSelectSector?: (sector: string) => void;
+  /** Um setor só: a coluna "Setor" sai (seria igual em todas as linhas). */
+  hideSector?: boolean;
 }
+
+const NO_SECTOR = "Sem setor";
 
 export function EmployeesTable({
   employees,
@@ -27,7 +34,27 @@ export function EmployeesTable({
   onEdit,
   onDelete,
   onOpen,
+  groupBySector = false,
+  onSelectSector,
+  hideSector = false,
 }: EmployeesTableProps) {
+  const columns = hideSector ? 5 : 6;
+  const groups: { sector: string; list: Employee[] }[] = [];
+  if (groupBySector) {
+    const bySector = new Map<string, Employee[]>();
+    for (const e of employees) {
+      const key = e.department || NO_SECTOR;
+      bySector.set(key, [...(bySector.get(key) ?? []), e]);
+    }
+    for (const [sector, list] of [...bySector].sort(([a], [b]) =>
+      a === NO_SECTOR ? 1 : b === NO_SECTOR ? -1 : a.localeCompare(b, "pt-BR"),
+    )) {
+      groups.push({ sector, list });
+    }
+  } else {
+    groups.push({ sector: "", list: employees });
+  }
+
   return (
     <div className="rounded-[14px] neon-cinza border bg-surface">
       {employees.length === 0 ? (
@@ -46,82 +73,110 @@ export function EmployeesTable({
             <thead>
               <tr className="border-b border-border bg-surface-2/60 text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Colaborador</th>
-                <th className="px-4 py-3 font-medium">Setor</th>
+                {!hideSector && <th className="px-4 py-3 font-medium">Setor</th>}
                 <th className="px-4 py-3 font-medium">Faltas</th>
                 <th className="px-4 py-3 font-medium">Atestados</th>
                 <th className="px-4 py-3 font-medium">Folgas</th>
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
-            <tbody>
-              {employees.map((emp) => {
-                const s = summaries.get(emp.id);
-                return (
-                  <tr
-                    key={emp.id}
-                    className={`border-b border-border last:border-0 hover:bg-surface-2/40 ${emp.active ? "" : "opacity-60"}`}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-ink">
+            {groups.map((g) => (
+              <tbody key={g.sector || "todos"}>
+                {groupBySector && (
+                  <tr className="border-b border-border bg-surface-2/40">
+                    <td colSpan={columns} className="px-4 py-2">
+                      {onSelectSector && g.sector !== NO_SECTOR ? (
                         <button
                           type="button"
-                          onClick={() => onOpen(emp)}
-                          className="text-left font-semibold text-ink underline-offset-4 hover:underline"
-                          title="Abrir ficha"
+                          onClick={() => onSelectSector(g.sector)}
+                          className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-muted transition hover:text-ink"
+                          title={`Ver só ${g.sector}`}
                         >
-                          {emp.name}
-                        </button>
-                        {!emp.active && (
-                          <span className="ml-2 rounded-full border border-border-strong px-2 py-0.5 text-[11px] font-medium text-muted">
-                            inativo
+                          {g.sector}
+                          <span className="rounded-full bg-surface px-1.5 py-px font-mono text-[11px] normal-case tracking-normal tabular-nums">
+                            {g.list.length}
                           </span>
-                        )}
-                      </p>
-                      {emp.role && <p className="text-xs text-muted">{emp.role}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-muted">{emp.department || "—"}</td>
-                    <td className="px-4 py-3">
-                      <Count value={s?.faltas ?? 0} tone="critical" />
-                      {s && s.faltasInjustificadas > 0 && (
-                        <span className="block text-xs text-muted">
-                          {s.faltasInjustificadas} não {s.faltasInjustificadas === 1 ? "justificada" : "justificadas"}
+                        </button>
+                      ) : (
+                        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                          {g.sector}
+                          <span className="rounded-full bg-surface px-1.5 py-px font-mono text-[11px] normal-case tracking-normal tabular-nums">
+                            {g.list.length}
+                          </span>
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Count value={s?.atestados ?? 0} tone="accent" />
-                      {s && s.diasAtestado > 0 && (
-                        <span className="block text-xs text-muted">
-                          {s.diasAtestado} {s.diasAtestado === 1 ? "dia" : "dias"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <FolgaCell
-                        remaining={folgaRemaining.get(emp.id) ?? 0}
-                        total={emp.folgaAllowance}
-                        usedInPeriod={s?.diasFolga ?? 0}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {emp.active && (
-                          <ActionButton label="Registrar ocorrência" onClick={() => onRegister(emp)}>
-                            <IconCalendarPlus className="h-4 w-4" />
-                          </ActionButton>
-                        )}
-                        <ActionButton label="Editar" onClick={() => onEdit(emp)}>
-                          <IconEdit className="h-4 w-4" />
-                        </ActionButton>
-                        <ActionButton label="Excluir" onClick={() => onDelete(emp)} danger>
-                          <IconTrash className="h-4 w-4" />
-                        </ActionButton>
-                      </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
+                )}
+                {g.list.map((emp) => {
+                  const s = summaries.get(emp.id);
+                  return (
+                    <tr
+                      key={emp.id}
+                      className={`border-b border-border last:border-0 hover:bg-surface-2/40 ${emp.active ? "" : "opacity-60"}`}
+                    >
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-ink">
+                          <button
+                            type="button"
+                            onClick={() => onOpen(emp)}
+                            className="text-left font-semibold text-ink underline-offset-4 hover:underline"
+                            title="Abrir ficha"
+                          >
+                            {emp.name}
+                          </button>
+                          {!emp.active && (
+                            <span className="ml-2 rounded-full border border-border-strong px-2 py-0.5 text-[11px] font-medium text-muted">
+                              inativo
+                            </span>
+                          )}
+                        </p>
+                        {emp.role && <p className="text-xs text-muted">{emp.role}</p>}
+                      </td>
+                      {!hideSector && <td className="px-4 py-3 text-muted">{emp.department || "—"}</td>}
+                      <td className="px-4 py-3">
+                        <Count value={s?.faltas ?? 0} tone="critical" />
+                        {s && s.faltasInjustificadas > 0 && (
+                          <span className="block text-xs text-muted">
+                            {s.faltasInjustificadas} não {s.faltasInjustificadas === 1 ? "justificada" : "justificadas"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Count value={s?.atestados ?? 0} tone="accent" />
+                        {s && s.diasAtestado > 0 && (
+                          <span className="block text-xs text-muted">
+                            {s.diasAtestado} {s.diasAtestado === 1 ? "dia" : "dias"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <FolgaCell
+                          remaining={folgaRemaining.get(emp.id) ?? 0}
+                          total={emp.folgaAllowance}
+                          usedInPeriod={s?.diasFolga ?? 0}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {emp.active && (
+                            <ActionButton label="Registrar ocorrência" onClick={() => onRegister(emp)}>
+                              <IconCalendarPlus className="h-4 w-4" />
+                            </ActionButton>
+                          )}
+                          <ActionButton label="Editar" onClick={() => onEdit(emp)}>
+                            <IconEdit className="h-4 w-4" />
+                          </ActionButton>
+                          <ActionButton label="Excluir" onClick={() => onDelete(emp)} danger>
+                            <IconTrash className="h-4 w-4" />
+                          </ActionButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            ))}
           </table>
           <p className="border-t border-border px-4 py-2.5 text-xs text-muted">
             Contagens referentes a {periodLabel}. O saldo de folgas é o total acumulado, independente do mês.

@@ -30,6 +30,7 @@ import { Provider, needsAttention } from "@/lib/providers";
 import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/components/attendance/AttendanceFilters";
 import { OccurrencesTable } from "@/components/attendance/OccurrencesTable";
 import { EmployeesTable } from "@/components/attendance/EmployeesTable";
+import { SectorOption, SectorSlide, SectorSlider } from "@/components/attendance/SectorSlider";
 import { OrgChart } from "@/components/attendance/OrgChart";
 import { BirthdaysPanel } from "@/components/attendance/BirthdaysPanel";
 import { AreasModal } from "@/components/attendance/AreasModal";
@@ -421,6 +422,28 @@ export default function FrequenciaPage() {
       )
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }, [employees, showInactive, department, search]);
+
+  // Aba Colaboradores: faixa de setores com quantas pessoas cada um tem (com a busca e
+  // "mostrar inativos" aplicados, sem o próprio filtro de setor).
+  const sectorOptions = useMemo<SectorOption[]>(() => {
+    const term = search.trim().toLowerCase();
+    const visible = employees.filter(
+      (e) =>
+        (showInactive || e.active) &&
+        (!term || e.name.toLowerCase().includes(term) || (e.role ?? "").toLowerCase().includes(term))
+    );
+    const counts = new Map<string, number>();
+    for (const e of visible) if (e.department) counts.set(e.department, (counts.get(e.department) ?? 0) + 1);
+    const names = [...new Set([...departments, ...counts.keys()])].filter((d) => (counts.get(d) ?? 0) > 0 || d === department);
+    names.sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return [{ key: "", label: "Todos", count: visible.length }, ...names.map((d) => ({ key: d, label: d, count: counts.get(d) ?? 0 }))];
+  }, [employees, departments, department, showInactive, search]);
+  const sectorIndex = Math.max(0, sectorOptions.findIndex((o) => o.key === department));
+  const slideSector = (node: React.ReactNode) => (
+    <SectorSlide index={sectorIndex} count={sectorOptions.length} onSwipe={(i) => setDepartment(sectorOptions[i].key)}>
+      {node}
+    </SectorSlide>
+  );
 
   const reportOccurrences = useMemo(
     () => (department ? occurrences.filter((o) => o.employeeDepartment === department) : occurrences),
@@ -880,6 +903,10 @@ export default function FrequenciaPage() {
               exportDisabled={filteredOccurrences.length === 0}
             />
 
+            {tab === "colaboradores" && !loading && (
+              <SectorSlider options={sectorOptions} value={department} onChange={setDepartment} />
+            )}
+
             <div className="min-w-0">
               {loading ? (
                 <div className="rounded-[14px] neon-cinza border bg-surface">
@@ -897,7 +924,7 @@ export default function FrequenciaPage() {
                   onDelete={setDeletingOccurrence}
                 />
               ) : tab === "colaboradores" && teamView === "organograma" ? (
-                <OrgChart
+                slideSector(<OrgChart
                   employees={filteredEmployees}
                   companies={companies}
                   areas={areas}
@@ -922,7 +949,7 @@ export default function FrequenciaPage() {
                       toast.error(err instanceof Error ? err.message : "Erro inesperado.");
                     }
                   }}
-                />
+                />)
               ) : tab === "aniversariantes" ? (
                 <BirthdaysPanel
                   employees={filteredEmployees}
@@ -932,8 +959,11 @@ export default function FrequenciaPage() {
                   onOpen={(e) => setProfileId(e.id)}
                 />
               ) : tab === "colaboradores" ? (
-                <EmployeesTable
+                slideSector(<EmployeesTable
                   employees={filteredEmployees}
+                  groupBySector={!department}
+                  hideSector={!!department}
+                  onSelectSector={setDepartment}
                   hasAny={employees.length > 0}
                   summaries={summaryByEmployeeId}
                   folgaRemaining={folgaRemaining}
@@ -945,7 +975,7 @@ export default function FrequenciaPage() {
                   }}
                   onDelete={setDeletingEmployee}
                   onOpen={(e) => setProfileId(e.id)}
-                />
+                />)
               ) : (
                 <AttendanceReports
                   occurrences={reportOccurrences}
