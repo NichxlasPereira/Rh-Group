@@ -50,10 +50,9 @@ function initials(name: string): string {
 
 const COLLAPSED_KEY = "menuLateralRecolhido";
 const TOP_MENU_KEY = "menuNoTopo";
-// Menu no topo: o nome fecha/abre e a caixinha desliza no mesmo ritmo (igual ao .rh-pill-suave
-// e ao .rh-top-nome do globals.css).
-const NAME_MS = 220;
-const SLIDE_MS = NAME_MS;
+// Menu no topo: troca de seção no tempo da entrada da página (rh-fade de 0,22 s + 120 ms de
+// cascata); o nome que fecha/abre usa o mesmo tempo no .rh-top-nome do globals.css.
+const SWITCH_MS = 340;
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
@@ -128,8 +127,8 @@ export function RhShell<K extends string>({
     return () => observer.disconnect();
   }, [active, sections, topMenu]);
 
-  // Menu no topo, em três tempos: o nome da seção anterior fecha, a caixinha desliza com os
-  // ícones parados e, quando chega, o nome da seção clicada abre dentro dela. Feito direto na
+  // Menu no topo: no clique a página já troca e, junto com a entrada dela, o nome da seção
+  // anterior fecha, o da clicada abre e a caixinha desliza de uma para a outra. Feito direto na
   // página (fora do React) para a seção nova, ao carregar, não atrapalhar a animação.
   const topListRef = useRef<HTMLDivElement>(null);
   const topPillRef = useRef<HTMLSpanElement>(null);
@@ -153,20 +152,6 @@ export function RhShell<K extends string>({
       if (key !== null && item.dataset.secao === String(key)) item.setAttribute("data-aberto", "");
       else item.removeAttribute("data-aberto");
     }
-  };
-  // Caixinha colada no item enquanto o nome dele abre ou fecha.
-  // O relógio da etapa é o setTimeout; os quadros só servem para a caixinha acompanhar.
-  const followTopItem = (el: HTMLElement | null, ms: number, done: () => void) => {
-    const tick = () => {
-      placeTopPill(el, false);
-      topAnim.current.frame = requestAnimationFrame(tick);
-    };
-    tick();
-    topAnim.current.timer = setTimeout(() => {
-      if (topAnim.current.frame) cancelAnimationFrame(topAnim.current.frame);
-      placeTopPill(el, false);
-      done();
-    }, ms);
   };
   const stopTopAnim = () => {
     clearTimeout(topAnim.current.timer);
@@ -196,30 +181,40 @@ export function RhShell<K extends string>({
       pillMoves &&
       window.matchMedia("(min-width: 1024px)").matches &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!animate || key === topAnim.current.at) {
+    const from = topItem(topAnim.current.at);
+    const to = topItem(key);
+    stopTopAnim();
+    topAnim.current.at = key;
+    if (!animate || !from || !to || from === to) {
       onChange(key);
       return;
     }
-    stopTopAnim();
     topAnim.current.busy = true;
-    const from = topItem(topAnim.current.at);
-    const to = topItem(key);
-    // 1. Fecha o nome da seção anterior (a caixinha encolhe junto).
-    openTopName(null);
-    followTopItem(from, NAME_MS, () => {
-      // 2. Desliza até a seção clicada com os ícones parados; a seção nova carrega enquanto isso.
-      topAnim.current.at = key;
-      placeTopPill(to, true);
-      onChange(key);
-      topAnim.current.timer = setTimeout(() => {
-        // 3. Abre o nome dentro da caixinha.
-        openTopName(key);
-        followTopItem(to, NAME_MS + 40, () => {
-          topAnim.current.busy = false;
-          placeTopPill(to, false);
-        });
-      }, SLIDE_MS);
-    });
+    onChange(key);
+    openTopName(key);
+    // As duas pontas da caixinha vão da seção anterior à clicada, nas posições de cada quadro
+    // (os nomes estão fechando e abrindo ao mesmo tempo); o relógio é o horário, não os quadros.
+    const start = performance.now();
+    const ease = (t: number) => 1 - (1 - t) ** 3;
+    const tick = () => {
+      const e = ease(Math.min(1, (performance.now() - start) / SWITCH_MS));
+      const left = from.offsetLeft + (to.offsetLeft - from.offsetLeft) * e;
+      const right =
+        from.offsetLeft + from.offsetWidth + (to.offsetLeft + to.offsetWidth - from.offsetLeft - from.offsetWidth) * e;
+      const pillEl = topPillRef.current;
+      if (pillEl) {
+        pillEl.style.transition = "none";
+        pillEl.style.transform = `translate(${left}px, ${to.offsetTop}px)`;
+        pillEl.style.width = `${right - left}px`;
+      }
+      topAnim.current.frame = requestAnimationFrame(tick);
+    };
+    tick();
+    topAnim.current.timer = setTimeout(() => {
+      if (topAnim.current.frame) cancelAnimationFrame(topAnim.current.frame);
+      topAnim.current.busy = false;
+      placeTopPill(to, false);
+    }, SWITCH_MS + 40);
   }
   useEffect(() => {
     const timer = setTimeout(() => setPillMoves(true), 100);
