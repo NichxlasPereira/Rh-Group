@@ -50,6 +50,9 @@ function initials(name: string): string {
 
 const COLLAPSED_KEY = "menuLateralRecolhido";
 const TOP_MENU_KEY = "menuNoTopo";
+// Menu no topo: tempo do nome fechar/abrir e da caixinha deslizar (igual ao .rh-pill-suave).
+const NAME_MS = 220;
+const SLIDE_MS = 450;
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
@@ -113,7 +116,7 @@ export function RhShell<K extends string>({
   const [pillMoves, setPillMoves] = useState(false);
   useLayoutEffect(() => {
     const list = listRef.current;
-    if (!list) return;
+    if (!list || topMenu) return;
     const measure = () => {
       const el = list.querySelector<HTMLElement>('[aria-current="page"]');
       setPill(el ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight } : null);
@@ -123,6 +126,100 @@ export function RhShell<K extends string>({
     observer.observe(list);
     return () => observer.disconnect();
   }, [active, sections, topMenu]);
+
+  // Menu no topo, em três tempos: o nome da seção anterior fecha, a caixinha desliza com os
+  // ícones parados e, quando chega, o nome da seção clicada abre dentro dela. Feito direto na
+  // página (fora do React) para a seção nova, ao carregar, não atrapalhar a animação.
+  const topListRef = useRef<HTMLDivElement>(null);
+  const topPillRef = useRef<HTMLSpanElement>(null);
+  const topAnim = useRef<{ at: K; busy: boolean; timer?: ReturnType<typeof setTimeout>; frame?: number }>({
+    at: active,
+    busy: false,
+  });
+  const topItem = (key: K) =>
+    topListRef.current?.querySelector<HTMLElement>(`[data-secao="${CSS.escape(String(key))}"]`) ?? null;
+  const placeTopPill = (el: HTMLElement | null, smooth: boolean) => {
+    const pillEl = topPillRef.current;
+    if (!pillEl || !el) return;
+    pillEl.style.transition = smooth ? "" : "none";
+    pillEl.style.opacity = "1";
+    pillEl.style.transform = `translate(${el.offsetLeft}px, ${el.offsetTop}px)`;
+    pillEl.style.width = `${el.offsetWidth}px`;
+    pillEl.style.height = `${el.offsetHeight}px`;
+  };
+  const openTopName = (key: K | null) => {
+    for (const item of topListRef.current?.querySelectorAll<HTMLElement>("[data-secao]") ?? []) {
+      if (key !== null && item.dataset.secao === String(key)) item.setAttribute("data-aberto", "");
+      else item.removeAttribute("data-aberto");
+    }
+  };
+  // Caixinha colada no item enquanto o nome dele abre ou fecha.
+  // O relógio da etapa é o setTimeout; os quadros só servem para a caixinha acompanhar.
+  const followTopItem = (el: HTMLElement | null, ms: number, done: () => void) => {
+    const tick = () => {
+      placeTopPill(el, false);
+      topAnim.current.frame = requestAnimationFrame(tick);
+    };
+    tick();
+    topAnim.current.timer = setTimeout(() => {
+      if (topAnim.current.frame) cancelAnimationFrame(topAnim.current.frame);
+      placeTopPill(el, false);
+      done();
+    }, ms);
+  };
+  const stopTopAnim = () => {
+    clearTimeout(topAnim.current.timer);
+    if (topAnim.current.frame) cancelAnimationFrame(topAnim.current.frame);
+    topAnim.current.busy = false;
+  };
+  // Fora de uma troca, o menu segue a seção ativa (ao abrir a página, ao mudar de tamanho...).
+  useLayoutEffect(() => {
+    const list = topListRef.current;
+    if (!topMenu || !list) return;
+    const sync = () => {
+      if (topAnim.current.busy) return;
+      topAnim.current.at = active;
+      openTopName(active);
+      placeTopPill(topItem(active), false);
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(list);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, sections, topMenu]);
+  useEffect(() => stopTopAnim, []);
+
+  function goToTopSection(key: K) {
+    const animate =
+      pillMoves &&
+      window.matchMedia("(min-width: 1024px)").matches &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!animate || key === topAnim.current.at) {
+      onChange(key);
+      return;
+    }
+    stopTopAnim();
+    topAnim.current.busy = true;
+    const from = topItem(topAnim.current.at);
+    const to = topItem(key);
+    // 1. Fecha o nome da seção anterior (a caixinha encolhe junto).
+    openTopName(null);
+    followTopItem(from, NAME_MS, () => {
+      // 2. Desliza até a seção clicada com os ícones parados; a seção nova carrega enquanto isso.
+      topAnim.current.at = key;
+      placeTopPill(to, true);
+      onChange(key);
+      topAnim.current.timer = setTimeout(() => {
+        // 3. Abre o nome dentro da caixinha.
+        openTopName(key);
+        followTopItem(to, NAME_MS + 40, () => {
+          topAnim.current.busy = false;
+          placeTopPill(to, false);
+        });
+      }, SLIDE_MS);
+    });
+  }
   useEffect(() => {
     const timer = setTimeout(() => setPillMoves(true), 100);
     return () => clearTimeout(timer);
@@ -163,9 +260,11 @@ export function RhShell<K extends string>({
             <p className="max-w-[62ch] text-sm text-white/85">{description}</p>
           </div>
           <div className="relative flex flex-wrap items-center gap-2.5">
-            <div className="hidden lg:block">
-              <ThemeToggle />
-            </div>
+            {!topMenu && (
+              <div className="hidden lg:block">
+                <ThemeToggle />
+              </div>
+            )}
             {actions}
           </div>
         </header>
@@ -194,43 +293,48 @@ export function RhShell<K extends string>({
           </div>
 
           <nav aria-label={`Seções do ${moduleLabel}`} className="min-w-0">
-            <div ref={listRef} className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:pb-0 lg:[scrollbar-width:none]">
-              {pill && (
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft ${pillMoves ? "rh-pill-suave" : ""}`}
-                  style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }}
-                >
-                  <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
-                </span>
-              )}
+            <div
+              ref={topListRef}
+              data-anima={pillMoves ? "" : undefined}
+              className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:pb-0 lg:[scrollbar-width:none]"
+            >
+              {/* Posição e tamanho vêm de placeTopPill (começa invisível até a primeira medida). */}
+              <span
+                ref={topPillRef}
+                aria-hidden="true"
+                className="rh-pill-suave pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft opacity-0"
+              >
+                <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
+              </span>
               {sections.map((s) => {
                 const current = s.key === active;
                 return (
                   <button
                     key={s.key}
                     type="button"
-                    onClick={() => onChange(s.key)}
+                    data-secao={String(s.key)}
+                    onClick={() => goToTopSection(s.key)}
                     aria-current={current ? "page" : undefined}
                     title={s.label}
                     aria-label={s.label}
                     className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:px-2.5 ${
                       current
-                        ? `font-bold text-ink ${pill ? "" : "bg-accent-soft"}`
+                        ? "font-bold text-ink"
                         : "font-semibold text-muted hover:bg-surface-2 hover:text-ink active:bg-border"
                     }`}
                   >
                     <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
-                    {/* Computador: só os ícones, parados; o nome fica no title. No celular, com o nome. */}
-                    <span className="ml-1.5 whitespace-nowrap lg:hidden">{s.label}</span>
+                    {/* Computador: só a seção clicada abre o nome, dentro da caixinha (data-aberto,
+                        posto por openTopName). Celular: todos com o nome. */}
+                    <span className="rh-top-nome ml-1.5 inline-block overflow-hidden whitespace-nowrap align-middle">{s.label}</span>
                     {!!s.badge && (
-                      <span className="ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white lg:hidden">
+                      <span className="rh-top-badge ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white">
                         {s.badge}
                       </span>
                     )}
-                    {/* No computador, o contador vira um ponto no canto do ícone. */}
+                    {/* Nas seções fechadas, o contador vira um ponto no canto do ícone. */}
                     {!!s.badge && (
-                      <span className="absolute left-[23px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
+                      <span className="rh-top-ponto absolute left-[23px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
                     )}
                   </button>
                 );
@@ -252,6 +356,10 @@ export function RhShell<K extends string>({
                 <span className="hidden whitespace-nowrap 2xl:inline">{m.label}</span>
               </Link>
             ))}
+            {/* Com o menu no topo, o tema fica aqui (e sai da faixa grafite). */}
+            <div className="hidden lg:block">
+              <ThemeToggle />
+            </div>
             <span className="mx-1 hidden h-6 border-l border-border lg:block" aria-hidden="true" />
             {user ? (
               <span
