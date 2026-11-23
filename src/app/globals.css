@@ -280,11 +280,12 @@ body {
     0 0 3px var(--neon-cinza-glow);
 }
 
-/* Menu no topo: a caixinha de destaque desliza devagar entre os ícones (eles não se mexem). */
+/* Menu no topo: a caixinha de destaque desliza entre os ícones (eles não se mexem), no mesmo
+   ritmo em que o nome abre (.rh-top-nome). */
 .rh-pill-suave {
   transition:
-    transform 0.45s cubic-bezier(0.45, 0, 0.2, 1),
-    width 0.45s cubic-bezier(0.45, 0, 0.2, 1);
+    transform 0.22s ease-out,
+    width 0.22s ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .rh-pill-suave {

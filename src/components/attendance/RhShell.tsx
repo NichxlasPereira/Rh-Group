@@ -50,9 +50,10 @@ function initials(name: string): string {
 
 const COLLAPSED_KEY = "menuLateralRecolhido";
 const TOP_MENU_KEY = "menuNoTopo";
-// Menu no topo: tempo do nome fechar/abrir e da caixinha deslizar (igual ao .rh-pill-suave).
+// Menu no topo: o nome fecha/abre e a caixinha desliza no mesmo ritmo (igual ao .rh-pill-suave
+// e ao .rh-top-nome do globals.css).
 const NAME_MS = 220;
-const SLIDE_MS = 450;
+const SLIDE_MS = NAME_MS;
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
