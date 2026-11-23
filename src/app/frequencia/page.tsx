@@ -694,16 +694,10 @@ export default function FrequenciaPage() {
         </Button>
       </>
     ) : tab === "acessos" ? null : tab === "mural" ? (
-      <>
-        <Button variant="ghost" onClick={() => setNoticeSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-          <IconMegaphone className="h-4 w-4" />
-          Publicar recado
-        </Button>
-        <Button onClick={openNewEmployee} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-          <IconPlus className="h-4 w-4" />
-          Novo colaborador
-        </Button>
-      </>
+      <Button onClick={() => setNoticeSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+        <IconMegaphone className="h-4 w-4" />
+        Publicar recado
+      </Button>
     ) : tab === "prestadores" ? (
       <>
         <Button
@@ -743,13 +737,9 @@ export default function FrequenciaPage() {
             Baixar PDF do mês
           </a>
         )}
-        {/* Em destaque (branco), menos em Ocorrências, onde o destaque é registrar ocorrência. */}
-        {tab !== "aniversariantes" && (
-          <Button
-            variant={tab === "ocorrencias" ? "ghost" : "primary"}
-            onClick={openNewEmployee}
-            className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]"
-          >
+        {/* Cadastrar colaborador só na própria aba Colaboradores. */}
+        {tab === "colaboradores" && (
+          <Button onClick={openNewEmployee} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
             <IconPlus className="h-4 w-4" />
             Novo colaborador
           </Button>
