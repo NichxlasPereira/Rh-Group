@@ -338,62 +338,18 @@ export function RhShell<K extends string>({
             </div>
           </nav>
 
-          {/* O resto da barra vai para a direita. */}
-          <div className="flex shrink-0 items-center justify-end gap-1 px-1 lg:ml-auto lg:px-0">
-            {otherModules.map((m) => (
-              <Link
-                key={m.href}
-                href={m.href}
-                prefetch={false}
-                title={m.label}
-                className="hidden items-center gap-2 rounded-[9px] px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-surface-2 hover:text-ink lg:flex"
-              >
-                <m.icon className="h-[18px] w-[18px] shrink-0" />
-                <span className="hidden whitespace-nowrap 2xl:inline">{m.label}</span>
-              </Link>
-            ))}
-            {/* Com o menu no topo, o tema fica aqui (e sai da faixa grafite). */}
+          {/* À direita só o tema e a conta; o resto (outros módulos, senha, menu lateral, sair) fica no menu da conta. */}
+          <div className="flex shrink-0 items-center justify-end gap-2 px-1 lg:ml-auto lg:px-0">
             <div className="hidden lg:block">
               <ThemeToggle />
             </div>
-            <span className="mx-1 hidden h-6 border-l border-border lg:block" aria-hidden="true" />
-            {user ? (
-              <span
-                title={`${user.name} · ${user.role === "admin" ? "Administrador" : "Acesso RH"}`}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong"
-              >
-                {initials(user.name)}
-              </span>
-            ) : null}
-            {onChangePassword && (
-              <button
-                type="button"
-                onClick={onChangePassword}
-                aria-label="Trocar minha senha"
-                title="Trocar minha senha"
-                className="rounded-[8px] p-2 text-muted transition hover:bg-surface-2 hover:text-ink"
-              >
-                <IconKey className="h-4 w-4" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onLogout}
-              aria-label="Sair"
-              title="Sair"
-              className="rounded-[8px] p-2 text-muted transition hover:bg-surface-2 hover:text-ink"
-            >
-              <IconLogout className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleTopMenu}
-              aria-label="Menu lateral"
-              title="Menu lateral"
-              className="hidden rounded-[8px] p-2 text-muted transition hover:bg-surface-2 hover:text-ink lg:block"
-            >
-              <IconLayoutSide className="h-4 w-4" />
-            </button>
+            <AccountMenu
+              user={user}
+              otherModules={otherModules}
+              onChangePassword={onChangePassword}
+              onLogout={onLogout}
+              onSideMenu={toggleTopMenu}
+            />
           </div>
         </div>
         {content}
@@ -566,6 +522,119 @@ export function RhShell<K extends string>({
       </aside>
 
       {content}
+    </div>
+  );
+}
+
+/** Menu da conta (menu no topo): as iniciais abrem um painel com a pessoa, outros módulos,
+ *  trocar senha, voltar ao menu lateral e sair. */
+function AccountMenu({
+  user,
+  otherModules,
+  onChangePassword,
+  onLogout,
+  onSideMenu,
+}: {
+  user: { name: string; role: "admin" | "member" } | null;
+  otherModules: ShellModuleLink[];
+  onChangePassword?: () => void;
+  onLogout: () => void;
+  onSideMenu: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const item =
+    "flex w-full items-center gap-3 rounded-[9px] px-3 py-2 text-left text-[13px] font-semibold text-ink transition hover:bg-surface-2";
+  const run = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={user ? `Conta de ${user.name}` : "Conta"}
+        title={user?.name}
+        className={`flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong transition hover:brightness-110 ${
+          open ? "ring-2 ring-border-strong" : ""
+        }`}
+      >
+        {user ? initials(user.name) : <IconKey className="h-4 w-4" />}
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Conta"
+          className="rh-fade absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-[14px] neon-cinza border bg-surface p-1.5 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.55)]"
+        >
+          {user && (
+            <div className="flex items-center gap-3 px-3 pb-3 pt-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong">
+                {initials(user.name)}
+              </span>
+              <span className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate text-sm font-bold text-ink">{user.name}</span>
+                <span className="text-xs text-muted">{user.role === "admin" ? "Administrador" : "Acesso RH"}</span>
+              </span>
+            </div>
+          )}
+          {otherModules.length > 0 && (
+            <div className="border-t border-border py-1.5">
+              <span className="block px-3 pb-1 pt-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted">Outros módulos</span>
+              {otherModules.map((m) => (
+                <Link key={m.href} href={m.href} prefetch={false} role="menuitem" onClick={() => setOpen(false)} className={item}>
+                  <m.icon className="h-4 w-4 shrink-0 text-muted" />
+                  {m.label}
+                </Link>
+              ))}
+            </div>
+          )}
+          <div className="border-t border-border py-1.5">
+            {onChangePassword && (
+              <button type="button" role="menuitem" onClick={run(onChangePassword)} className={item}>
+                <IconKey className="h-4 w-4 shrink-0 text-muted" />
+                Trocar minha senha
+              </button>
+            )}
+            <button type="button" role="menuitem" onClick={run(onSideMenu)} className={`${item} hidden lg:flex`}>
+              <IconLayoutSide className="h-4 w-4 shrink-0 text-muted" />
+              Usar menu lateral
+            </button>
+          </div>
+          <div className="border-t border-border pt-1.5">
+            <button type="button" role="menuitem" onClick={run(onLogout)} className={`${item} hover:text-critical`}>
+              <IconLogout className="h-4 w-4 shrink-0 text-muted" />
+              Sair
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
