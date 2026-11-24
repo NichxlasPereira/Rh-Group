@@ -323,8 +323,22 @@ body {
     display: none;
   }
 }
+/* Menu no topo: o nome não abre ao lado (empurraria os ícones); fica na etiqueta embaixo,
+   que desliza no mesmo tempo da caixinha. */
+@media (min-width: 1024px) {
+  [data-etiqueta] .rh-top-nome,
+  [data-etiqueta] .rh-top-badge {
+    display: none;
+  }
+}
+.rh-top-etiqueta {
+  transition:
+    transform 0.34s cubic-bezier(0.33, 1, 0.68, 1),
+    opacity 0.2s ease-out;
+}
 @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-  [data-anima] .rh-top-nome {
+  [data-anima] .rh-top-nome,
+  .rh-top-etiqueta {
     transition: none;
   }
 }
