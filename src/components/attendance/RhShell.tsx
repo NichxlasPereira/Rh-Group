@@ -136,23 +136,6 @@ export function RhShell<K extends string>({
       else item.removeAttribute("data-aberto");
     }
   };
-  // Menu no topo: etiqueta com o nome da seção, embaixo do ícone (os ícones não se mexem).
-  const tagRef = useRef<HTMLSpanElement>(null);
-  const placeTag = (el: HTMLElement | null, smooth: boolean) => {
-    const tag = tagRef.current;
-    const nav = tag?.parentElement;
-    if (!tag || !nav) return;
-    if (!el) {
-      tag.style.opacity = "0";
-      return;
-    }
-    const navBox = nav.getBoundingClientRect();
-    const box = el.getBoundingClientRect();
-    // Centro do ícone; a etiqueta se centraliza sozinha (-50%), então o nome pode trocar de tamanho.
-    tag.style.transition = smooth ? "" : "none";
-    tag.style.opacity = "1";
-    tag.style.transform = `translateX(${box.left - navBox.left + box.width / 2}px)`;
-  };
   const stopTopAnim = () => {
     clearTimeout(topAnim.current.timer);
     if (topAnim.current.frame) cancelAnimationFrame(topAnim.current.frame);
@@ -167,7 +150,6 @@ export function RhShell<K extends string>({
       topAnim.current.at = active;
       openTopName(active);
       placeTopPill(topItem(active), false);
-      placeTag(topItem(active), false);
     };
     sync();
     // A lista e cada seção: no menu lateral a lista não muda de tamanho quando um nome abre.
@@ -195,7 +177,6 @@ export function RhShell<K extends string>({
     topAnim.current.busy = true;
     onChange(key);
     openTopName(key);
-    placeTag(to, true);
     // As bordas da caixinha vão da seção anterior à clicada, nas posições de cada quadro (os
     // nomes estão fechando e abrindo ao mesmo tempo): na horizontal, de lado; no menu lateral,
     // para cima ou para baixo. O relógio é o horário, não os quadros.
@@ -228,7 +209,41 @@ export function RhShell<K extends string>({
     return () => clearTimeout(timer);
   }, []);
 
-  const activeSection = sections.find((s) => s.key === active);
+  // Menu no topo (computador): o ícone escolhido sobe, cresce um pouco e mostra o nome logo
+  // abaixo; os outros ficam parados. No celular, a faixa mostra todos os nomes.
+  const topButtons = sections.map((s) => {
+    const current = s.key === active;
+    return (
+      <button
+        key={s.key}
+        type="button"
+        data-secao={String(s.key)}
+        onClick={() => goToTopSection(s.key)}
+        aria-current={current ? "page" : undefined}
+        title={s.label}
+        aria-label={s.label}
+        className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:h-[52px] lg:w-[56px] lg:justify-center lg:p-0 ${
+          current ? "font-bold text-ink" : "font-semibold text-muted hover:text-ink lg:hover:bg-transparent hover:bg-surface-2"
+        }`}
+      >
+        <span className="rh-dock-icone relative flex items-center lg:absolute lg:left-1/2 lg:top-1/2 lg:-ml-[17px] lg:-mt-[17px] lg:h-[34px] lg:w-[34px] lg:justify-center lg:rounded-[9px]">
+          <s.icon className="h-[17px] w-[17px] shrink-0" />
+          {!!s.badge && (
+            <span className="absolute -right-0.5 -top-0.5 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
+          )}
+        </span>
+        <span className="ml-1.5 whitespace-nowrap lg:hidden">{s.label}</span>
+        {!!s.badge && (
+          <span className="ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white lg:hidden">
+            {s.badge}
+          </span>
+        )}
+        <span className="rh-dock-nome pointer-events-none absolute bottom-[2px] left-1/2 hidden whitespace-nowrap text-[11px] font-bold text-ink lg:block">
+          {s.label}
+        </span>
+      </button>
+    );
+  });
   // Botões das seções (iguais nos dois menus): só ícone; a seção aberta mostra o nome.
   const sectionButtons = sections.map((s) => {
     const current = s.key === active;
@@ -321,38 +336,22 @@ export function RhShell<K extends string>({
             </div>
           </div>
 
-          <nav aria-label={`Seções do ${moduleLabel}`} className="relative min-w-0">
-            {/* Nome da seção atual numa etiqueta embaixo do ícone (computador). O texto troca
-                na hora; a posição desliza junto com a caixinha (placeTag). */}
-            <span
-              ref={tagRef}
-              aria-hidden="true"
-              className="rh-top-etiqueta pointer-events-none absolute left-0 top-[calc(100%+18px)] z-10 hidden opacity-0 lg:block"
-            >
-              <span className="flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-border-strong bg-surface px-2.5 py-1 text-xs font-bold text-ink shadow-[0_8px_22px_-12px_rgba(0,0,0,0.55)]">
-                {activeSection?.label}
-                {!!activeSection?.badge && (
-                  <span className="min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white">
-                    {activeSection.badge}
-                  </span>
-                )}
-              </span>
-            </span>
+          <nav aria-label={`Seções do ${moduleLabel}`} className="min-w-0">
             <div
               ref={topListRef}
               data-anima={pillMoves ? "" : undefined}
-              data-etiqueta=""
-              className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:pb-0 lg:[scrollbar-width:none]"
+              className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:gap-1 lg:pb-0 lg:[scrollbar-width:none]"
             >
-              {/* Posição e tamanho vêm de placeTopPill (começa invisível até a primeira medida). */}
+              {/* Celular: caixinha da seção atual (posição de placeTopPill). No computador quem
+                  marca a seção é o próprio ícone, que sobe (data-aberto). */}
               <span
                 ref={topPillRef}
                 aria-hidden="true"
-                className="rh-pill-suave pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft opacity-0"
+                className="rh-pill-suave pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft opacity-0 lg:hidden"
               >
                 <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
               </span>
-              {sectionButtons}
+              {topButtons}
             </div>
           </nav>
 

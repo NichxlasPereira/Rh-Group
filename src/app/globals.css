@@ -323,22 +323,39 @@ body {
     display: none;
   }
 }
-/* Menu no topo: o nome não abre ao lado (empurraria os ícones); fica na etiqueta embaixo,
-   que desliza no mesmo tempo da caixinha. */
+/* Menu no topo (computador): o ícone da seção escolhida sobe, cresce um pouco e ganha fundo;
+   o nome aparece logo abaixo. Os outros ícones ficam parados. */
 @media (min-width: 1024px) {
-  [data-etiqueta] .rh-top-nome,
-  [data-etiqueta] .rh-top-badge {
-    display: none;
+  .rh-dock-icone {
+    transition:
+      transform 0.34s cubic-bezier(0.33, 1, 0.68, 1),
+      background-color 0.25s ease-out,
+      color 0.25s ease-out;
   }
-}
-.rh-top-etiqueta {
-  transition:
-    transform 0.34s cubic-bezier(0.33, 1, 0.68, 1),
-    opacity 0.2s ease-out;
+  [data-aberto] > .rh-dock-icone {
+    transform: translateY(-8px) scale(1.14);
+    background-color: var(--color-accent-soft);
+    color: var(--color-ink);
+  }
+  button:not([data-aberto]):hover > .rh-dock-icone {
+    background-color: var(--color-surface-2);
+  }
+  .rh-dock-nome {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+    transition:
+      opacity 0.25s ease-out,
+      transform 0.34s cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  [data-aberto] > .rh-dock-nome {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
   [data-anima] .rh-top-nome,
-  .rh-top-etiqueta {
+  .rh-dock-icone,
+  .rh-dock-nome {
     transition: none;
   }
 }
