@@ -118,7 +118,7 @@ async function main() {
   type Made = { id: string; name: string; department: string; area: string; female: boolean; active: boolean };
   const people: Made[] = [];
   const used = new Set<string>();
-  let photoIndex = { m: 0, f: 0 };
+  const photoIndex = { m: 0, f: 0 };
   const thisMonth = today.getUTCMonth() + 1;
 
   async function makeEmployee(department: string, area: string, lead: boolean, managerId: string | null, opts: { active?: boolean; birthdayToday?: boolean; birthdayThisMonth?: boolean; startSoon?: boolean } = {}) {
