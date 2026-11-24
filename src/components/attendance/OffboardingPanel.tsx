@@ -165,7 +165,7 @@ export function OffboardingPanel({
               onClick={() => setSettings(true)}
               className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
             >
-              Kit de offboarding
+              Offboarding
             </button>
           )}
         </div>

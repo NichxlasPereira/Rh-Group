@@ -229,7 +229,7 @@ function Preview({
       {state.items.length === 0 ? (
         <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
           Nenhum item do kit vale para {state.department ? `${state.department}${state.area ? ` › ${state.area}` : ""}` : "quem está sem empresa"}. Cadastre
-          itens em Onboarding › Kit de onboarding (ou deixe os gerais em “Todas as empresas”).
+          itens no botão Onboarding, na aba Onboarding (ou deixe os gerais em “Todas as empresas”).
         </p>
       ) : (
         <ul className="flex flex-col gap-2">

@@ -22,14 +22,14 @@ type ListKind = Item["kind"];
 
 const LIST_TEXT: Record<ListKind, { title: string; label: string; hint: string; placeholder: string; responsible: string }> = {
   inicio: {
-    title: "Kit de onboarding",
+    title: "Onboarding",
     label: "Kit de início",
     hint: "Vai para os responsáveis ao concluir o onboarding.",
     placeholder: "Item (ex.: Notebook)",
     responsible: "Área responsável (ex.: TI, Facilities, Gestor)",
   },
   saida: {
-    title: "Kit de offboarding",
+    title: "Offboarding",
     label: "Offboarding",
     hint: "Vai para os responsáveis ao desligar o colaborador (pedidos de desativação e devolução).",
     placeholder: "Pedido (ex.: Desativar e-mail, Recolher notebook)",
@@ -109,7 +109,7 @@ async function copy(text: string, done: string) {
 }
 
 /**
- * Kit de onboarding ou de offboarding (administradores): conexão com o Slack e
+ * Itens do onboarding ou do offboarding (administradores): conexão com o Slack e
  * os itens da lista — cada item com a pessoa do Slack que o recebe por
  * mensagem direta. A aba Onboarding abre o kit de início; a Offboarding, o de saída.
  */
