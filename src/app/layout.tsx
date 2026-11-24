@@ -36,6 +36,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-bg text-ink font-sans">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {children}
+        {/* Só no pacote de demonstração (NEXT_PUBLIC_DEMO=1 no build): aviso fixo de dados fictícios. */}
+        {process.env.NEXT_PUBLIC_DEMO === "1" && (
+          <div className="pointer-events-none fixed bottom-3 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-border bg-surface/90 px-3 py-1 font-display text-[10.5px] font-medium uppercase tracking-[0.16em] text-muted shadow-[0_8px_20px_-12px_rgba(0,0,0,0.5)] backdrop-blur">
+            Demonstração · dados fictícios
+          </div>
+        )}
         <Toaster
           position="bottom-right"
           toastOptions={{

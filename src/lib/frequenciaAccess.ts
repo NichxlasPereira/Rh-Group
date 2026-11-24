@@ -89,7 +89,8 @@ export async function startSession(userId: string, response: NextResponse): Prom
   response.cookies.set(FREQ_USER_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // COOKIE_INSECURE=1 só no pacote de demonstração (localhost sem HTTPS, ex.: Safari).
+    secure: process.env.NODE_ENV === "production" && process.env.COOKIE_INSECURE !== "1",
     path: "/",
     maxAge: SESSION_SECONDS,
   });

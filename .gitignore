@@ -50,3 +50,7 @@ next-env.d.ts
 /prisma/colaboradores
 /prisma/empresas
 /prisma/prestadores
+
+# Pacote de demonstração (scripts/demo/build.sh)
+/.next-demo/
+/dist-demo/

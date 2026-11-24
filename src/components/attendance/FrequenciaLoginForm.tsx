@@ -115,6 +115,22 @@ export function FrequenciaLoginForm({ next, needsSetup, setupConfigured }: Frequ
               : "Use o e-mail e a senha do seu acesso."}
         </p>
 
+        {/* Pacote de demonstração (NEXT_PUBLIC_DEMO=1 só no build da demo): acesso pronto. */}
+        {process.env.NEXT_PUBLIC_DEMO === "1" && mode === "login" && !needsSetup && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-border bg-surface-2 px-3 py-2.5 text-sm text-ink">
+            <span>
+              Demonstração: <strong>diretoria@demo.rhgroup</strong> · senha <strong>demo2026</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setValues((v) => ({ ...v, email: "diretoria@demo.rhgroup", password: "demo2026" }))}
+              className="rounded-[8px] bg-ink px-2.5 py-1 text-xs font-bold text-bg"
+            >
+              Preencher
+            </button>
+          </div>
+        )}
+
         {requestSent && (
           <div className="mt-4 rounded-[10px] border border-ok bg-ok-soft px-3 py-2.5 text-sm text-ink">
             Pedido enviado! Assim que um administrador aprovar, entre aqui com o e-mail e a senha que você cadastrou.
