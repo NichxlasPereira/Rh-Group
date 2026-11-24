@@ -17,10 +17,11 @@ const OPTIONS: { mode: ThemeMode; label: string; hint: string; icon: typeof Icon
   { mode: "auto", label: "Automático", hint: "Claro de dia, escuro à noite", icon: IconAuto },
 ];
 
-export function ThemeToggle() {
+/** side: o painel abre ao lado do botão, para cima (rodapé do menu lateral). */
+export function ThemeToggle({ placement = "below" }: { placement?: "below" | "side" } = {}) {
   const [mode, setMode] = useState<ThemeMode>("auto");
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ top: 0, right: 0 });
+  const [position, setPosition] = useState<React.CSSProperties>({ top: 0, right: 0 });
   const [mounted, setMounted] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -68,7 +69,11 @@ export function ThemeToggle() {
   function toggleOpen() {
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      setPosition(
+        placement === "side"
+          ? { left: rect.right + 10, bottom: window.innerHeight - rect.bottom }
+          : { top: rect.bottom + 8, right: window.innerWidth - rect.right }
+      );
     }
     setOpen((o) => !o);
   }
@@ -107,7 +112,7 @@ export function ThemeToggle() {
             ref={panelRef}
             role="menu"
             aria-label="Tema"
-            style={{ top: position.top, right: position.right }}
+            style={position}
             // Só aparece e some (leve deslize de 4 px), sem encolher: transição discreta.
             className={`fixed z-50 flex w-60 flex-col gap-0.5 rounded-[12px] border border-border bg-surface p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.3)] transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none ${
               open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0"
