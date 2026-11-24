@@ -209,8 +209,9 @@ export function RhShell<K extends string>({
     return () => clearTimeout(timer);
   }, []);
 
-  // Menu no topo (computador): o ícone escolhido sobe, cresce um pouco e mostra o nome logo
-  // abaixo; os outros ficam parados. No celular, a faixa mostra todos os nomes.
+  // Botões das seções (iguais nos dois menus). Computador: o ícone escolhido sobe, cresce um
+  // pouco, fica redondo com o arco neon e mostra o nome logo abaixo, abrindo espaço nos
+  // vizinhos (no topo, para os lados; no lateral, para baixo). Celular: faixa com os nomes.
   const topButtons = sections.map((s) => {
     const current = s.key === active;
     return (
@@ -244,46 +245,13 @@ export function RhShell<K extends string>({
       </button>
     );
   });
-  // Botões das seções (iguais nos dois menus): só ícone; a seção aberta mostra o nome.
-  const sectionButtons = sections.map((s) => {
-    const current = s.key === active;
-    return (
-      <button
-        key={s.key}
-        type="button"
-        data-secao={String(s.key)}
-        onClick={() => goToTopSection(s.key)}
-        aria-current={current ? "page" : undefined}
-        title={s.label}
-        aria-label={s.label}
-        className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:px-2.5 ${
-          current ? "font-bold text-ink" : "font-semibold text-muted hover:bg-surface-2 hover:text-ink active:bg-border"
-        }`}
-      >
-        <s.icon className={`h-[17px] w-[17px] shrink-0 ${current ? "text-ink" : ""}`} />
-        {/* Computador: só a seção clicada abre o nome, dentro da caixinha (data-aberto,
-            posto por openTopName). Celular: todos com o nome. */}
-        <span className="rh-top-nome ml-1.5 inline-block overflow-hidden whitespace-nowrap align-middle">{s.label}</span>
-        {!!s.badge && (
-          <span className="rh-top-badge ml-1.5 min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white">
-            {s.badge}
-          </span>
-        )}
-        {/* Nas seções fechadas, o contador vira um ponto no canto do ícone. */}
-        {!!s.badge && (
-          <span className="rh-top-ponto absolute left-[23px] top-1 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
-        )}
-      </button>
-    );
-  });
-
   const content = (
       <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-7">
         {busy && (
           <span
             role="progressbar"
             aria-label="Carregando"
-            className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden ${topMenu ? "" : "lg:left-[84px]"}`}
+            className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden ${topMenu ? "" : "lg:left-[96px]"}`}
           >
             <span className="rh-progress block h-full w-2/5 rounded-full bg-ink/70" />
           </span>
@@ -380,7 +348,7 @@ export function RhShell<K extends string>({
     <div className="flex flex-1 flex-col lg:flex-row">
       {/* Menu lateral: barra fina só com os ícones, como o do topo. A seção aberta mostra o nome
           numa caixinha que passa da barra; embaixo, só o tema e a conta. */}
-      <aside className="relative z-30 flex shrink-0 flex-col gap-3 border-b border-border bg-surface px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:w-[84px] lg:gap-6 lg:border-b-0 lg:border-r lg:px-0 lg:py-5">
+      <aside className="relative z-30 flex shrink-0 flex-col gap-3 border-b border-border bg-surface px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:w-[96px] lg:gap-6 lg:border-b-0 lg:border-r lg:px-0 lg:py-5">
         <div className="flex items-center justify-between gap-3 px-2 lg:justify-center lg:px-0">
           <div className="flex items-center gap-3">
             <CffLogo className="h-7 w-auto text-ink lg:h-auto lg:w-14" />
@@ -406,18 +374,19 @@ export function RhShell<K extends string>({
           <div
             ref={topListRef}
             data-anima={pillMoves ? "" : undefined}
-            className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-start lg:gap-1 lg:overflow-visible lg:px-[23px] lg:pb-0"
+            data-dock="lateral"
+            className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-center lg:gap-0 lg:overflow-visible lg:px-0 lg:pb-0"
           >
-            {/* Posição e tamanho vêm de placeTopPill (começa invisível até a primeira medida). */}
+            {/* Celular: caixinha da seção atual (posição de placeTopPill). No computador, igual ao
+                menu do topo: o ícone escolhido cresce, fica redondo e mostra o nome embaixo. */}
             <span
               ref={topPillRef}
               aria-hidden="true"
-              className="rh-pill-suave pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft opacity-0 lg:shadow-[0_8px_22px_-12px_rgba(0,0,0,0.55)]"
+              className="rh-pill-suave pointer-events-none absolute left-0 top-0 rounded-[9px] bg-accent-soft opacity-0 lg:hidden"
             >
-              {/* Barra fina da seção atual: à esquerda no computador, embaixo no celular. */}
-              <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink lg:bottom-auto lg:left-0 lg:top-1/2 lg:h-4 lg:w-[3px] lg:-translate-x-0 lg:-translate-y-1/2" />
+              <span className="absolute bottom-0 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-ink" />
             </span>
-            {sectionButtons}
+            {topButtons}
           </div>
         </nav>
 

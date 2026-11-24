@@ -382,6 +382,34 @@ body {
     margin-bottom: 0;
   }
 }
+/* Menu lateral (computador): os mesmos botões, em coluna. O escolhido cresce sem subir e o
+   nome fica embaixo, empurrando os de baixo; letras um pouco mais juntas para caber na barra. */
+@media (min-width: 1024px) {
+  [data-dock="lateral"] .rh-dock-item {
+    height: 42px;
+  }
+  [data-dock="lateral"] .rh-dock-item[data-aberto] {
+    margin-inline: 0;
+    margin-block: 4px 24px;
+  }
+  [data-dock="lateral"] [data-aberto] > .rh-dock-icone {
+    transform: scale(1.12);
+  }
+  [data-dock="lateral"] .rh-dock-nome {
+    top: calc(100% + 6px);
+    bottom: auto;
+    margin-bottom: 0;
+    margin-top: -3px;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    transition:
+      opacity 0.25s ease-out,
+      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  [data-dock="lateral"] [data-aberto] > .rh-dock-nome {
+    margin-top: 0;
+  }
+}
 @keyframes rh-giro {
   to {
     transform: rotate(360deg);
