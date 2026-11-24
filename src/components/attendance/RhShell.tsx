@@ -238,7 +238,7 @@ export function RhShell<K extends string>({
             {s.badge}
           </span>
         )}
-        <span className="rh-dock-nome pointer-events-none absolute bottom-0 left-1/2 -ml-[70px] hidden w-[140px] justify-center whitespace-nowrap text-[11px] font-semibold leading-[13px] tracking-[0.01em] text-ink lg:flex">
+        <span className="rh-dock-nome pointer-events-none absolute bottom-0 left-1/2 -ml-[80px] hidden w-[160px] justify-center whitespace-nowrap font-display text-[10px] font-medium uppercase leading-[13px] tracking-[0.18em] text-ink lg:flex">
           {s.label}
         </span>
       </button>
