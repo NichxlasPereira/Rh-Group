@@ -231,7 +231,7 @@ export function RhShell<K extends string>({
           <span
             role="progressbar"
             aria-label="Carregando"
-            className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden ${topMenu ? "" : "lg:left-[68px]"}`}
+            className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden ${topMenu ? "" : "lg:left-[84px]"}`}
           >
             <span className="rh-progress block h-full w-2/5 rounded-full bg-ink/70" />
           </span>
@@ -326,10 +326,10 @@ export function RhShell<K extends string>({
     <div className="flex flex-1 flex-col lg:flex-row">
       {/* Menu lateral: barra fina só com os ícones, como o do topo. A seção aberta mostra o nome
           numa caixinha que passa da barra; embaixo, só o tema e a conta. */}
-      <aside className="relative z-30 flex shrink-0 flex-col gap-3 border-b border-border bg-surface px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:w-[68px] lg:gap-6 lg:border-b-0 lg:border-r lg:px-0 lg:py-5">
+      <aside className="relative z-30 flex shrink-0 flex-col gap-3 border-b border-border bg-surface px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:w-[84px] lg:gap-6 lg:border-b-0 lg:border-r lg:px-0 lg:py-5">
         <div className="flex items-center justify-between gap-3 px-2 lg:justify-center lg:px-0">
           <div className="flex items-center gap-3">
-            <CffLogo className="h-7 w-auto text-ink lg:h-auto lg:w-10" />
+            <CffLogo className="h-7 w-auto text-ink lg:h-auto lg:w-14" />
             <span className="border-l border-border-strong pl-3 font-display text-[13px] font-medium uppercase tracking-[0.18em] text-muted lg:hidden">
               {moduleLabel}
             </span>
@@ -351,7 +351,7 @@ export function RhShell<K extends string>({
           <div
             ref={topListRef}
             data-anima={pillMoves ? "" : undefined}
-            className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-start lg:gap-1 lg:overflow-visible lg:px-[15px] lg:pb-0"
+            className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-start lg:gap-1 lg:overflow-visible lg:px-[23px] lg:pb-0"
           >
             {/* Posição e tamanho vêm de placeTopPill (começa invisível até a primeira medida). */}
             <span
