@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import { Modal } from "../Modal";
 import { IconSearch, IconUsers } from "../icons";
 import { EmptyState, SkeletonRows } from "./formControls";
-import { StartKitSettingsModal } from "../admission/StartKitSettingsModal";
 import { formatDateBR } from "@/lib/format";
 import type { Employee } from "@/lib/attendance";
 import type { ExitKitView } from "@/lib/startKit";
@@ -40,8 +39,6 @@ const errorToast = (err: unknown) => toast.error(err instanceof Error ? err.mess
 export function OffboardingPanel({
   kits,
   employees,
-  departments,
-  isAdmin,
   search,
   pickSignal,
   onReload,
@@ -51,8 +48,6 @@ export function OffboardingPanel({
   kits: ExitKitView[] | null;
   /** Colaboradores (para escolher quem desligar). */
   employees: Employee[];
-  departments: string[];
-  isAdmin: boolean;
   search: string;
   /** Muda quando o RH clica em "Desligar colaborador" no topo. */
   pickSignal: number;
@@ -62,7 +57,6 @@ export function OffboardingPanel({
 }) {
   const [filter, setFilter] = useState<Filter>("andamento");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [settings, setSettings] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pickQuery, setPickQuery] = useState("");
   // Sinal já atendido: ao voltar para a aba, a janela não reabre sozinha.
@@ -159,15 +153,6 @@ export function OffboardingPanel({
               </button>
             ))}
           </div>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setSettings(true)}
-              className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
-            >
-              Offboarding
-            </button>
-          )}
         </div>
 
         {kits === null ? (
@@ -374,17 +359,6 @@ export function OffboardingPanel({
         </div>
       </Modal>
 
-      {isAdmin && (
-        <StartKitSettingsModal
-          open={settings}
-          onClose={() => {
-            setSettings(false);
-            void onReload();
-          }}
-          departments={departments}
-          list="saida"
-        />
-      )}
     </div>
   );
 }

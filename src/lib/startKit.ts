@@ -37,8 +37,8 @@ export const SUGGESTED_EXIT_ITEMS: { name: string; responsible: string }[] = [
 
 /** Onde se configura cada lista (aparece nos avisos). */
 const SETUP_PLACE: Record<KitKind, string> = {
-  inicio: "botão Onboarding, na aba Onboarding",
-  saida: "botão Offboarding, na aba Offboarding",
+  inicio: "Configurações › Onboarding (menu das iniciais)",
+  saida: "Configurações › Offboarding (menu das iniciais)",
 };
 
 /** Lembrete do offboarding: um dia depois do envio, se ainda houver item pendente. */
@@ -166,9 +166,9 @@ export async function postStartKit(requestId: string): Promise<void> {
   const place = SETUP_PLACE[kitKind(req.kind)];
   const withoutPerson = req.tasks.filter((t) => !t.slackMention);
   if (withoutPerson.length) {
-    problems.push(`Sem pessoa no Slack: ${withoutPerson.map((t) => t.name).join(", ")}. Escolha quem recebe no ${place}.`);
+    problems.push(`Sem pessoa no Slack: ${withoutPerson.map((t) => t.name).join(", ")}. Escolha quem recebe em ${place}.`);
   }
-  if (req.tasks.length === 0) problems.push(`Nenhum item vale para esta pessoa. Cadastre itens no ${place}.`);
+  if (req.tasks.length === 0) problems.push(`Nenhum item vale para esta pessoa. Cadastre itens em ${place}.`);
 
   const groups = tasksByRecipient(req.tasks);
   if (groups.size > 0 && !slackConfig()) {

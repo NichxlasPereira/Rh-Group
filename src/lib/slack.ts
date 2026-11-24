@@ -25,7 +25,7 @@ const FRIENDLY: Record<string, string> = {
   not_authed: "Token do Slack ausente. Confira SLACK_BOT_TOKEN no Railway.",
   account_inactive: "O app do Slack foi desativado ou removido do workspace.",
   missing_scope: "O app do Slack não tem todas as permissões (chat:write, im:write, users:read). Atualize o app com o manifesto do RHGroup e reinstale.",
-  user_not_found: "Pessoa não encontrada no Slack (pode ter saído do workspace). Escolha outra no botão Onboarding ou Offboarding, nas abas de mesmo nome.",
+  user_not_found: "Pessoa não encontrada no Slack (pode ter saído do workspace). Escolha outra em Configurações › Onboarding ou Offboarding (menu das iniciais).",
   cannot_dm_bot: "Não dá para mandar mensagem direta para um bot.",
   ratelimited: "O Slack pediu para esperar um pouco (muitas mensagens). Tente de novo em instantes.",
 };

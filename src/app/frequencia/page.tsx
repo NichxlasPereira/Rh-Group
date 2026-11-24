@@ -25,7 +25,8 @@ import {
   IconUserPlus,
   IconUsers,
 } from "@/components/icons";
-import { RhShell, RhSection } from "@/components/attendance/RhShell";
+import { RhShell, RhSection, ShellSetting } from "@/components/attendance/RhShell";
+import { StartKitSettingsModal } from "@/components/admission/StartKitSettingsModal";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
 import { CalendarPanel } from "@/components/attendance/CalendarPanel";
@@ -331,9 +332,23 @@ export default function FrequenciaPage() {
       { key: "offboarding", label: "Offboarding", icon: IconUserMinus, badge: offboardingsPending },
       { key: "relatorios", label: "Relatórios", icon: IconChart },
     ];
-    if (me?.role === "admin") list.push({ key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests });
     return list;
-  }, [me, onboardingSummary, birthdaysToday, providersAttention, offboardingsPending]);
+  }, [onboardingSummary, birthdaysToday, providersAttention, offboardingsPending]);
+
+  // Configurações (administradores), no menu da conta: Acessos e os kits do Slack
+  // (onboarding: kit de boas-vindas; offboarding: pedidos de desligamento).
+  const [kitList, setKitList] = useState<"inicio" | "saida" | null>(null);
+  const settings = useMemo<ShellSetting[]>(
+    () =>
+      me?.role === "admin"
+        ? [
+            { key: "acessos", label: "Acessos", icon: IconKey, badge: me.pendingRequests, onClick: () => changeTab("acessos") },
+            { key: "kit-inicio", label: "Onboarding", icon: IconUserPlus, onClick: () => setKitList("inicio") },
+            { key: "kit-saida", label: "Offboarding", icon: IconUserMinus, onClick: () => setKitList("saida") },
+          ]
+        : [],
+    [me]
+  );
 
   const recentOccurrences = useMemo(
     () =>
@@ -829,6 +844,7 @@ export default function FrequenciaPage() {
         user={me}
         onChangePassword={() => setChangingPassword(true)}
         onLogout={logout}
+        settings={settings}
         title={copy.title}
         description={copy.description}
         actions={actions}
@@ -916,8 +932,6 @@ export default function FrequenciaPage() {
           <OffboardingPanel
             kits={offboardings}
             employees={employees}
-            departments={departments}
-            isAdmin={me?.role === "admin"}
             search={offboardSearch}
             pickSignal={offboardPickSignal}
             onReload={fetchOffboardings}
@@ -1055,6 +1069,17 @@ export default function FrequenciaPage() {
       </RhShell>
 
       <ChangeOwnPasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
+      {me?.role === "admin" && (
+        <StartKitSettingsModal
+          open={kitList !== null}
+          list={kitList ?? "inicio"}
+          departments={departments}
+          onClose={() => {
+            setKitList(null);
+            void fetchOffboardings();
+          }}
+        />
+      )}
 
       <EmployeeModal
         open={employeeModalOpen}

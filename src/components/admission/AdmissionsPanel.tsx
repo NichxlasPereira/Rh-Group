@@ -23,7 +23,6 @@ import { formatDateBR } from "@/lib/format";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { TermsSettingsModal, companyIncomplete } from "./TermsSettingsModal";
 import { LocalCopyModal } from "./LocalCopyModal";
-import { StartKitSettingsModal } from "./StartKitSettingsModal";
 import { AdmissionKitCard, kitStepStatus, type KitState } from "./AdmissionKitCard";
 
 async function send(url: string, method: string, body?: unknown) {
@@ -136,7 +135,6 @@ export function AdmissionsPanel({
   const [areas, setAreas] = useState<{ id: string; companyId: string; name: string }[]>([]);
   const [termsSettings, setTermsSettings] = useState(false);
   const [localCopy, setLocalCopy] = useState(false);
-  const [startKit, setStartKit] = useState(false);
   const [choosingCompany, setChoosingCompany] = useState(false);
   const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -318,13 +316,6 @@ export function AdmissionsPanel({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => setStartKit(true)}
-                className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
-              >
-                Onboarding
-              </button>
-              <button
-                type="button"
                 onClick={() => setLocalCopy(true)}
                 className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
               >
@@ -487,7 +478,6 @@ export function AdmissionsPanel({
         onConfirm={(companyId) => create(companyId)}
       />
       {isAdmin && <LocalCopyModal open={localCopy} onClose={() => setLocalCopy(false)} />}
-      {isAdmin && <StartKitSettingsModal open={startKit} onClose={() => setStartKit(false)} departments={departments} list="inicio" />}
       {isAdmin && (
         <TermsSettingsModal
           open={termsSettings}

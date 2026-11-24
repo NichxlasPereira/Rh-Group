@@ -14,6 +14,15 @@ export interface RhSection<K extends string> {
   badge?: number;
 }
 
+/** Atalho de configuração no menu da conta (administradores): abre uma tela ou um painel. */
+export interface ShellSetting {
+  key: string;
+  label: string;
+  icon: (props: { className?: string }) => React.ReactNode;
+  badge?: number;
+  onClick: () => void;
+}
+
 /** Link para outro módulo no rodapé do menu. */
 export interface ShellModuleLink {
   href: string;
@@ -33,6 +42,8 @@ interface RhShellProps<K extends string> {
   /** Título do grupo de seções no menu. */
   navLabel?: string;
   otherModules?: ShellModuleLink[];
+  /** Configurações no menu da conta (Acessos, kits do Slack...). */
+  settings?: ShellSetting[];
   title: string;
   description: string;
   actions?: React.ReactNode;
@@ -66,6 +77,7 @@ export function RhShell<K extends string>({
   moduleLabel = "RH",
   navLabel = "Gestão de pessoas",
   otherModules = DEFAULT_OTHER_MODULES,
+  settings = [],
   title,
   description,
   actions,
@@ -106,7 +118,12 @@ export function RhShell<K extends string>({
     topListRef.current?.querySelector<HTMLElement>(`[data-secao="${CSS.escape(String(key))}"]`) ?? null;
   const placeTopPill = (el: HTMLElement | null, smooth: boolean) => {
     const pillEl = topPillRef.current;
-    if (!pillEl || !el) return;
+    if (!pillEl) return;
+    // Tela fora do menu (ex.: Acessos, aberta pelo menu da conta): sem caixinha.
+    if (!el) {
+      pillEl.style.opacity = "0";
+      return;
+    }
     pillEl.style.transition = smooth ? "" : "none";
     pillEl.style.opacity = "1";
     pillEl.style.transform = `translate(${el.offsetLeft}px, ${el.offsetTop}px)`;
@@ -310,6 +327,7 @@ export function RhShell<K extends string>({
             <AccountMenu
               user={user}
               otherModules={otherModules}
+              settings={settings}
               onChangePassword={onChangePassword}
               onLogout={onLogout}
               switchLabel="Usar menu lateral"
@@ -339,6 +357,7 @@ export function RhShell<K extends string>({
             <AccountMenu
               user={user}
               otherModules={otherModules}
+              settings={settings}
               onChangePassword={onChangePassword}
               onLogout={onLogout}
               switchLabel="Usar menu no topo"
@@ -371,6 +390,7 @@ export function RhShell<K extends string>({
           <AccountMenu
             user={user}
             otherModules={otherModules}
+            settings={settings}
             onChangePassword={onChangePassword}
             onLogout={onLogout}
             switchLabel="Usar menu no topo"
@@ -390,6 +410,7 @@ export function RhShell<K extends string>({
 function AccountMenu({
   user,
   otherModules,
+  settings,
   onChangePassword,
   onLogout,
   switchLabel,
@@ -398,6 +419,7 @@ function AccountMenu({
 }: {
   user: { name: string; role: "admin" | "member" } | null;
   otherModules: ShellModuleLink[];
+  settings: ShellSetting[];
   onChangePassword?: () => void;
   onLogout: () => void;
   switchLabel: string;
@@ -428,6 +450,7 @@ function AccountMenu({
     };
   }, [open]);
 
+  const pending = settings.reduce((n, s) => n + (s.badge ?? 0), 0);
   const item =
     "flex w-full items-center gap-3 rounded-[9px] px-3 py-2 text-left text-[13px] font-semibold text-ink transition hover:bg-surface-2";
   const run = (fn: () => void) => () => {
@@ -445,11 +468,15 @@ function AccountMenu({
         aria-expanded={open}
         aria-label={user ? `Conta de ${user.name}` : "Conta"}
         title={user?.name}
-        className={`flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong transition hover:brightness-110 ${
+        className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong transition hover:brightness-110 ${
           open ? "ring-2 ring-border-strong" : ""
         }`}
       >
         {user ? initials(user.name) : <IconKey className="h-4 w-4" />}
+        {/* Algo para ver nas configurações (ex.: pedidos de acesso). */}
+        {pending > 0 && (
+          <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-brand ring-2 ring-surface" aria-hidden="true" />
+        )}
       </button>
       {open && (
         <div
@@ -468,6 +495,22 @@ function AccountMenu({
                 <span className="truncate text-sm font-bold text-ink">{user.name}</span>
                 <span className="text-xs text-muted">{user.role === "admin" ? "Administrador" : "Acesso RH"}</span>
               </span>
+            </div>
+          )}
+          {settings.length > 0 && (
+            <div className="border-t border-border py-1.5">
+              <span className="block px-3 pb-1 pt-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted">Configurações</span>
+              {settings.map((st) => (
+                <button key={st.key} type="button" role="menuitem" onClick={run(st.onClick)} className={item}>
+                  <st.icon className="h-4 w-4 shrink-0 text-muted" />
+                  <span className="flex-1">{st.label}</span>
+                  {!!st.badge && (
+                    <span className="min-w-5 rounded-full bg-brand px-1.5 py-px text-center text-[11px] font-bold tabular-nums text-white">
+                      {st.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           )}
           {otherModules.length > 0 && (
