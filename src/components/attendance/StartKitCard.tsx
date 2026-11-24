@@ -27,7 +27,7 @@ const TEXT = {
     created: "Kit de início enviado no Slack.",
     updated: "Kit atualizado e enviado no Slack.",
     date: "Início em",
-    empty: "Nenhum item valia para esta pessoa. Cadastre itens em Onboarding › Kit e offboarding.",
+    empty: "Nenhum item valia para esta pessoa. Cadastre itens em Onboarding › Kit de onboarding.",
   },
   saida: {
     title: "Offboarding",
@@ -37,7 +37,7 @@ const TEXT = {
     created: "Offboarding enviado no Slack.",
     updated: "Offboarding atualizado e enviado no Slack.",
     date: "Último dia",
-    empty: "Nenhum pedido de saída valia para esta pessoa. Cadastre itens em Onboarding › Kit e offboarding › Offboarding.",
+    empty: "Nenhum pedido de saída valia para esta pessoa. Cadastre itens em Offboarding › Kit de offboarding.",
   },
 };
 

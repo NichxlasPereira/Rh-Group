@@ -325,7 +325,7 @@ export function SlackRemindersModal({ open, onClose }: { open: boolean; onClose:
           {!data.slack.ok && (
             <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
               {data.slack.error ?? "O Slack ainda não está conectado."} A conexão é a mesma do kit de início (Onboarding
-              › Kit e offboarding).
+              › Kit de onboarding).
             </p>
           )}
           {data.status.lastError && (

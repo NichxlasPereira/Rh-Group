@@ -37,8 +37,8 @@ export const SUGGESTED_EXIT_ITEMS: { name: string; responsible: string }[] = [
 
 /** Onde se configura cada lista (aparece nos avisos). */
 const SETUP_PLACE: Record<KitKind, string> = {
-  inicio: "Onboarding › Kit e offboarding",
-  saida: "Onboarding › Kit e offboarding › Offboarding",
+  inicio: "Onboarding › Kit de onboarding",
+  saida: "Offboarding › Kit de offboarding",
 };
 
 /** Lembrete do offboarding: um dia depois do envio, se ainda houver item pendente. */

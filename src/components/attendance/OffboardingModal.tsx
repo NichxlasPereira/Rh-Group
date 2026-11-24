@@ -132,7 +132,7 @@ export function OffboardingModal({
               )}
               {items.length === 0 ? (
                 <p className="rounded-[10px] bg-warn-soft px-3 py-2 text-xs text-warn">
-                  Nenhum pedido de saída vale para {scopeLabel}. Cadastre itens em Onboarding › Kit e offboarding › Offboarding. Dá para desligar
+                  Nenhum pedido de saída vale para {scopeLabel}. Cadastre itens em Offboarding › Kit de offboarding. Dá para desligar
                   assim mesmo.
                 </p>
               ) : (

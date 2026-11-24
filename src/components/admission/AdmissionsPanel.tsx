@@ -321,7 +321,7 @@ export function AdmissionsPanel({
                 onClick={() => setStartKit(true)}
                 className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
               >
-                Kit e offboarding
+                Kit de onboarding
               </button>
               <button
                 type="button"
@@ -487,7 +487,7 @@ export function AdmissionsPanel({
         onConfirm={(companyId) => create(companyId)}
       />
       {isAdmin && <LocalCopyModal open={localCopy} onClose={() => setLocalCopy(false)} />}
-      {isAdmin && <StartKitSettingsModal open={startKit} onClose={() => setStartKit(false)} departments={departments} />}
+      {isAdmin && <StartKitSettingsModal open={startKit} onClose={() => setStartKit(false)} departments={departments} list="inicio" />}
       {isAdmin && (
         <TermsSettingsModal
           open={termsSettings}

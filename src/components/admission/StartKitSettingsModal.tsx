@@ -20,14 +20,16 @@ interface Item {
 
 type ListKind = Item["kind"];
 
-const LIST_TEXT: Record<ListKind, { label: string; hint: string; placeholder: string; responsible: string }> = {
+const LIST_TEXT: Record<ListKind, { title: string; label: string; hint: string; placeholder: string; responsible: string }> = {
   inicio: {
+    title: "Kit de onboarding",
     label: "Kit de início",
     hint: "Vai para os responsáveis ao concluir o onboarding.",
     placeholder: "Item (ex.: Notebook)",
     responsible: "Área responsável (ex.: TI, Facilities, Gestor)",
   },
   saida: {
+    title: "Kit de offboarding",
     label: "Offboarding",
     hint: "Vai para os responsáveis ao desligar o colaborador (pedidos de desativação e devolução).",
     placeholder: "Pedido (ex.: Desativar e-mail, Recolher notebook)",
@@ -107,21 +109,20 @@ async function copy(text: string, done: string) {
 }
 
 /**
- * Kit de início (administradores): conexão com o Slack e os itens que cada
- * colaborador novo precisa no primeiro dia — cada item com a pessoa do Slack
- * que o recebe por mensagem direta.
+ * Kit de onboarding ou de offboarding (administradores): conexão com o Slack e
+ * os itens da lista — cada item com a pessoa do Slack que o recebe por
+ * mensagem direta. A aba Onboarding abre o kit de início; a Offboarding, o de saída.
  */
 export function StartKitSettingsModal({
   open,
   onClose,
   departments,
-  initialList = "inicio",
+  list,
 }: {
   open: boolean;
   onClose: () => void;
   departments: string[];
-  /** Lista aberta ao entrar (a aba Offboarding abre na de saída). */
-  initialList?: "inicio" | "saida";
+  list: ListKind;
 }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [people, setPeople] = useState<SlackPerson[] | null>(null);
@@ -132,7 +133,6 @@ export function StartKitSettingsModal({
   const [busy, setBusy] = useState(false);
   const [areasBySector, setAreasBySector] = useState<Map<string, string[]>>(new Map());
   const [showSetup, setShowSetup] = useState(false);
-  const [list, setList] = useState<ListKind>("inicio");
 
   const load = useCallback(async () => {
     try {
@@ -157,7 +157,6 @@ export function StartKitSettingsModal({
     if (!open) return;
     setForm(emptyItem);
     setEditingId(null);
-    setList(initialList);
     void load();
     // Áreas de cada empresa, para escolher a área de um item.
     Promise.all([call("/api/frequencia/companies"), call("/api/frequencia/areas")])
@@ -170,7 +169,7 @@ export function StartKitSettingsModal({
         setAreasBySector(map);
       })
       .catch(() => undefined);
-  }, [open, load, initialList]);
+  }, [open, load]);
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const formAreas = useMemo(() => (form.department ? (areasBySector.get(form.department) ?? []) : []), [form.department, areasBySector]);
@@ -237,7 +236,7 @@ export function StartKitSettingsModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Kit de início e offboarding"
+      title={lt.title}
       maxWidthClassName="max-w-3xl"
       footer={
         <Button type="button" onClick={onClose}>
@@ -246,12 +245,19 @@ export function StartKitSettingsModal({
       }
     >
       <div className="flex flex-col gap-5 text-sm">
-        <p className="text-muted">
-          Ao concluir um onboarding, cada responsável recebe no Slack, por <strong className="text-ink">mensagem direta</strong>, só os
-          itens dele — com um botão <strong className="text-ink">Pronto</strong> por item. A 3 dias do início, quem ainda tiver item
-          pendente recebe um lembrete. No <strong className="text-ink">offboarding</strong>, ao desligar alguém, cada responsável recebe
-          os pedidos de desativação e devolução, com lembrete um dia depois. Tudo aparece na ficha do colaborador.
-        </p>
+        {list === "inicio" ? (
+          <p className="text-muted">
+            Ao concluir um onboarding, cada responsável recebe no Slack, por <strong className="text-ink">mensagem direta</strong>, só os
+            itens dele — com um botão <strong className="text-ink">Pronto</strong> por item. A 3 dias do início, quem ainda tiver item
+            pendente recebe um lembrete. Tudo aparece na ficha do colaborador.
+          </p>
+        ) : (
+          <p className="text-muted">
+            Ao desligar alguém, cada responsável recebe no Slack, por <strong className="text-ink">mensagem direta</strong>, só os pedidos
+            de desativação e devolução dele — com um botão <strong className="text-ink">Pronto</strong> por pedido. Um dia depois, quem
+            ainda tiver pedido pendente recebe um lembrete. Tudo aparece na ficha do colaborador.
+          </p>
+        )}
 
         {/* Slack */}
         <section className="flex flex-col gap-3 rounded-[12px] neon-cinza border bg-surface p-4">
@@ -336,27 +342,9 @@ export function StartKitSettingsModal({
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-display text-[15px] font-semibold text-ink">Itens</h3>
-            <div role="tablist" aria-label="Lista" className="flex gap-1 rounded-[10px] border border-border bg-surface p-1">
-              {(["inicio", "saida"] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="tab"
-                  aria-selected={list === k}
-                  onClick={() => {
-                    setList(k);
-                    setEditingId(null);
-                    setForm(emptyItem);
-                  }}
-                  className={`rounded-[8px] px-3 py-1.5 text-xs font-bold transition ${
-                    list === k ? "bg-ink text-bg" : "text-muted hover:text-ink"
-                  }`}
-                >
-                  {LIST_TEXT[k].label}
-                  <span className="ml-1.5 tabular-nums opacity-70">{settings?.items.filter((i) => (i.kind ?? "inicio") === k).length ?? 0}</span>
-                </button>
-              ))}
-            </div>
+            <span className="rounded-full bg-surface-2 px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums text-muted">
+              {items.length}
+            </span>
           </div>
           <p className="-mt-1 text-xs text-muted">{lt.hint}</p>
           {missingPerson > 0 && (

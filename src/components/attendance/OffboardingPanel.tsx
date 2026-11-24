@@ -165,7 +165,7 @@ export function OffboardingPanel({
               onClick={() => setSettings(true)}
               className="text-xs font-semibold text-muted underline-offset-2 transition hover:text-ink hover:underline"
             >
-              Pedidos de offboarding
+              Kit de offboarding
             </button>
           )}
         </div>
@@ -382,7 +382,7 @@ export function OffboardingPanel({
             void onReload();
           }}
           departments={departments}
-          initialList="saida"
+          list="saida"
         />
       )}
     </div>
