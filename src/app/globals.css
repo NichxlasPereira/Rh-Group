@@ -355,3 +355,26 @@ body {
     animation: none;
   }
 }
+
+/* Calendário do RH: cores próprias de campanha (azul) e treinamento (roxo). */
+:root,
+[data-theme="dark"] {
+  --cal-campanha: #8bbcf6;
+  --cal-campanha-soft: #17283d;
+  --cal-treino: #c1aef7;
+  --cal-treino-soft: #262040;
+}
+[data-theme="light"] {
+  --cal-campanha: #1d5fb0;
+  --cal-campanha-soft: #e2edfb;
+  --cal-treino: #6446c0;
+  --cal-treino-soft: #eeeafc;
+}
+.tone-campanha {
+  background-color: var(--cal-campanha-soft);
+  color: var(--cal-campanha);
+}
+.tone-treinamento {
+  background-color: var(--cal-treino-soft);
+  color: var(--cal-treino);
+}

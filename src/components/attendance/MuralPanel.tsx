@@ -14,7 +14,13 @@ import {
   IconDoorEnter,
   IconDoorExit,
   IconFileWarning,
+  IconFlag,
+  IconHourglass,
   IconKey,
+  IconParty,
+  IconRibbon,
+  IconSchool,
+  IconSun,
   IconMedical,
   IconMegaphone,
   IconTrash,
@@ -40,6 +46,8 @@ import { Birthday, isBirthdayOn } from "@/lib/birthdays";
 import { Provider, contractStatus } from "@/lib/providers";
 import type { ExitKitView } from "@/lib/startKit";
 import { MuralNoticeInfo, NOTICE_BODY_MAX, NOTICE_TITLE_MAX } from "@/lib/mural";
+import { CalendarEventInfo, EVENT_TONE, EventType } from "@/lib/calendar";
+import { itemsBetween, upcoming } from "@/lib/calendarItems";
 import { redirectIfSessionExpired } from "@/lib/sessionClient";
 
 // ---------------------------------------------------------------- datas
@@ -233,12 +241,22 @@ interface AgendaEvent {
   detail: string;
   tab: AttendanceTabKey;
   employeeId?: string;
+  /** Cor do ícone (eventos do calendário). */
+  tone?: string;
 }
+
+const EVENT_ICON: Record<EventType, (props: { className?: string }) => React.ReactNode> = {
+  feriado: IconFlag,
+  recesso: IconSun,
+  comemoracao: IconParty,
+  campanha: IconRibbon,
+  treinamento: IconSchool,
+};
 
 const AGENDA_DAYS = 7;
 
 function agendaEvents(
-  data: MuralData & { birthdays: Birthday[] },
+  data: MuralData & { birthdays: Birthday[]; events: CalendarEventInfo[] | null },
   now: Date
 ): { days: { key: string; date: Date }[]; events: AgendaEvent[] } {
   const days = Array.from({ length: AGENDA_DAYS }, (_, i) => {
@@ -331,6 +349,30 @@ function agendaEvents(
       tab: "prestadores",
     });
   }
+  // Calendário: feriados, eventos do RH (um evento de vários dias aparece uma vez) e tempo de casa.
+  const seen = new Set<string>();
+  for (const it of itemsBetween(days[0].key, days[days.length - 1].key, {
+    events: data.events ?? [],
+    employees: data.employees,
+    birthdays: [],
+  })) {
+    if (it.kind !== "tempo_casa" && it.tone === "pessoas") continue;
+    if (it.eventId) {
+      if (seen.has(it.eventId)) continue;
+      seen.add(it.eventId);
+    }
+    const isEvent = it.tone !== "pessoas";
+    events.push({
+      key: it.key,
+      day: it.day,
+      icon: isEvent ? EVENT_ICON[it.tone as EventType] : IconParty,
+      title: it.title,
+      detail: [it.time, it.detail].filter(Boolean).join(" · "),
+      tab: isEvent ? "calendario" : "colaboradores",
+      employeeId: it.employeeId,
+      tone: isEvent ? EVENT_TONE[it.tone] : undefined,
+    });
+  }
   events.sort((a, b) => a.day.localeCompare(b.day) || a.title.localeCompare(b.title, "pt-BR"));
   return { days, events };
 }
@@ -346,6 +388,8 @@ const OCCURRENCE_TONE: Record<OccurrenceType, string> = {
 
 interface MuralPanelProps extends MuralData {
   loading: boolean;
+  /** Eventos do calendário do RH (null enquanto carrega). */
+  events: CalendarEventInfo[] | null;
   occurrences: Occurrence[];
   birthdays: Birthday[];
   /** Muda a cada clique em "Publicar recado" no cabeçalho. */
@@ -364,6 +408,7 @@ export function MuralPanel(props: MuralPanelProps) {
 
   const tasks = useMemo(() => muralTasks(props, now), [props, now]);
   const agenda = useMemo(() => agendaEvents(props, now), [props, now]);
+  const next = useMemo(() => upcoming(today, props.events ?? []), [today, props.events]);
 
   // Indicadores do mês, comparados com o mês anterior.
   const stats = useMemo(() => {
@@ -467,18 +512,51 @@ export function MuralPanel(props: MuralPanelProps) {
             icon={IconCalendar}
             title="Agenda da semana"
             aside={
-              <span className="text-xs text-muted">
-                {shortDate(agenda.days[0].key)} a {shortDate(agenda.days[agenda.days.length - 1].key)}
-              </span>
+              <button
+                type="button"
+                onClick={() => onNavigate("calendario")}
+                className="flex items-center gap-1 rounded-[8px] px-2 py-1 text-xs font-semibold text-muted transition hover:bg-surface-2 hover:text-ink"
+              >
+                Ver mês
+                <IconChevronRight className="h-3.5 w-3.5" />
+              </button>
             }
           />
+          {(next.holiday || next.recess) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border bg-surface-2/40 px-4 py-2 text-xs text-muted">
+              {next.holiday && (
+                <span className="flex items-center gap-1.5">
+                  <IconHourglass className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <b className="font-semibold text-ink">{next.holiday.title}</b>{" "}
+                    {next.holiday.days === 0 ? "é hoje" : next.holiday.days === 1 ? "é amanhã" : `em ${next.holiday.days} dias`}
+                  </span>
+                </span>
+              )}
+              {next.recess && (
+                <span className="flex items-center gap-1.5">
+                  <IconSun className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <b className="font-semibold text-ink">{next.recess.title}</b>{" "}
+                    {next.recess.ongoing
+                      ? `até ${shortDate(next.recess.end)}`
+                      : next.recess.days === 0
+                        ? "começa hoje"
+                        : next.recess.days === 1
+                          ? "começa amanhã"
+                          : `em ${next.recess.days} dias`}
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
           {loading && agenda.events.length === 0 ? (
             <ListSkeleton />
           ) : agenda.events.length === 0 ? (
             <EmptyState
               icon={<IconCalendar className="h-6 w-6" />}
               title="Semana tranquila"
-              text="Nenhum aniversário, entrada, saída ou fim de contrato nos próximos 7 dias."
+              text="Nenhum feriado, evento, aniversário, entrada ou saída nos próximos 7 dias."
             />
           ) : (
             <ul className="flex flex-col">
@@ -502,7 +580,13 @@ export function MuralPanel(props: MuralPanelProps) {
                         <span className="truncate text-sm font-semibold text-ink">{ev.title}</span>
                         <span className="truncate text-xs text-muted">{ev.detail}</span>
                       </span>
-                      <ev.icon className="h-[18px] w-[18px] shrink-0 text-muted group-hover:text-ink" />
+                      {ev.tone ? (
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] ${ev.tone}`}>
+                          <ev.icon className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <ev.icon className="h-[18px] w-[18px] shrink-0 text-muted group-hover:text-ink" />
+                      )}
                     </button>
                   </li>
                 );

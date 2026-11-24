@@ -14,6 +14,7 @@ import {
   IconCamera,
   IconChart,
   IconKey,
+  IconCalendar,
   IconLayoutDashboard,
   IconMegaphone,
   IconPlus,
@@ -25,6 +26,8 @@ import {
 import { RhShell, RhSection } from "@/components/attendance/RhShell";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
+import { CalendarPanel } from "@/components/attendance/CalendarPanel";
+import type { CalendarEventInfo } from "@/lib/calendar";
 import { ProvidersPanel } from "@/components/providers/ProvidersPanel";
 import { Provider, needsAttention } from "@/lib/providers";
 import { ALL_MONTHS, AttendanceFilters, AttendanceTabKey, TeamView } from "@/components/attendance/AttendanceFilters";
@@ -91,6 +94,10 @@ interface SessionUser {
 const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: string }> = {
   // O Mural troca título e descrição pela saudação (ver muralCopy).
   mural: { title: "Mural", description: "O que precisa de você hoje, a agenda da semana e os recados do RH." },
+  calendario: {
+    title: "Calendário",
+    description: "Feriados, recessos, comemorações, campanhas e treinamentos, com os aniversários e o tempo de casa da equipe.",
+  },
   ocorrencias: { title: "Ocorrências", description: "Faltas, atestados e folgas da equipe, com anexos e saldo de folgas." },
   colaboradores: { title: "Colaboradores", description: "Cadastro da equipe: setores, cargos e saldo de folgas de cada pessoa." },
   prestadores: {
@@ -195,6 +202,17 @@ export default function FrequenciaPage() {
   // Lista de prestadores para o Mural (contratos vencendo na agenda e nas pendências).
   const [providers, setProviders] = useState<Provider[] | null>(null);
   const [noticeSignal, setNoticeSignal] = useState(0);
+  // Calendário do RH: eventos cadastrados (o Mural também mostra na agenda).
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventInfo[] | null>(null);
+  const [eventSignal, setEventSignal] = useState(0);
+  const fetchCalendarEvents = useCallback(async () => {
+    const res = await fetch("/api/frequencia/calendario");
+    if (sessionExpired(res) || !res.ok) return;
+    setCalendarEvents(await res.json());
+  }, []);
+  useEffect(() => {
+    void fetchCalendarEvents();
+  }, [fetchCalendarEvents]);
   // Offboarding: desligamentos com os pedidos de saída; o número da aba são os que têm pendência.
   const [offboardings, setOffboardings] = useState<ExitKitView[] | null>(null);
   const [offboardSearch, setOffboardSearch] = useState("");
@@ -300,6 +318,7 @@ export default function FrequenciaPage() {
   const sections = useMemo<RhSection<AttendanceTabKey>[]>(() => {
     const list: RhSection<AttendanceTabKey>[] = [
       { key: "mural", label: "Mural", icon: IconLayoutDashboard },
+      { key: "calendario", label: "Calendário", icon: IconCalendar },
       { key: "ocorrencias", label: "Ocorrências", icon: IconCalendarX },
       { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
       { key: "prestadores", label: "Prestadores", icon: IconBriefcase, badge: providersAttention },
@@ -716,7 +735,12 @@ export default function FrequenciaPage() {
           Desligar colaborador
         </Button>
       </>
-    ) : tab === "acessos" ? null : tab === "mural" ? (
+    ) : tab === "acessos" ? null : tab === "calendario" ? (
+      <Button onClick={() => setEventSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+        <IconPlus className="h-4 w-4" />
+        Novo evento
+      </Button>
+    ) : tab === "mural" ? (
       <Button onClick={() => setNoticeSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
         <IconMegaphone className="h-4 w-4" />
         Publicar recado
@@ -791,7 +815,7 @@ export default function FrequenciaPage() {
         hideHeader={showingProfile}
         busy={loading}
       >
-        {!showingProfile && tab !== "mural" && tab !== "aniversariantes" && tab !== "prestadores" && tab !== "offboarding" && (
+        {!showingProfile && tab !== "mural" && tab !== "calendario" && tab !== "aniversariantes" && tab !== "prestadores" && tab !== "offboarding" && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -822,9 +846,24 @@ export default function FrequenciaPage() {
             }}
             onDeleteOccurrence={setDeletingOccurrence}
           />
+        ) : tab === "calendario" ? (
+          <CalendarPanel
+            events={calendarEvents}
+            employees={employees}
+            birthdays={birthdays}
+            offboardings={offboardings}
+            departments={departments}
+            createSignal={eventSignal}
+            onChanged={fetchCalendarEvents}
+            onOpenEmployee={(employeeId) => {
+              changeTab("colaboradores");
+              setProfileId(employeeId);
+            }}
+          />
         ) : tab === "mural" ? (
           <MuralPanel
             loading={loading}
+            events={calendarEvents}
             employees={employees}
             occurrences={occurrences}
             admissions={admissions}

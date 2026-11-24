@@ -483,3 +483,22 @@ model MuralNotice {
 
   @@index([until])
 }
+
+// Evento do calendário do RH: recesso, comemoração, campanha, treinamento ou um
+// feriado extra (os feriados nacionais, de SP e da capital são calculados, sem banco).
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  type        String // "feriado" | "recesso" | "comemoracao" | "campanha" | "treinamento"
+  startDate   DateTime
+  endDate     DateTime // inclusivo
+  time        String?
+  departments String? // JSON com as empresas (setores); vazio = todas
+  yearly      Boolean  @default(false)
+  notes       String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startDate])
+}

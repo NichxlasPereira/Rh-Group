@@ -300,3 +300,10 @@ export const IconDoorExit = strokeIcon("M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4
 export const IconFileWarning = strokeIcon(
   "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 11v4M12 18h.01"
 );
+export const IconFlag = strokeIcon("M5 21V4M5 4h11l-2 4 2 4H5");
+export const IconParty = strokeIcon(
+  "M4 20l5-14 9 9-14 5zM9 6l9 9M14 4c0 1.5 1 2 2 2M19 9c-1.5 0-2 1-2 2M17 3l.01.01M21 7l.01.01M20 13l.01.01"
+);
+export const IconRibbon = strokeIcon("M12 3a4 4 0 0 1 4 4c0 3-4 7-4 7s-4-4-4-7a4 4 0 0 1 4-4zM9.5 12.5L6 21l3-1.5L10.5 22M14.5 12.5L18 21l-3-1.5L13.5 22");
+export const IconSchool = strokeIcon("M3 9l9-5 9 5-9 5-9-5zM7 11.5V16c0 1.5 2.2 3 5 3s5-1.5 5-3v-4.5M21 9v6");
+export const IconHourglass = strokeIcon("M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9");
