@@ -336,6 +336,34 @@ body {
     transform: translateY(-8px) scale(1.14);
     background-color: var(--color-accent-soft);
     color: var(--color-ink);
+    box-shadow: 0 0 0 1px var(--neon-cinza-glow);
+  }
+  /* Ícones juntos; o escolhido abre espaço e empurra um pouco os vizinhos. */
+  .rh-dock-item {
+    transition:
+      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1),
+      color 0.2s ease-out;
+  }
+  .rh-dock-item[data-aberto] {
+    margin-inline: 14px;
+  }
+  /* Círculo neon cinza girando na borda do ícone escolhido. */
+  .rh-dock-icone::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    background: conic-gradient(from 0deg, transparent 0 55%, var(--neon-cinza-glow) 72%, var(--neon-cinza) 92%, transparent 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+    filter: drop-shadow(0 0 2px var(--neon-cinza-glow));
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    pointer-events: none;
+  }
+  [data-aberto] > .rh-dock-icone::before {
+    opacity: 1;
+    animation: rh-giro 2.4s linear infinite;
   }
   button:not([data-aberto]):hover > .rh-dock-icone {
     background-color: var(--color-surface-2);
@@ -352,11 +380,20 @@ body {
     transform: translate(-50%, 0);
   }
 }
+@keyframes rh-giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
   [data-anima] .rh-top-nome,
   .rh-dock-icone,
-  .rh-dock-nome {
+  .rh-dock-nome,
+  .rh-dock-item {
     transition: none;
+  }
+  [data-aberto] > .rh-dock-icone::before {
+    animation: none;
   }
 }
 

@@ -222,11 +222,11 @@ export function RhShell<K extends string>({
         aria-current={current ? "page" : undefined}
         title={s.label}
         aria-label={s.label}
-        className={`relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:h-[52px] lg:w-[56px] lg:justify-center lg:p-0 ${
+        className={`rh-dock-item relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:h-[54px] lg:w-[40px] lg:justify-center lg:p-0 ${
           current ? "font-bold text-ink" : "font-semibold text-muted hover:text-ink lg:hover:bg-transparent hover:bg-surface-2"
         }`}
       >
-        <span className="rh-dock-icone relative flex items-center lg:absolute lg:left-1/2 lg:top-1/2 lg:-ml-[17px] lg:-mt-[17px] lg:h-[34px] lg:w-[34px] lg:justify-center lg:rounded-[9px]">
+        <span className="rh-dock-icone relative flex items-center lg:absolute lg:left-1/2 lg:top-1/2 lg:-ml-[17px] lg:-mt-[17px] lg:h-[34px] lg:w-[34px] lg:justify-center lg:rounded-full">
           <s.icon className="h-[17px] w-[17px] shrink-0" />
           {!!s.badge && (
             <span className="absolute -right-0.5 -top-0.5 hidden h-2 w-2 rounded-full bg-brand ring-2 ring-surface lg:block" />
@@ -340,7 +340,7 @@ export function RhShell<K extends string>({
             <div
               ref={topListRef}
               data-anima={pillMoves ? "" : undefined}
-              className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:gap-1 lg:pb-0 lg:[scrollbar-width:none]"
+              className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 pb-1 lg:gap-0 lg:overflow-visible lg:px-2 lg:pb-0"
             >
               {/* Celular: caixinha da seção atual (posição de placeTopPill). No computador quem
                   marca a seção é o próprio ícone, que sobe (data-aberto). */}
