@@ -40,6 +40,8 @@ import {
 } from "@/lib/calendar";
 import { CalendarItem, ItemKind, itemsBetween, upcoming } from "@/lib/calendarItems";
 import { redirectIfSessionExpired } from "@/lib/sessionClient";
+import { campaignColor } from "@/lib/campaigns";
+import { SlackRemindersModal, SuggestionsModal } from "./CalendarExtras";
 import type { ExitKitView } from "@/lib/startKit";
 
 type Icon = (props: { className?: string }) => React.ReactNode;
@@ -90,6 +92,10 @@ interface CalendarPanelProps {
   departments: string[];
   /** Muda a cada clique em "Novo evento" no cabeçalho. */
   createSignal: number;
+  /** Muda a cada clique em "Sugestões". */
+  suggestSignal: number;
+  /** Muda a cada clique em "Avisos no Slack" (administradores). */
+  slackSignal: number;
   onChanged: () => void;
   onOpenEmployee: (employeeId: string) => void;
 }
@@ -101,6 +107,8 @@ export function CalendarPanel({
   offboardings,
   departments,
   createSignal,
+  suggestSignal,
+  slackSignal,
   onChanged,
   onOpenEmployee,
 }: CalendarPanelProps) {
@@ -111,6 +119,16 @@ export function CalendarPanel({
   const [hidden, setHidden] = useState<Set<Filter>>(new Set());
   const [editing, setEditing] = useState<CalendarEventInfo | { new: true; day: string } | null>(null);
   const [removing, setRemoving] = useState<CalendarEventInfo | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [slackOpen, setSlackOpen] = useState(false);
+
+  useEffect(() => {
+    if (suggestSignal > 0) setSuggesting(true);
+  }, [suggestSignal]);
+
+  useEffect(() => {
+    if (slackSignal > 0) setSlackOpen(true);
+  }, [slackSignal]);
 
   useEffect(() => {
     if (createSignal > 0) setEditing({ new: true, day: selected });
@@ -201,22 +219,27 @@ export function CalendarPanel({
     <div className="flex flex-col gap-4">
       {(next.holiday || next.recess || campaigns.length > 0) && (
         <div className="grid gap-3 md:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-          {campaigns.map((c) => (
-            <button
-              key={c.eventId}
-              type="button"
-              onClick={() => openItem(c)}
-              className={`flex items-center gap-3 rounded-[14px] px-4 py-3 text-left transition hover:brightness-105 ${EVENT_TONE.campanha}`}
-            >
-              <IconRibbon className="h-5 w-5 shrink-0" />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-bold">{c.title}</span>
-                <span className="truncate text-xs opacity-80">
-                  Campanha · {c.span ? `${shortDate(c.span.start)} a ${shortDate(c.span.end)}` : shortDate(c.day)}
+          {campaigns.map((c) => {
+            const color = campaignColor(c.title);
+            return (
+              <button
+                key={c.eventId}
+                type="button"
+                onClick={() => openItem(c)}
+                className={`flex items-center gap-3 rounded-[14px] px-4 py-3 text-left transition hover:brightness-105 ${EVENT_TONE.campanha}`}
+              >
+                <span className="shrink-0" style={color ? { color } : undefined}>
+                  <IconRibbon className="h-5 w-5" />
                 </span>
-              </span>
-            </button>
-          ))}
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-bold">{c.title}</span>
+                  <span className="truncate text-xs opacity-80">
+                    Campanha · {c.span ? `${shortDate(c.span.start)} a ${shortDate(c.span.end)}` : shortDate(c.day)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
           {next.holiday && (
             <div className={`flex items-center gap-3 px-4 py-3 ${cardClass}`}>
               <IconHourglass className="h-5 w-5 shrink-0 text-muted" />
@@ -465,6 +488,15 @@ export function CalendarPanel({
           )}
         </section>
       </div>
+
+      <SuggestionsModal
+        open={suggesting}
+        onClose={() => setSuggesting(false)}
+        events={events ?? []}
+        year={month.y}
+        onAdded={onChanged}
+      />
+      <SlackRemindersModal open={slackOpen} onClose={() => setSlackOpen(false)} />
 
       <EventModal
         editing={editing}

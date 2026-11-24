@@ -502,3 +502,10 @@ model CalendarEvent {
 
   @@index([startDate])
 }
+
+// Avisos do calendário já mandados no Slack (resumo da semana e lembretes), para
+// não repetir. key: "semana:2026-11-23", "antes:<item>:<início>", "hoje:<item>:<dia>".
+model CalendarReminderLog {
+  key    String   @id
+  sentAt DateTime @default(now())
+}

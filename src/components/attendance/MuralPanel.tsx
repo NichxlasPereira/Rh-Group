@@ -46,7 +46,8 @@ import { Birthday, isBirthdayOn } from "@/lib/birthdays";
 import { Provider, contractStatus } from "@/lib/providers";
 import type { ExitKitView } from "@/lib/startKit";
 import { MuralNoticeInfo, NOTICE_BODY_MAX, NOTICE_TITLE_MAX } from "@/lib/mural";
-import { CalendarEventInfo, EVENT_TONE, EventType } from "@/lib/calendar";
+import { CalendarEventInfo, EVENT_TONE, EventType, eventSpans } from "@/lib/calendar";
+import { campaignColor } from "@/lib/campaigns";
 import { itemsBetween, upcoming } from "@/lib/calendarItems";
 import { redirectIfSessionExpired } from "@/lib/sessionClient";
 
@@ -357,6 +358,8 @@ function agendaEvents(
     birthdays: [],
   })) {
     if (it.kind !== "tempo_casa" && it.tone === "pessoas") continue;
+    // Campanha que já começou fica na faixa "Campanha do mês", não na agenda.
+    if (it.kind === "campanha" && it.span && it.span.start < days[0].key) continue;
     if (it.eventId) {
       if (seen.has(it.eventId)) continue;
       seen.add(it.eventId);
@@ -409,6 +412,14 @@ export function MuralPanel(props: MuralPanelProps) {
   const tasks = useMemo(() => muralTasks(props, now), [props, now]);
   const agenda = useMemo(() => agendaEvents(props, now), [props, now]);
   const next = useMemo(() => upcoming(today, props.events ?? []), [today, props.events]);
+  // Campanhas em andamento hoje (Outubro Rosa, Novembro Azul…).
+  const campaigns = useMemo(
+    () =>
+      (props.events ?? []).flatMap((e) =>
+        e.type === "campanha" ? eventSpans(e, today, today).map((span) => ({ event: e, span })) : []
+      ),
+    [props.events, today]
+  );
 
   // Indicadores do mês, comparados com o mês anterior.
   const stats = useMemo(() => {
@@ -460,6 +471,10 @@ export function MuralPanel(props: MuralPanelProps) {
           tone="neutral"
         />
       </section>
+
+      {campaigns.length > 0 && (
+        <CampaignBanner campaigns={campaigns} today={today} onOpen={() => onNavigate("calendario")} />
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className={cardClass}>
@@ -655,6 +670,68 @@ export function MuralPanel(props: MuralPanelProps) {
 }
 
 /** Indicador que é melhor quando cai (faltas, atestados). */
+/** Faixa da campanha do mês: a principal em destaque, as outras ao lado. */
+function CampaignBanner({
+  campaigns,
+  today,
+  onOpen,
+}: {
+  campaigns: { event: CalendarEventInfo; span: { start: string; end: string } }[];
+  today: string;
+  onOpen: () => void;
+}) {
+  const [{ event, span }, ...others] = campaigns;
+  const accent = campaignColor(event.title) ?? "var(--cal-campanha)";
+  const left = daysUntil(span.end, today);
+  return (
+    <section
+      aria-label="Campanha do mês"
+      className="relative overflow-hidden rounded-[14px] neon-cinza border bg-surface"
+      style={{ backgroundImage: `linear-gradient(100deg, color-mix(in srgb, ${accent} 16%, transparent), transparent 55%)` }}
+    >
+      <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5" style={{ background: accent }} />
+      <div className="flex flex-wrap items-center gap-4 py-4 pl-6 pr-4 sm:pr-5">
+        <span
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px]"
+          style={{ background: `color-mix(in srgb, ${accent} 20%, transparent)`, color: accent }}
+        >
+          <IconRibbon className="h-6 w-6" />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
+            Campanha do mês · {left === 0 ? "termina hoje" : `até ${shortDate(span.end)}`}
+          </span>
+          <span className="font-display text-[19px] font-semibold leading-tight text-ink">{event.title}</span>
+          {event.notes && <span className="line-clamp-2 text-sm text-muted">{event.notes}</span>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {others.map((o) => (
+            <span
+              key={o.event.id}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-ink"
+            >
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full"
+                style={{ background: campaignColor(o.event.title) ?? "var(--cal-campanha)" }}
+              />
+              {o.event.title}
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={onOpen}
+            className="flex items-center gap-1 rounded-[10px] px-3 py-2 text-xs font-semibold text-muted transition hover:bg-surface-2 hover:text-ink"
+          >
+            Ver no calendário
+            <IconChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function compare(current: number, previous: number) {
   const diff = current - previous;
   return {

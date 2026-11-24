@@ -17,6 +17,8 @@ import {
   IconCalendar,
   IconLayoutDashboard,
   IconMegaphone,
+  IconBell,
+  IconSparkles,
   IconPlus,
   IconSearch,
   IconUserMinus,
@@ -205,6 +207,8 @@ export default function FrequenciaPage() {
   // Calendário do RH: eventos cadastrados (o Mural também mostra na agenda).
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventInfo[] | null>(null);
   const [eventSignal, setEventSignal] = useState(0);
+  const [suggestSignal, setSuggestSignal] = useState(0);
+  const [calendarSlackSignal, setCalendarSlackSignal] = useState(0);
   const fetchCalendarEvents = useCallback(async () => {
     const res = await fetch("/api/frequencia/calendario");
     if (sessionExpired(res) || !res.ok) return;
@@ -736,10 +740,26 @@ export default function FrequenciaPage() {
         </Button>
       </>
     ) : tab === "acessos" ? null : tab === "calendario" ? (
-      <Button onClick={() => setEventSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-        <IconPlus className="h-4 w-4" />
-        Novo evento
-      </Button>
+      <>
+        {me?.role === "admin" && (
+          <Button
+            variant="ghost"
+            onClick={() => setCalendarSlackSignal((n) => n + 1)}
+            className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]"
+          >
+            <IconBell className="h-4 w-4" />
+            Avisos no Slack
+          </Button>
+        )}
+        <Button variant="ghost" onClick={() => setSuggestSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconSparkles className="h-4 w-4" />
+          Sugestões
+        </Button>
+        <Button onClick={() => setEventSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconPlus className="h-4 w-4" />
+          Novo evento
+        </Button>
+      </>
     ) : tab === "mural" ? (
       <Button onClick={() => setNoticeSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
         <IconMegaphone className="h-4 w-4" />
@@ -854,6 +874,8 @@ export default function FrequenciaPage() {
             offboardings={offboardings}
             departments={departments}
             createSignal={eventSignal}
+            suggestSignal={suggestSignal}
+            slackSignal={calendarSlackSignal}
             onChanged={fetchCalendarEvents}
             onOpenEmployee={(employeeId) => {
               changeTab("colaboradores");
