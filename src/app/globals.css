@@ -337,8 +337,8 @@ body {
     /* Dentro do círculo, a mesma cor da barra: o contraste fica no traço neon cinza. */
     background-color: var(--color-surface);
     color: var(--color-ink);
-    /* Contorno discreto; quem chama atenção é a bolinha neon que corre por ele. */
-    box-shadow: inset 0 0 0 1px var(--color-border);
+    /* Sem contorno nem sombra: só a bolinha neon e o rastro marcam o círculo. */
+    box-shadow: none;
   }
   /* Ícones juntos; o escolhido abre espaço e empurra um pouco os vizinhos. */
   .rh-dock-item {
