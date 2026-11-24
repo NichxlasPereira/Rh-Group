@@ -337,8 +337,8 @@ body {
     /* Dentro do círculo, a mesma cor da barra: o contraste fica no traço neon cinza. */
     background-color: var(--color-surface);
     color: var(--color-ink);
-    /* Aro neon cinza firme, sem sombra nem brilho espalhado. */
-    box-shadow: inset 0 0 0 2px var(--neon-cinza);
+    /* Contorno discreto; quem chama atenção é a bolinha neon que corre por ele. */
+    box-shadow: inset 0 0 0 1px var(--color-border);
   }
   /* Ícones juntos; o escolhido abre espaço e empurra um pouco os vizinhos. */
   .rh-dock-item {
@@ -349,21 +349,32 @@ body {
   .rh-dock-item[data-aberto] {
     margin-inline: 14px;
   }
-  /* Círculo neon cinza girando em cima da própria borda do ícone escolhido. */
-  .rh-dock-icone::before {
+  /* Bolinha neon cinza correndo pela borda do ícone escolhido, deixando um rastro que some
+     (::before é o rastro, ::after a bolinha; giram juntos, a bolinha na frente). */
+  .rh-dock-icone::before,
+  .rh-dock-icone::after {
     content: "";
     position: absolute;
-    inset: 0;
-    border-radius: 9999px;
-    /* Brilho que corre por cima do aro (mais escuro no claro, mais claro no escuro). */
-    background: conic-gradient(from 0deg, transparent 0 60%, var(--color-ink) 95%, transparent 100%);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.25px), #000 calc(100% - 1.75px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 2.25px), #000 calc(100% - 1.75px));
+    pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s ease-out;
-    pointer-events: none;
   }
-  [data-aberto] > .rh-dock-icone::before {
+  .rh-dock-icone::before {
+    inset: 0;
+    border-radius: 9999px;
+    background: conic-gradient(from 0deg, transparent 0 70%, var(--neon-cinza) 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  }
+  /* A bolinha fica no alto do próprio círculo (mesmo tamanho), então gira em volta do centro
+     junto com o rastro, sem depender de medidas. */
+  .rh-dock-icone::after {
+    inset: -2px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 50% 3px, var(--neon-cinza) 0 2.6px, var(--neon-cinza-glow) 3.2px, transparent 6px);
+  }
+  [data-aberto] > .rh-dock-icone::before,
+  [data-aberto] > .rh-dock-icone::after {
     opacity: 1;
     animation: rh-giro 2.4s linear infinite;
   }
@@ -424,7 +435,8 @@ body {
   .rh-dock-item {
     transition: none;
   }
-  [data-aberto] > .rh-dock-icone::before {
+  [data-aberto] > .rh-dock-icone::before,
+  [data-aberto] > .rh-dock-icone::after {
     animation: none;
   }
 }
