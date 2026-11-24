@@ -368,10 +368,10 @@ body {
   }
   /* A bolinha fica no alto do próprio círculo (mesmo tamanho), então gira em volta do centro
      junto com o rastro, sem depender de medidas. */
+  /* Camada com folga (8px) em volta do círculo para o brilho da bolinha não ser cortado. */
   .rh-dock-icone::after {
-    inset: -2px;
-    border-radius: 9999px;
-    background: radial-gradient(circle at 50% 3px, var(--neon-cinza) 0 2.6px, var(--neon-cinza-glow) 3.2px, transparent 6px);
+    inset: -8px;
+    background: radial-gradient(circle at 50% 9px, var(--neon-cinza) 0 2.6px, var(--neon-cinza-glow) 3.2px, transparent 6px);
   }
   [data-aberto] > .rh-dock-icone::before,
   [data-aberto] > .rh-dock-icone::after {
