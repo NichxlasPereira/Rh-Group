@@ -105,7 +105,7 @@ export function AttendanceReports({ occurrences, month, months, onOpenOccurrence
         </p>
       </div>
 
-      <div className="rounded-[14px] neon-cinza border bg-surface">
+      <div className="overflow-hidden rounded-[14px] neon-cinza border bg-surface">
         <h3 className="px-5 pt-5 font-display text-lg font-semibold text-ink">Por colaborador</h3>
         <p className="px-5 pb-3 text-xs text-muted">Ordenado por faltas não justificadas, depois faltas e dias de atestado.</p>
         <div className="overflow-x-auto">

@@ -56,7 +56,7 @@ export function EmployeesTable({
   }
 
   return (
-    <div className="rounded-[14px] neon-cinza border bg-surface">
+    <div className="overflow-hidden rounded-[14px] neon-cinza border bg-surface">
       {employees.length === 0 ? (
         <EmptyState
           icon={<IconUsers className="h-6 w-6" />}

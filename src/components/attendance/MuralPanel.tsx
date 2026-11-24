@@ -354,7 +354,8 @@ interface MuralPanelProps extends MuralData {
   onOpenEmployee: (employeeId: string, tab: AttendanceTabKey) => void;
 }
 
-const cardClass = "rounded-[14px] neon-cinza border bg-surface";
+// overflow-hidden: o fundo das linhas (hover) não passa dos cantos arredondados.
+const cardClass = "overflow-hidden rounded-[14px] neon-cinza border bg-surface";
 
 export function MuralPanel(props: MuralPanelProps) {
   const { loading, employees, occurrences, admissions, onNavigate, onOpenEmployee } = props;

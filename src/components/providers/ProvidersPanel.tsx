@@ -218,7 +218,7 @@ export function ProvidersPanel({ departments, areasBySector, isAdmin, createSign
         </label>
       </section>
 
-      <div className="rounded-[14px] neon-cinza border bg-surface">
+      <div className="overflow-hidden rounded-[14px] neon-cinza border bg-surface">
         {providers === null ? (
           <SkeletonRows />
         ) : visible.length === 0 ? (

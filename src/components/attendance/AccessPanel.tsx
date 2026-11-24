@@ -133,7 +133,7 @@ export function AccessPanel({ currentUserId, onChanged }: AccessPanelProps) {
         </div>
       )}
 
-      <div className="rounded-[14px] neon-cinza border bg-surface">
+      <div className="overflow-hidden rounded-[14px] neon-cinza border bg-surface">
         {members === null ? (
           <SkeletonRows rows={4} />
         ) : members.length === 0 ? (
