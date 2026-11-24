@@ -333,7 +333,7 @@ body {
       color 0.25s ease-out;
   }
   [data-aberto] > .rh-dock-icone {
-    transform: translateY(-8px) scale(1.14);
+    transform: translateY(-10px) scale(1.12);
     background-color: var(--color-accent-soft);
     color: var(--color-ink);
     box-shadow: 0 0 0 1px var(--neon-cinza-glow);
@@ -368,16 +368,18 @@ body {
   button:not([data-aberto]):hover > .rh-dock-icone {
     background-color: var(--color-surface-2);
   }
+  /* Nome sem transform (centralizado pela própria caixa): o texto fica nítido, sem
+     ficar "torto" entre pixels; entra subindo 3px pela margem. */
   .rh-dock-nome {
     opacity: 0;
-    transform: translate(-50%, 4px);
+    margin-bottom: -3px;
     transition:
       opacity 0.25s ease-out,
-      transform 0.34s cubic-bezier(0.33, 1, 0.68, 1);
+      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1);
   }
   [data-aberto] > .rh-dock-nome {
     opacity: 1;
-    transform: translate(-50%, 0);
+    margin-bottom: 0;
   }
 }
 @keyframes rh-giro {

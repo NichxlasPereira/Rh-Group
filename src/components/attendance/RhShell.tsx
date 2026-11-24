@@ -222,7 +222,7 @@ export function RhShell<K extends string>({
         aria-current={current ? "page" : undefined}
         title={s.label}
         aria-label={s.label}
-        className={`rh-dock-item relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:h-[54px] lg:w-[40px] lg:justify-center lg:p-0 ${
+        className={`rh-dock-item relative flex shrink-0 items-center rounded-[9px] px-2 py-2 text-[13px] transition lg:h-[64px] lg:w-[40px] lg:justify-center lg:p-0 ${
           current ? "font-bold text-ink" : "font-semibold text-muted hover:text-ink lg:hover:bg-transparent hover:bg-surface-2"
         }`}
       >
@@ -238,7 +238,7 @@ export function RhShell<K extends string>({
             {s.badge}
           </span>
         )}
-        <span className="rh-dock-nome pointer-events-none absolute bottom-[2px] left-1/2 hidden whitespace-nowrap text-[11px] font-bold text-ink lg:block">
+        <span className="rh-dock-nome pointer-events-none absolute bottom-0 left-1/2 -ml-[70px] hidden w-[140px] justify-center whitespace-nowrap text-[11px] font-semibold leading-[13px] tracking-[0.01em] text-ink lg:flex">
           {s.label}
         </span>
       </button>
