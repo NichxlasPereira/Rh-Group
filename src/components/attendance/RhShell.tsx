@@ -44,6 +44,8 @@ interface RhShellProps<K extends string> {
   otherModules?: ShellModuleLink[];
   /** Configurações no menu da conta (Acessos, kits do Slack...). */
   settings?: ShellSetting[];
+  /** Botão extra ao lado do tema (ex.: guia da demonstração). */
+  extra?: React.ReactNode;
   title: string;
   description: string;
   actions?: React.ReactNode;
@@ -78,6 +80,7 @@ export function RhShell<K extends string>({
   navLabel = "Gestão de pessoas",
   otherModules = DEFAULT_OTHER_MODULES,
   settings = [],
+  extra,
   title,
   description,
   actions,
@@ -256,8 +259,6 @@ export function RhShell<K extends string>({
             <span className="rh-progress block h-full w-2/5 rounded-full bg-ink/70" />
           </span>
         )}
-        {/* Cada seção (e a ficha) aparece em cascata curta: cabeçalho, indicadores e conteúdo. */}
-        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-stagger flex min-w-0 flex-col gap-6">
         {!hideHeader && (
           <>
         {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
@@ -266,9 +267,11 @@ export function RhShell<K extends string>({
           className="brand-band relative flex flex-wrap items-end justify-between gap-4 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7"
         >
           <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[340px] text-white/[0.12] sm:block" />
-          <div className="relative flex flex-col gap-2">
+          {/* A faixa fica parada na troca de seção; só os textos e os botões entram de novo. */}
+          <div key={`${String(active)}-titulo`} className="rh-fade relative flex flex-col gap-2">
             <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/75">
               CFF Group · {moduleLabel}
+              {process.env.NEXT_PUBLIC_DEMO === "1" && " · Demonstração"}
             </span>
             <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
               {title}
@@ -276,13 +279,15 @@ export function RhShell<K extends string>({
             </h1>
             <p className="max-w-[62ch] text-sm text-white/85">{description}</p>
           </div>
-          <div className="relative flex flex-wrap items-center gap-2.5">
+          <div key={`${String(active)}-acoes`} className="rh-fade relative flex flex-wrap items-center gap-2.5">
             {actions}
           </div>
         </header>
           </>
         )}
-        {children}
+        {/* O conteúdo de cada seção (e a ficha) entra em cascata curta. */}
+        <div key={`${String(active)}-${hideHeader ? "ficha" : "secao"}`} className="rh-stagger flex min-w-0 flex-col gap-6">
+          {children}
         </div>
       </main>
   );
@@ -300,7 +305,7 @@ export function RhShell<K extends string>({
               </span>
             </div>
             <div className="lg:hidden">
-              <ThemeToggle />
+              <>{extra}<ThemeToggle /></>
             </div>
           </div>
 
@@ -326,7 +331,7 @@ export function RhShell<K extends string>({
           {/* À direita só o tema e a conta; o resto (outros módulos, senha, menu lateral, sair) fica no menu da conta. */}
           <div className="flex shrink-0 items-center justify-end gap-2 px-1 lg:ml-auto lg:px-0">
             <div className="hidden lg:block">
-              <ThemeToggle />
+              <>{extra}<ThemeToggle /></>
             </div>
             <AccountMenu
               user={user}
@@ -357,7 +362,7 @@ export function RhShell<K extends string>({
             </span>
           </div>
           <div className="flex items-center gap-2 lg:hidden">
-            <ThemeToggle />
+            <>{extra}<ThemeToggle /></>
             <AccountMenu
               user={user}
               otherModules={otherModules}
@@ -391,7 +396,7 @@ export function RhShell<K extends string>({
         </nav>
 
         <div className="hidden lg:mt-auto lg:flex lg:flex-col lg:items-center lg:gap-3">
-          <ThemeToggle placement="side" />
+          <>{extra}<ThemeToggle placement="side" /></>
           <AccountMenu
             user={user}
             otherModules={otherModules}

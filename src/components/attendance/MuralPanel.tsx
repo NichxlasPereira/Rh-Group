@@ -450,6 +450,7 @@ export function MuralPanel(props: MuralPanelProps) {
     <div className="flex flex-col gap-4">
       <section aria-label="Indicadores do mês" className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
         <StatCard
+          loading={loading}
           label="Colaboradores ativos"
           icon={IconUsers}
           value={stats.active}
@@ -457,9 +458,10 @@ export function MuralPanel(props: MuralPanelProps) {
           tone={stats.joined > 0 ? "ok" : "neutral"}
           trend={stats.joined > 0 ? "up" : undefined}
         />
-        <StatCard label="Faltas no mês" icon={IconUserX} {...compare(stats.cur.faltas, stats.last.faltas)} />
-        <StatCard label="Atestados no mês" icon={IconMedical} {...compare(stats.cur.atestados, stats.last.atestados)} />
+        <StatCard loading={loading} label="Faltas no mês" icon={IconUserX} {...compare(stats.cur.faltas, stats.last.faltas)} />
+        <StatCard loading={loading} label="Atestados no mês" icon={IconMedical} {...compare(stats.cur.atestados, stats.last.atestados)} />
         <StatCard
+          loading={loading}
           label="Onboardings"
           icon={IconUserPlus}
           value={stats.open}
@@ -752,9 +754,12 @@ function StatCard({
   detail,
   tone,
   trend,
+  loading = false,
 }: {
   label: string;
   icon: (props: { className?: string }) => React.ReactNode;
+  /** Carregando: mostra um traço no lugar dos números (nada de "0" piscando). */
+  loading?: boolean;
   value: number;
   detail: string;
   tone: Tone;
@@ -767,12 +772,21 @@ function StatCard({
         {label}
         <Icon className="h-4 w-4 shrink-0 text-muted" />
       </span>
-      <span className="font-display text-[30px] font-bold leading-none tabular-nums text-ink">{value}</span>
-      <span className={`flex items-center gap-1 truncate text-xs ${color}`} title={detail}>
-        {trend === "up" && <IconTrendUp className="h-3.5 w-3.5 shrink-0" />}
-        {trend === "down" && <IconTrendDown className="h-3.5 w-3.5 shrink-0" />}
-        {detail}
-      </span>
+      {loading ? (
+        <>
+          <span className="rh-skeleton block h-[30px] w-14 rounded-[8px]" />
+          <span className="rh-skeleton block h-3 w-32 rounded-full" />
+        </>
+      ) : (
+        <>
+          <span className="font-display text-[30px] font-bold leading-none tabular-nums text-ink">{value}</span>
+          <span className={`flex items-center gap-1 truncate text-xs ${color}`} title={detail}>
+            {trend === "up" && <IconTrendUp className="h-3.5 w-3.5 shrink-0" />}
+            {trend === "down" && <IconTrendDown className="h-3.5 w-3.5 shrink-0" />}
+            {detail}
+          </span>
+        </>
+      )}
     </div>
   );
 }

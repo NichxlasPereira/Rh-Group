@@ -27,7 +27,7 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection, ShellSetting } from "@/components/attendance/RhShell";
 import { StartKitSettingsModal } from "@/components/admission/StartKitSettingsModal";
-import { DemoTour } from "@/components/attendance/DemoTour";
+import { DemoTour, DemoTourButton } from "@/components/attendance/DemoTour";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
 import { CalendarPanel } from "@/components/attendance/CalendarPanel";
@@ -339,6 +339,8 @@ export default function FrequenciaPage() {
   // Configurações (administradores), no menu da conta: Acessos e os kits do Slack
   // (onboarding: kit de boas-vindas; offboarding: pedidos de desligamento).
   const [kitList, setKitList] = useState<"inicio" | "saida" | null>(null);
+  // Guia da demonstração (só no pacote de demo).
+  const [tourOpen, setTourOpen] = useState(false);
   const settings = useMemo<ShellSetting[]>(
     () =>
       me?.role === "admin"
@@ -348,6 +350,8 @@ export default function FrequenciaPage() {
             { key: "kit-saida", label: "Offboarding", icon: IconUserMinus, onClick: () => setKitList("saida") },
           ]
         : [],
+    // changeTab só usa setters e a seção atual (para rolar ao topo); não precisa recriar a lista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [me]
   );
 
@@ -696,6 +700,8 @@ export default function FrequenciaPage() {
 
   // Cada aba começa com a busca e o filtro de setor limpos.
   function changeTab(next: AttendanceTabKey) {
+    // A seção nova começa do alto (sem herdar a rolagem da anterior).
+    if (next !== tab) window.scrollTo({ top: 0 });
     setTab(next);
     setProfileId(null);
     setSearch("");
@@ -846,6 +852,7 @@ export default function FrequenciaPage() {
         onChangePassword={() => setChangingPassword(true)}
         onLogout={logout}
         settings={settings}
+        extra={process.env.NEXT_PUBLIC_DEMO === "1" ? <DemoTourButton onClick={() => setTourOpen(true)} /> : undefined}
         title={copy.title}
         description={copy.description}
         actions={actions}
@@ -928,6 +935,7 @@ export default function FrequenciaPage() {
             createSignal={providerCreateSignal}
             importSignal={providerImportSignal}
             onAttentionChange={setProvidersAttention}
+            initialProviders={providers}
           />
         ) : tab === "offboarding" ? (
           <OffboardingPanel
@@ -954,6 +962,7 @@ export default function FrequenciaPage() {
             search={admissionSearch}
             createSignal={createSignal}
             onAdmissionsChange={setAdmissions}
+            initialAdmissions={admissions}
             recentOccurrences={recentOccurrences}
             onSeeOccurrences={() => changeTab("ocorrencias")}
           />
@@ -1071,7 +1080,7 @@ export default function FrequenciaPage() {
 
       <ChangeOwnPasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
       {/* Só no pacote de demonstração: passo a passo por cada parte do sistema. */}
-      {process.env.NEXT_PUBLIC_DEMO === "1" && me && <DemoTour onNavigate={changeTab} />}
+      {process.env.NEXT_PUBLIC_DEMO === "1" && me && <DemoTour open={tourOpen} onOpenChange={setTourOpen} onNavigate={changeTab} />}
       {me?.role === "admin" && (
         <StartKitSettingsModal
           open={kitList !== null}

@@ -68,6 +68,8 @@ interface AdmissionsPanelProps {
   /** Últimas ocorrências, mostradas ao lado da lista. */
   recentOccurrences: { id: string; type: string; who: string; note: string; when: string }[];
   onSeeOccurrences: () => void;
+  /** Lista que a página já tem: aparece na hora ao abrir a seção (e atualiza em seguida). */
+  initialAdmissions?: AdmissionInfo[] | null;
 }
 
 type Tone = "ok" | "warn" | "accent" | "muted";
@@ -129,6 +131,7 @@ export function AdmissionsPanel({
   onAdmissionsChange,
   recentOccurrences,
   onSeeOccurrences,
+  initialAdmissions = null,
 }: AdmissionsPanelProps) {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
   // Áreas de cada empresa (para escolher a área do onboarding em Dados internos).
@@ -136,7 +139,7 @@ export function AdmissionsPanel({
   const [termsSettings, setTermsSettings] = useState(false);
   const [localCopy, setLocalCopy] = useState(false);
   const [choosingCompany, setChoosingCompany] = useState(false);
-  const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(null);
+  const [admissions, setAdmissions] = useState<AdmissionInfo[] | null>(initialAdmissions);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [link, setLink] = useState<{ url: string; admission: AdmissionInfo } | null>(null);

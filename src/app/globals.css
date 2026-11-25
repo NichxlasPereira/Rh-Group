@@ -383,16 +383,21 @@ body {
   }
   /* Nome sem transform (centralizado pela própria caixa): o texto fica nítido, sem
      ficar "torto" entre pixels; entra subindo 3px pela margem. */
+  /* O nome que sai some na hora (não passa por cima dos vizinhos que voltam ao lugar); o novo
+     aparece depois que o espaço abriu. */
   .rh-dock-nome {
     opacity: 0;
     margin-bottom: -3px;
     transition:
-      opacity 0.25s ease-out,
+      opacity 0s,
       margin 0.34s cubic-bezier(0.33, 1, 0.68, 1);
   }
   [data-aberto] > .rh-dock-nome {
     opacity: 1;
     margin-bottom: 0;
+    transition:
+      opacity 0.22s ease-out 0.16s,
+      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1) 0.1s;
   }
 }
 /* Menu lateral (computador): os mesmos botões, em coluna. O escolhido cresce sem subir e o
@@ -413,11 +418,8 @@ body {
     bottom: auto;
     margin-bottom: 0;
     margin-top: -3px;
-    font-size: 9.5px;
-    letter-spacing: 0.08em;
-    transition:
-      opacity 0.25s ease-out,
-      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1);
+    font-size: 9px;
+    letter-spacing: 0.06em;
   }
   [data-dock="lateral"] [data-aberto] > .rh-dock-nome {
     margin-top: 0;

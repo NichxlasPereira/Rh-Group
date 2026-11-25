@@ -40,7 +40,7 @@ const STEPS: Step[] = [
       ["Dados da demonstração", "Todos os nomes, fotos, empresas e números são fictícios. Pode criar, editar e excluir à vontade."],
       ["Como navegar", "Use Próximo e Anterior. O guia abre cada seção e destaca na tela o ponto explicado."],
     ],
-    tip: "Dá para fechar o guia a qualquer momento e reabrir pelo botão “Guia da demo”.",
+    tip: "Dá para fechar o guia a qualquer momento e reabrir pelo botão (i), ao lado do tema.",
   },
   {
     tab: "mural",
@@ -210,27 +210,54 @@ const STEPS: Step[] = [
 
 const SEEN_KEY = "demoGuiaVisto";
 
-export function DemoTour({ onNavigate }: { onNavigate: (tab: AttendanceTabKey) => void }) {
-  const [open, setOpen] = useState(false);
+/** Botão redondo do guia, ao lado do tema (mesmo tamanho). */
+export function DemoTourButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Guia da demo"
+      title="Guia da demo"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-border-strong text-ink transition-colors hover:bg-surface-2"
+    >
+      <IconInfo className="h-[18px] w-[18px]" />
+    </button>
+  );
+}
+
+export function DemoTour({
+  open,
+  onOpenChange,
+  onNavigate,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onNavigate: (tab: AttendanceTabKey) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const step = STEPS[index];
 
-  // Abre sozinho na primeira visita deste navegador.
+  // Abre sozinho na primeira visita deste navegador; reaberto pelo botão, começa do início.
   useEffect(() => {
     try {
-      if (!localStorage.getItem(SEEN_KEY)) setOpen(true);
+      if (!localStorage.getItem(SEEN_KEY)) onOpenChange(true);
     } catch {
-      setOpen(true);
+      onOpenChange(true);
     }
+    // Só ao montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (open) setIndex(0);
+  }, [open]);
 
   const close = useCallback(() => {
-    setOpen(false);
+    onOpenChange(false);
     try {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {}
-  }, []);
+  }, [onOpenChange]);
 
   // Abre a seção do passo.
   useEffect(() => {
@@ -278,21 +305,7 @@ export function DemoTour({ onNavigate }: { onNavigate: (tab: AttendanceTabKey) =
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          setIndex(0);
-          setOpen(true);
-        }}
-        className="fixed bottom-14 right-4 z-[70] flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-2 text-[13px] font-semibold text-ink shadow-[0_10px_28px_-14px_rgba(0,0,0,0.6)] transition hover:bg-surface-2"
-      >
-        <IconInfo className="h-4 w-4" />
-        Guia da demo
-      </button>
-    );
-  }
+  if (!open) return null;
 
   const last = index === STEPS.length - 1;
   return (
@@ -314,7 +327,7 @@ export function DemoTour({ onNavigate }: { onNavigate: (tab: AttendanceTabKey) =
       <div
         role="dialog"
         aria-label="Guia da demonstração"
-        className="fixed bottom-14 right-4 z-[70] flex max-h-[72vh] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[16px] neon-cinza border bg-surface shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]"
+        className="fixed bottom-4 right-4 z-[70] flex max-h-[72vh] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[16px] neon-cinza border bg-surface shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]"
       >
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <span className="font-display text-[11px] font-medium uppercase tracking-[0.18em] text-muted">

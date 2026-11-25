@@ -8,7 +8,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { createHash, randomBytes, randomUUID, scrypt } from "node:crypto";
-import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -152,6 +152,13 @@ async function main() {
         managerId,
         birthDate: ymd(between(1975, 2002), birthMonth, birthDay),
         corporateEmail: `${name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, ".")}@demo.rhgroup`,
+        // Dados pessoais inventados (sem CPF/RG, para nunca coincidir com documento real).
+        phone: `(11) 9${between(1000, 9999)}-${between(1000, 9999)}`,
+        personalEmail: `${name.split(" ")[0].toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "")}${between(10, 99)}@exemplo.com`,
+        address: `${pick(["Rua das Acácias", "Av. dos Ipês", "Rua Fictícia", "Alameda das Flores", "Rua do Exemplo"])}, ${between(10, 999)} · São Paulo/SP`,
+        cep: "00000-000",
+        emergencyContact: `${pick(WOMEN.concat(MEN))} ${pick(SURNAMES)} · (11) 9${between(1000, 9999)}-${between(1000, 9999)}`,
+        jobFunction: lead ? "Gestão da área" : null,
       },
     });
     // Foto aleatória (randomuser.me), do mesmo gênero do nome.
@@ -197,12 +204,36 @@ async function main() {
   const active = people.filter((p) => p.active);
 
   // ---------------------------------------------------------------- ocorrências (últimos 90 dias)
+  // Documento de exemplo para os atestados e comprovantes (PDF de uma página, fictício).
+  const attachDir = path.join(dataDir, "atestados");
+  await mkdir(attachDir, { recursive: true });
+  const samplePdf = (title: string) => {
+    const text = `BT /F1 18 Tf 72 720 Td (${title}) Tj 0 -28 Td /F1 12 Tf (Documento ficticio - demonstracao do RHGroup) Tj ET`;
+    const objs = [
+      "<< /Type /Catalog /Pages 2 0 R >>",
+      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+      `<< /Length ${text.length} >>\nstream\n${text}\nendstream`,
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ];
+    let out = "%PDF-1.4\n";
+    const offsets: number[] = [];
+    objs.forEach((o, i) => {
+      offsets.push(out.length);
+      out += `${i + 1} 0 obj\n${o}\nendobj\n`;
+    });
+    const xref = out.length;
+    out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}`;
+    out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    return Buffer.from(out, "latin1");
+  };
+
   for (let i = 0; i < 70; i++) {
     const p = pick(active);
     const type = pick(["falta", "falta", "atestado", "atestado", "folga", "horas", "horas"]);
     const start = day(-between(0, 90));
     const length = type === "atestado" ? between(0, 3) : type === "folga" ? between(0, 1) : 0;
-    await prisma.attendanceOccurrence.create({
+    const occurrence = await prisma.attendanceOccurrence.create({
       data: {
         employeeId: p.id,
         employeeName: p.name,
@@ -217,6 +248,20 @@ async function main() {
         notes: type === "atestado" ? "Atestado médico (demonstração)." : type === "horas" ? "Consulta médica." : null,
       },
     });
+    if ((type === "atestado" || type === "horas") && rand() < 0.8) {
+      const bytes = samplePdf(type === "atestado" ? "Atestado medico" : "Comprovante de horas");
+      const storedName = `${randomUUID()}.pdf`;
+      await writeFile(path.join(attachDir, storedName), bytes);
+      await prisma.attendanceAttachment.create({
+        data: {
+          occurrenceId: occurrence.id,
+          fileName: type === "atestado" ? "atestado.pdf" : "comprovante.pdf",
+          mimeType: "application/pdf",
+          size: bytes.length,
+          storedName,
+        },
+      });
+    }
   }
 
   // ---------------------------------------------------------------- onboardings
@@ -257,8 +302,16 @@ async function main() {
     ["E-mail corporativo", "TI"], ["Acesso ao Slack", "TI"], ["Notebook configurado", "TI"], ["Crachá", "RH"], ["Acessos aos sistemas da área", "Gestor"],
   ];
   const kitExit = [["Desativar e-mail", "TI"], ["Recolher notebook", "TI"], ["Devolver crachá", "RH"], ["Revogar acessos aos sistemas", "Gestor"]];
-  for (const [i, [name, responsible]] of kitStart.entries()) await prisma.startKitItem.create({ data: { name, responsible, kind: "inicio", sortOrder: i } });
-  for (const [i, [name, responsible]] of kitExit.entries()) await prisma.startKitItem.create({ data: { name, responsible, kind: "saida", sortOrder: i } });
+  // Quem recebe cada item (pessoas fictícias; na demo o Slack não está ligado, nada é enviado).
+  const RECEBE: Record<string, { slackMention: string; slackUserName: string }> = {
+    TI: { slackMention: "U0DEMOTI01", slackUserName: "Renato Freitas" },
+    RH: { slackMention: "U0DEMORH01", slackUserName: "Juliana Amaral" },
+    Gestor: { slackMention: "U0DEMOGE01", slackUserName: "Marcelo Campos" },
+  };
+  for (const [i, [name, responsible]] of kitStart.entries())
+    await prisma.startKitItem.create({ data: { name, responsible, kind: "inicio", sortOrder: i, ...RECEBE[responsible] } });
+  for (const [i, [name, responsible]] of kitExit.entries())
+    await prisma.startKitItem.create({ data: { name, responsible, kind: "saida", sortOrder: i, ...RECEBE[responsible] } });
 
   // Offboardings: quem está saindo (último dia) e os pedidos.
   for (const [k, p] of people.filter((x) => !x.active).entries()) {
@@ -273,8 +326,9 @@ async function main() {
             name,
             responsible,
             sortOrder: i,
+            ...RECEBE[responsible],
             doneAt: k === 0 || i < 2 ? day(-1) : null,
-            doneBy: k === 0 || i < 2 ? "Equipe de TI" : null,
+            doneBy: k === 0 || i < 2 ? RECEBE[responsible].slackUserName : null,
             doneVia: k === 0 || i < 2 ? "rhgroup" : null,
           })),
         },

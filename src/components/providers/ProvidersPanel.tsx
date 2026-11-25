@@ -44,14 +44,24 @@ interface Props {
   importSignal: number;
   /** Quantos precisam de atenção (contrato vencendo ou vencido) — o número da aba. */
   onAttentionChange?: (count: number) => void;
+  /** Lista que a página já tem: aparece na hora ao abrir a seção (e atualiza em seguida). */
+  initialProviders?: Provider[] | null;
 }
 
 /**
  * Prestadores de serviço (PJs com contrato temporário): lista no mesmo jeito da
  * de colaboradores, com a situação do contrato e a nota fiscal do mês.
  */
-export function ProvidersPanel({ departments, areasBySector, isAdmin, createSignal, importSignal, onAttentionChange }: Props) {
-  const [providers, setProviders] = useState<Provider[] | null>(null);
+export function ProvidersPanel({
+  departments,
+  areasBySector,
+  isAdmin,
+  createSignal,
+  importSignal,
+  onAttentionChange,
+  initialProviders = null,
+}: Props) {
+  const [providers, setProviders] = useState<Provider[] | null>(initialProviders);
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
   const [showInactive, setShowInactive] = useState(false);
