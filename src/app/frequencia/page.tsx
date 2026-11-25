@@ -355,33 +355,6 @@ export default function FrequenciaPage() {
     [me]
   );
 
-  const recentOccurrences = useMemo(
-    () =>
-      [...occurrences]
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .slice(0, 4)
-        .map((o) => ({
-          id: o.id,
-          type: OCCURRENCE_LABEL[o.type],
-          who: o.employeeName,
-          note: [
-            o.employeeDepartment,
-            o.type === "folga"
-              ? o.approvedBy
-                ? `concedida por ${o.approvedBy}`
-                : null
-              : o.type === "horas"
-                ? `${o.startTime}–${o.endTime}`
-                : o.justified
-                  ? "justificada"
-                  : "sem justificativa",
-          ]
-            .filter(Boolean)
-            .join(" · "),
-          when: formatDateBR(o.date).slice(0, 5),
-        })),
-    [occurrences]
-  );
 
   const months = useMemo(() => availableMonths(occurrences), [occurrences]);
   const allPeriod = month === ALL_MONTHS;
@@ -859,7 +832,8 @@ export default function FrequenciaPage() {
         hideHeader={showingProfile}
         busy={loading}
       >
-        {!showingProfile && tab !== "mural" && tab !== "calendario" && tab !== "aniversariantes" && tab !== "prestadores" && tab !== "offboarding" && (
+        {/* Indicadores de frequência: só onde fazem parte do assunto (ocorrências, equipe, relatórios). */}
+        {!showingProfile && (tab === "ocorrencias" || tab === "colaboradores" || tab === "relatorios") && (
           <AttendanceStats
             activeEmployees={employees.filter((e) => e.active && (!department || e.department === department)).length}
             totals={totals}
@@ -963,8 +937,6 @@ export default function FrequenciaPage() {
             createSignal={createSignal}
             onAdmissionsChange={setAdmissions}
             initialAdmissions={admissions}
-            recentOccurrences={recentOccurrences}
-            onSeeOccurrences={() => changeTab("ocorrencias")}
           />
         ) : (
           <div className="flex flex-col gap-4">

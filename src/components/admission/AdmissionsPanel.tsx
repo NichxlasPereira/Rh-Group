@@ -65,9 +65,6 @@ interface AdmissionsPanelProps {
   createSignal: number;
   /** Lista atualizada: a página usa nos indicadores e no contador da barra lateral. */
   onAdmissionsChange?: (admissions: AdmissionInfo[]) => void;
-  /** Últimas ocorrências, mostradas ao lado da lista. */
-  recentOccurrences: { id: string; type: string; who: string; note: string; when: string }[];
-  onSeeOccurrences: () => void;
   /** Lista que a página já tem: aparece na hora ao abrir a seção (e atualiza em seguida). */
   initialAdmissions?: AdmissionInfo[] | null;
 }
@@ -129,8 +126,6 @@ export function AdmissionsPanel({
   search,
   createSignal,
   onAdmissionsChange,
-  recentOccurrences,
-  onSeeOccurrences,
   initialAdmissions = null,
 }: AdmissionsPanelProps) {
   const [companies, setCompanies] = useState<ContractingCompanyInfo[]>([]);
@@ -442,34 +437,6 @@ export function AdmissionsPanel({
           )}
         </section>
 
-        <section aria-label="Ocorrências recentes" className="flex flex-col rounded-[16px] neon-cinza border bg-surface p-4">
-          <div className="flex items-baseline justify-between pb-2">
-            <h2 className="font-display text-[17px] font-bold text-ink">Ocorrências recentes</h2>
-            <button
-              type="button"
-              onClick={onSeeOccurrences}
-              className="text-[12.5px] font-bold text-accent-strong underline-offset-2 hover:underline"
-            >
-              Ver todas
-            </button>
-          </div>
-          {recentOccurrences.length === 0 ? (
-            <p className="py-3 text-sm text-muted">Nenhuma ocorrência registrada.</p>
-          ) : (
-            recentOccurrences.map((o) => (
-              <div key={o.id} className="flex items-center gap-2.5 border-t border-border py-2.5">
-                <span className="w-[74px] shrink-0 rounded-[6px] bg-surface-2 py-0.5 text-center text-[11.5px] font-bold text-ink/80">
-                  {o.type}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col leading-snug">
-                  <span className="truncate text-[13px] font-semibold text-ink">{o.who}</span>
-                  <span className="truncate text-[11.5px] text-muted">{o.note}</span>
-                </span>
-                <span className="font-mono text-[11.5px] text-muted">{o.when}</span>
-              </div>
-            ))
-          )}
-        </section>
       </div>
 
       {link && <LinkModal link={link} onClose={() => setLink(null)} />}
