@@ -64,7 +64,7 @@ function initials(name: string): string {
 const TOP_MENU_KEY = "menuNoTopo";
 // Menu no topo: troca de seção no tempo da entrada da página (rh-fade de 0,22 s + 120 ms de
 // cascata); o nome que fecha/abre usa o mesmo tempo no .rh-top-nome do globals.css.
-const SWITCH_MS = 340;
+const SWITCH_MS = 240;
 
 const DEFAULT_OTHER_MODULES: ShellModuleLink[] = [{ href: "/", label: "Estoque", icon: IconBox }];
 
@@ -304,8 +304,9 @@ export function RhShell<K extends string>({
                 {moduleLabel}
               </span>
             </div>
-            <div className="lg:hidden">
-              <>{extra}<ThemeToggle /></>
+            <div className="flex items-center gap-2 lg:hidden">
+              {extra}
+              <ThemeToggle />
             </div>
           </div>
 
@@ -330,8 +331,9 @@ export function RhShell<K extends string>({
 
           {/* À direita só o tema e a conta; o resto (outros módulos, senha, menu lateral, sair) fica no menu da conta. */}
           <div className="flex shrink-0 items-center justify-end gap-2 px-1 lg:ml-auto lg:px-0">
-            <div className="hidden lg:block">
-              <>{extra}<ThemeToggle /></>
+            <div className="hidden items-center gap-2 lg:flex">
+              {extra}
+              <ThemeToggle />
             </div>
             <AccountMenu
               user={user}
@@ -362,7 +364,8 @@ export function RhShell<K extends string>({
             </span>
           </div>
           <div className="flex items-center gap-2 lg:hidden">
-            <>{extra}<ThemeToggle /></>
+            {extra}
+            <ThemeToggle />
             <AccountMenu
               user={user}
               otherModules={otherModules}
@@ -396,7 +399,8 @@ export function RhShell<K extends string>({
         </nav>
 
         <div className="hidden lg:mt-auto lg:flex lg:flex-col lg:items-center lg:gap-3">
-          <>{extra}<ThemeToggle placement="side" /></>
+          {extra}
+          <ThemeToggle placement="side" />
           <AccountMenu
             user={user}
             otherModules={otherModules}

@@ -155,20 +155,12 @@ body {
   }
 }
 /* "backwards": terminada a animação não sobra transform (que prenderia o "fixed" dos filhos). */
+/* Troca de seção: tudo entra junto e rápido (sem cascata, que dava sensação de atraso). */
 .rh-fade {
-  animation: rh-fade 0.22s ease-out backwards;
+  animation: rh-fade 0.16s ease-out backwards;
 }
 .rh-stagger > * {
-  animation: rh-fade 0.22s ease-out backwards;
-}
-.rh-stagger > :nth-child(2) {
-  animation-delay: 40ms;
-}
-.rh-stagger > :nth-child(3) {
-  animation-delay: 80ms;
-}
-.rh-stagger > :nth-child(n + 4) {
-  animation-delay: 120ms;
+  animation: rh-fade 0.16s ease-out backwards;
 }
 .rh-pill {
   transition:
@@ -328,7 +320,7 @@ body {
 @media (min-width: 1024px) {
   .rh-dock-icone {
     transition:
-      transform 0.34s cubic-bezier(0.33, 1, 0.68, 1),
+      transform 0.24s cubic-bezier(0.33, 1, 0.68, 1),
       background-color 0.25s ease-out,
       color 0.25s ease-out;
   }
@@ -343,7 +335,7 @@ body {
   /* Ícones juntos; o escolhido abre espaço e empurra um pouco os vizinhos. */
   .rh-dock-item {
     transition:
-      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1),
+      margin 0.24s cubic-bezier(0.33, 1, 0.68, 1),
       color 0.2s ease-out;
   }
   .rh-dock-item[data-aberto] {
@@ -390,14 +382,14 @@ body {
     margin-bottom: -3px;
     transition:
       opacity 0s,
-      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1);
+      margin 0.24s cubic-bezier(0.33, 1, 0.68, 1);
   }
   [data-aberto] > .rh-dock-nome {
     opacity: 1;
     margin-bottom: 0;
     transition:
-      opacity 0.22s ease-out 0.16s,
-      margin 0.34s cubic-bezier(0.33, 1, 0.68, 1) 0.1s;
+      opacity 0.15s ease-out 0.06s,
+      margin 0.24s cubic-bezier(0.33, 1, 0.68, 1);
   }
 }
 /* Menu lateral (computador): os mesmos botões, em coluna. O escolhido cresce sem subir e o
