@@ -27,6 +27,7 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection, ShellSetting } from "@/components/attendance/RhShell";
 import { StartKitSettingsModal } from "@/components/admission/StartKitSettingsModal";
+import { DemoTour } from "@/components/attendance/DemoTour";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
 import { CalendarPanel } from "@/components/attendance/CalendarPanel";
@@ -1069,6 +1070,8 @@ export default function FrequenciaPage() {
       </RhShell>
 
       <ChangeOwnPasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
+      {/* Só no pacote de demonstração: passo a passo por cada parte do sistema. */}
+      {process.env.NEXT_PUBLIC_DEMO === "1" && me && <DemoTour onNavigate={changeTab} />}
       {me?.role === "admin" && (
         <StartKitSettingsModal
           open={kitList !== null}
