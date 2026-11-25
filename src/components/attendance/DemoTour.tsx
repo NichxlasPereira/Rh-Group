@@ -40,7 +40,7 @@ const STEPS: Step[] = [
       ["Dados da demonstração", "Todos os nomes, fotos, empresas e números são fictícios. Pode criar, editar e excluir à vontade."],
       ["Como navegar", "Use Próximo e Anterior. O guia abre cada seção e destaca na tela o ponto explicado."],
     ],
-    tip: "Dá para fechar o guia a qualquer momento e reabrir pelo botão (i), ao lado do tema.",
+    tip: "Dá para fechar o guia a qualquer momento e reabrir pelo botão “Guia”, ao lado do tema.",
   },
   {
     tab: "mural",
@@ -221,9 +221,10 @@ export function DemoTourButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="Guia da demo"
       title="Guia da demo"
-      className="flex h-10 w-10 items-center justify-center rounded-full border border-border-strong text-ink transition-colors hover:bg-surface-2"
+      className="flex h-10 items-center justify-center gap-1.5 rounded-full border border-border-strong px-3 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-2"
     >
       <IconInfo className="h-[18px] w-[18px]" />
+      Guia
     </button>
   );
 }
@@ -246,10 +247,11 @@ export function DemoTour({
   const bodyRef = useRef<HTMLDivElement>(null);
   const step = STEPS[index];
 
-  // Abre sozinho na primeira visita deste navegador; reaberto pelo botão, começa do início.
+  // Abre sozinho toda vez que a demo é aberta (cada aba nova do navegador); fechado, só volta
+  // pelo botão "Guia". Reaberto pelo botão, começa do início.
   useEffect(() => {
     try {
-      if (!localStorage.getItem(SEEN_KEY)) onOpenChange(true);
+      if (!sessionStorage.getItem(SEEN_KEY)) onOpenChange(true);
     } catch {
       onOpenChange(true);
     }
@@ -263,7 +265,7 @@ export function DemoTour({
   const close = useCallback(() => {
     onOpenChange(false);
     try {
-      localStorage.setItem(SEEN_KEY, "1");
+      sessionStorage.setItem(SEEN_KEY, "1");
     } catch {}
   }, [onOpenChange]);
 
