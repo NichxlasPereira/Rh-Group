@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IconChevronLeft, IconChevronRight, IconInfo, IconX } from "../icons";
 import type { AttendanceTabKey } from "./AttendanceFilters";
 
@@ -130,9 +130,12 @@ const STEPS: Step[] = [
   },
   {
     tab: "colaboradores",
-    target: () => query("main table")() ?? query('[role="tablist"][aria-label="Setores"]')(),
+    // A primeira pessoa da lista (não a tabela inteira, que cobria a tela toda).
+    target: () =>
+      [...document.querySelectorAll("main table tbody tr")].find((tr) => tr.querySelector("td + td") && (tr as HTMLElement).offsetParent) ??
+      query('[role="tablist"][aria-label="Setores"]')(),
     title: "Ficha do colaborador",
-    purpose: "Clicar em uma pessoa abre a ficha completa dela.",
+    purpose: "Clicar em uma pessoa (como a destacada) abre a ficha completa dela.",
     fields: [
       ["Dados pessoais protegidos", "CPF, RG, telefone, endereço e dados bancários aparecem mascarados. Ver completos fica registrado com o nome de quem viu (LGPD)."],
       ["Documentos", "Contrato, documentos pessoais e a foto de crachá, guardados na ficha."],
@@ -235,7 +238,12 @@ export function DemoTour({
   onNavigate: (tab: AttendanceTabKey) => void;
 }) {
   const [index, setIndex] = useState(0);
-  const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  // Lado do cartão: à direita, ou à esquerda quando o destaque está à direita (não cobre o ponto explicado).
+  const [side, setSide] = useState<"right" | "left">("right");
+  // Em cima quando o destaque está na parte de baixo da tela.
+  const [atTop, setAtTop] = useState(false);
+  const spotRef = useRef<HTMLSpanElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const step = STEPS[index];
 
   // Abre sozinho na primeira visita deste navegador; reaberto pelo botão, começa do início.
@@ -259,38 +267,47 @@ export function DemoTour({
     } catch {}
   }, [onOpenChange]);
 
-  // Abre a seção do passo.
+  // Abre a seção do passo e volta o texto do cartão para o início.
   useEffect(() => {
     if (open && step.tab) onNavigate(step.tab);
+    bodyRef.current?.scrollTo({ top: 0 });
     // Só quando o passo muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, index]);
 
-  // Destaque: acompanha o elemento (a seção pode demorar a montar e a página rola).
+  // Destaque: some na troca de passo, espera o ponto aparecer na tela (a seção pode estar
+  // montando), leva até ele sem rolagem animada e reaparece já no lugar. Depois acompanha o
+  // elemento a cada quadro, direto no estilo (sem transição de posição, que ficava para trás).
   useLayoutEffect(() => {
-    if (!open || !step.target) {
-      setBox(null);
-      return;
-    }
+    const spot = spotRef.current;
+    if (!open || !spot) return;
+    spot.style.opacity = "0";
+    if (!step.target) return;
     let frame = 0;
-    let scrolled = false;
+    let found = false;
+    const started = performance.now();
+    const place = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      spot.style.transform = `translate(${r.left - 6}px, ${r.top - 6}px)`;
+      spot.style.width = `${r.width + 12}px`;
+      spot.style.height = `${r.height + 12}px`;
+      return r;
+    };
     const track = () => {
       const el = step.target?.();
-      if (el) {
-        if (!scrolled) {
-          el.scrollIntoView({ block: "center", behavior: "smooth" });
-          scrolled = true;
-        }
-        const r = el.getBoundingClientRect();
-        setBox((b) =>
-          b && b.top === r.top && b.left === r.left && b.width === r.width && b.height === r.height
-            ? b
-            : { top: r.top, left: r.left, width: r.width, height: r.height }
-        );
-      } else setBox(null);
-      frame = requestAnimationFrame(track);
+      if (el && !found) {
+        found = true;
+        const r0 = el.getBoundingClientRect();
+        // Só rola se o ponto não estiver inteiro à vista.
+        if (r0.top < 72 || r0.bottom > window.innerHeight - 16) el.scrollIntoView({ block: "center" });
+        const r = place(el);
+        setSide(r.left + r.width / 2 > window.innerWidth * 0.55 && r.width < window.innerWidth * 0.6 ? "left" : "right");
+        setAtTop(r.width >= window.innerWidth * 0.6 && r.top + r.height / 2 > window.innerHeight * 0.55);
+        spot.style.opacity = "1";
+      } else if (el) place(el);
+      if (found || performance.now() - started < 2000) frame = requestAnimationFrame(track);
     };
-    track();
+    frame = requestAnimationFrame(track);
     return () => cancelAnimationFrame(frame);
   }, [open, step]);
 
@@ -311,23 +328,19 @@ export function DemoTour({
   return (
     <>
       {/* Destaque do ponto explicado: escurece o resto, sem bloquear a tela. */}
-      {box && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none fixed z-[65] rounded-[14px] transition-all duration-300 ease-out"
-          style={{
-            top: box.top - 6,
-            left: box.left - 6,
-            width: box.width + 12,
-            height: box.height + 12,
-            boxShadow: "0 0 0 2px var(--neon-cinza), 0 0 0 9999px rgba(0,0,0,0.38)",
-          }}
-        />
-      )}
+      <span
+        ref={spotRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed left-0 top-0 z-[65] rounded-[14px] opacity-0 transition-opacity duration-150 ease-out"
+        style={{ boxShadow: "0 0 0 2px var(--neon-cinza), 0 0 0 9999px rgba(0,0,0,0.38)" }}
+      />
+      {/* Altura fixa: o cartão não muda de tamanho de um passo para o outro. */}
       <div
         role="dialog"
         aria-label="Guia da demonstração"
-        className="fixed bottom-4 right-4 z-[70] flex max-h-[72vh] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[16px] neon-cinza border bg-surface shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]"
+        className={`fixed z-[70] flex ${atTop ? "top-4" : "bottom-4"} h-[min(480px,calc(100vh-2rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[16px] neon-cinza border bg-surface shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)] ${
+          side === "left" ? "left-4 lg:left-[112px]" : "right-4"
+        }`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <span className="font-display text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
@@ -337,7 +350,7 @@ export function DemoTour({
             <IconX className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex flex-col gap-3 overflow-y-auto px-4 py-4 text-sm">
+        <div ref={bodyRef} key={index} className="rh-fade flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 text-sm">
           <h2 className="font-display text-[19px] font-semibold leading-tight text-ink">{step.title}</h2>
           <p className="text-muted">{step.purpose}</p>
           {step.fields && (
