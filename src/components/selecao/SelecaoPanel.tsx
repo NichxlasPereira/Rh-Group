@@ -557,13 +557,56 @@ function FunnelView({
 
 // ---------------------------------------------------------------- candidatos por fase
 
-/** Cores das etiquetas de vaga (estilo quadro): cada vaga fica sempre com a mesma cor. */
-const LABEL_COLORS = ["#4bce97", "#e2b203", "#fea362", "#f87168", "#9f8fef", "#579dff", "#6cc3e0", "#94c748", "#e774bb", "#8590a2"];
-function jobColor(key: string | null) {
-  if (!key) return LABEL_COLORS[LABEL_COLORS.length - 1];
-  let h = 0;
-  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return LABEL_COLORS[h % (LABEL_COLORS.length - 1)];
+/** Cor das etiquetas de candidato sem vaga (vaga excluída). */
+const NO_JOB_COLOR = "#8590a2";
+
+/**
+ * Cores das vagas, escolhidas para serem bem diferentes entre si (inclusive no tema claro e no
+ * escuro), na ordem em que se distinguem melhor: as primeiras vagas ficam com as mais distintas.
+ */
+const JOB_PALETTE = [
+  "#e6194b", // vermelho
+  "#3cb44b", // verde
+  "#4363d8", // azul
+  "#f58231", // laranja
+  "#911eb4", // roxo
+  "#42d4f4", // ciano
+  "#f032e6", // magenta
+  "#bfef45", // limão
+  "#ffe119", // amarelo
+  "#469990", // verde-azulado
+  "#9a6324", // marrom
+  "#fabed4", // rosa
+  "#dcbeff", // lavanda
+  "#800000", // vinho
+  "#808000", // oliva
+  "#aaffc3", // menta
+  "#ffd8b1", // pêssego
+  "#000075", // azul-marinho
+  "#fffac8", // creme
+];
+
+/** Cor de cada vaga, sem repetir: as vagas na ordem de cadastro recebem as cores da paleta. */
+function jobColors(jobs: JobInfo[]): Map<string, string> {
+  const ordered = [...jobs].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return new Map(
+    ordered.map((j, i) => [
+      j.id,
+      // Mais vagas do que a paleta: tons espaçados pela roda de cores.
+      JOB_PALETTE[i] ?? `hsl(${Math.round((i - JOB_PALETTE.length) * 137.5) % 360} 65% ${i % 2 ? 45 : 70}%)`,
+    ])
+  );
+}
+
+/** Texto legível sobre a cor da etiqueta (escuro nas cores claras, branco nas escuras). */
+function labelText(color: string) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+  if (!m) return Number(/(\d+)%\)$/.exec(color)?.[1] ?? 70) < 55 ? "#ffffff" : "#1d2125";
+  const [r, g, b] = m.slice(1).map((h) => {
+    const c = parseInt(h, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.25 ? "#1d2125" : "#ffffff";
 }
 
 /** Data em que o candidato entrou na fase atual. */
@@ -612,6 +655,7 @@ function BoardView({
   const [over, setOver] = useState<Stage | null>(null);
   const term = search.trim().toLowerCase();
   const list = candidates.filter((c) => (!jobFilter || c.jobId === jobFilter) && (!term || c.name.toLowerCase().includes(term)));
+  const colors = useMemo(() => jobColors(jobs), [jobs]);
 
   const toggle = (s: Stage) =>
     setCollapsed((prev) => {
@@ -647,7 +691,7 @@ function BoardView({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2.5">
-        <JobPicker jobs={jobs} candidates={candidates} value={jobFilter} onChange={onJobFilter} />
+        <JobPicker jobs={jobs} colors={colors} candidates={candidates} value={jobFilter} onChange={onJobFilter} />
         <label className="relative flex min-w-[13rem] flex-1 sm:max-w-[18rem]">
           <span className="sr-only">Buscar candidato</span>
           <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -709,6 +753,7 @@ function BoardView({
                   <CandidateCard
                     key={c.id}
                     c={c}
+                    color={(c.jobId && colors.get(c.jobId)) || NO_JOB_COLOR}
                     today={today}
                     showJob={!jobFilter}
                     dragging={dragId === c.id}
@@ -737,11 +782,13 @@ function BoardView({
 /** Seletor de vaga do quadro: lista própria (no lugar da lista do sistema), agrupada por situação. */
 function JobPicker({
   jobs,
+  colors,
   candidates,
   value,
   onChange,
 }: {
   jobs: JobInfo[];
+  colors: Map<string, string>;
   candidates: CandidateInfo[];
   value: string;
   onChange: (id: string) => void;
@@ -830,7 +877,7 @@ function JobPicker({
         <span
           aria-hidden="true"
           className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ background: current ? jobColor(current.id) : "var(--color-border-strong)" }}
+          style={{ background: current ? colors.get(current.id) : "var(--color-border-strong)" }}
         />
         <span className="min-w-0 flex-1 truncate">{current?.title ?? "Todas as vagas"}</span>
         <IconChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${open ? "rotate-180" : ""}`} />
@@ -865,7 +912,7 @@ function JobPicker({
                   return option(
                     j.id,
                     j.title,
-                    jobColor(j.id),
+                    colors.get(j.id) ?? NO_JOB_COLOR,
                     n > 0 ? (
                       <span title={`${n} em processo`} className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px font-mono text-[11px] font-bold tabular-nums text-muted">
                         {n}
@@ -966,6 +1013,7 @@ function QuickAdd({ stage, onAdd }: { stage: Stage; onAdd: (name: string, stage:
 
 function CandidateCard({
   c,
+  color,
   today,
   showJob,
   dragging,
@@ -977,6 +1025,7 @@ function CandidateCard({
   onFeedback,
 }: {
   c: CandidateInfo;
+  color: string;
   today: string;
   showJob: boolean;
   dragging: boolean;
@@ -1026,8 +1075,8 @@ function CandidateCard({
       <button type="button" onClick={() => onEdit(c)} className="flex w-full flex-col gap-1.5 px-3 pb-2.5 pt-2.5 text-left">
         {showJob && c.jobTitle && (
           <span
-            className="max-w-full self-start truncate rounded-[4px] px-1.5 py-px text-[10.5px] font-bold leading-4 text-[#1d2125]"
-            style={{ background: jobColor(c.jobId ?? c.jobTitle) }}
+            className="max-w-full self-start truncate rounded-[4px] px-1.5 py-px text-[10.5px] font-bold leading-4"
+            style={{ background: color, color: labelText(color) }}
           >
             {c.jobTitle}
           </span>
