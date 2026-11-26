@@ -264,10 +264,11 @@ export function RhShell<K extends string>({
         {/* Faixa grafite do cartão da CFFGROUP: sempre no tema escuro. */}
         <header
           data-theme="dark"
-          className="brand-band relative flex flex-wrap items-end justify-between gap-4 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7"
+          className="brand-band relative flex flex-col items-start gap-4 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7 sm:pr-[300px]"
         >
           <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[340px] text-white/[0.12] sm:block" />
-          {/* A faixa fica parada na troca de seção; só os textos e os botões entram de novo. */}
+          {/* A faixa fica parada na troca de seção; só os textos e os botões entram de novo. Os
+              botões ficam embaixo do título, à esquerda, deixando o logo da direita à vista. */}
           <div key={`${String(active)}-titulo`} className="rh-fade relative flex flex-col gap-2">
             <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/75">
               CFF Group · {moduleLabel}
