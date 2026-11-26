@@ -34,8 +34,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set(MODULES[moduleKey].cookie, createSessionToken(moduleKey, password), {
     httpOnly: true,
     sameSite: "lax",
-    // COOKIE_INSECURE=1 só no pacote de demonstração (localhost sem HTTPS, ex.: Safari).
-    secure: process.env.NODE_ENV === "production" && process.env.COOKIE_INSECURE !== "1",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: SESSION_SECONDS,
   });

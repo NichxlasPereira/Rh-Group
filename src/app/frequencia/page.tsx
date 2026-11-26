@@ -27,7 +27,6 @@ import {
 } from "@/components/icons";
 import { RhShell, RhSection, ShellSetting } from "@/components/attendance/RhShell";
 import { StartKitSettingsModal } from "@/components/admission/StartKitSettingsModal";
-import { DemoTour, DemoTourButton } from "@/components/attendance/DemoTour";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
 import { CalendarPanel } from "@/components/attendance/CalendarPanel";
@@ -339,8 +338,6 @@ export default function FrequenciaPage() {
   // Configurações (administradores), no menu da conta: Acessos e os kits do Slack
   // (onboarding: kit de boas-vindas; offboarding: pedidos de desligamento).
   const [kitList, setKitList] = useState<"inicio" | "saida" | null>(null);
-  // Guia da demonstração (só no pacote de demo).
-  const [tourOpen, setTourOpen] = useState(false);
   const settings = useMemo<ShellSetting[]>(
     () =>
       me?.role === "admin"
@@ -825,7 +822,6 @@ export default function FrequenciaPage() {
         onChangePassword={() => setChangingPassword(true)}
         onLogout={logout}
         settings={settings}
-        extra={process.env.NEXT_PUBLIC_DEMO === "1" ? <DemoTourButton onClick={() => setTourOpen(true)} /> : undefined}
         title={copy.title}
         description={copy.description}
         actions={actions}
@@ -1051,8 +1047,6 @@ export default function FrequenciaPage() {
       </RhShell>
 
       <ChangeOwnPasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
-      {/* Só no pacote de demonstração: passo a passo por cada parte do sistema. */}
-      {process.env.NEXT_PUBLIC_DEMO === "1" && me && <DemoTour open={tourOpen} onOpenChange={setTourOpen} onNavigate={changeTab} />}
       {me?.role === "admin" && (
         <StartKitSettingsModal
           open={kitList !== null}

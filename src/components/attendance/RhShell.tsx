@@ -271,7 +271,6 @@ export function RhShell<K extends string>({
           <div key={`${String(active)}-titulo`} className="rh-fade relative flex flex-col gap-2">
             <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/75">
               CFF Group · {moduleLabel}
-              {process.env.NEXT_PUBLIC_DEMO === "1" && " · Demonstração"}
             </span>
             <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
               {title}
