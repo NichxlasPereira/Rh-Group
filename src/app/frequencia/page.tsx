@@ -22,11 +22,13 @@ import {
   IconPlus,
   IconSearch,
   IconUserMinus,
+  IconFunnel,
   IconUserPlus,
   IconUsers,
 } from "@/components/icons";
 import { RhShell, RhSection, ShellSetting } from "@/components/attendance/RhShell";
 import { StartKitSettingsModal } from "@/components/admission/StartKitSettingsModal";
+import { SelecaoPanel } from "@/components/selecao/SelecaoPanel";
 import { AttendanceStats } from "@/components/attendance/AttendanceStats";
 import { MuralPanel, muralTasks } from "@/components/attendance/MuralPanel";
 import { CalendarPanel } from "@/components/attendance/CalendarPanel";
@@ -115,6 +117,10 @@ const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: strin
   admissoes: {
     title: "Onboarding",
     description: "Admissões digitais: dados, documentos e termos assinados pelo candidato.",
+  },
+  selecao: {
+    title: "Processos seletivos",
+    description: "Funil de cada vaga, candidatos por fase, devolutivas e banco de talentos.",
   },
   offboarding: {
     title: "Offboarding",
@@ -222,6 +228,11 @@ export default function FrequenciaPage() {
   const [offboardings, setOffboardings] = useState<ExitKitView[] | null>(null);
   const [offboardSearch, setOffboardSearch] = useState("");
   const [offboardPickSignal, setOffboardPickSignal] = useState(0);
+  // Processos seletivos: botões do cabeçalho e devolutivas atrasadas (número no menu).
+  const [jobSignal, setJobSignal] = useState(0);
+  const [candidateSignal, setCandidateSignal] = useState(0);
+  const [selecaoImportSignal, setSelecaoImportSignal] = useState(0);
+  const [selecaoAttention, setSelecaoAttention] = useState(0);
   const fetchOffboardings = useCallback(async () => {
     const res = await fetch("/api/offboardings");
     if (sessionExpired(res) || !res.ok) return;
@@ -328,12 +339,13 @@ export default function FrequenciaPage() {
       { key: "colaboradores", label: "Colaboradores", icon: IconUsers },
       { key: "prestadores", label: "Prestadores", icon: IconBriefcase, badge: providersAttention },
       { key: "aniversariantes", label: "Aniversariantes", icon: IconCake, badge: birthdaysToday },
+      { key: "selecao", label: "Seleção", icon: IconFunnel, badge: selecaoAttention },
       { key: "admissoes", label: "Onboarding", icon: IconUserPlus, badge: onboardingSummary?.toReview },
       { key: "offboarding", label: "Offboarding", icon: IconUserMinus, badge: offboardingsPending },
       { key: "relatorios", label: "Relatórios", icon: IconChart },
     ];
     return list;
-  }, [onboardingSummary, birthdaysToday, providersAttention, offboardingsPending]);
+  }, [onboardingSummary, birthdaysToday, providersAttention, offboardingsPending, selecaoAttention]);
 
   // Configurações (administradores), no menu da conta: Acessos e os kits do Slack
   // (onboarding: kit de boas-vindas; offboarding: pedidos de desligamento).
@@ -731,6 +743,21 @@ export default function FrequenciaPage() {
           Desligar colaborador
         </Button>
       </>
+    ) : tab === "selecao" ? (
+      <>
+        <Button variant="ghost" onClick={() => setSelecaoImportSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconArrowUpTray className="h-4 w-4" />
+          Importar planilha
+        </Button>
+        <Button variant="ghost" onClick={() => setCandidateSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconUserPlus className="h-4 w-4" />
+          Novo candidato
+        </Button>
+        <Button onClick={() => setJobSignal((n) => n + 1)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+          <IconPlus className="h-4 w-4" />
+          Nova vaga
+        </Button>
+      </>
     ) : tab === "acessos" ? null : tab === "calendario" ? (
       <>
         {me?.role === "admin" && (
@@ -906,6 +933,14 @@ export default function FrequenciaPage() {
             importSignal={providerImportSignal}
             onAttentionChange={setProvidersAttention}
             initialProviders={providers}
+          />
+        ) : tab === "selecao" ? (
+          <SelecaoPanel
+            departments={departments}
+            newJobSignal={jobSignal}
+            newCandidateSignal={candidateSignal}
+            importSignal={selecaoImportSignal}
+            onAttentionChange={setSelecaoAttention}
           />
         ) : tab === "offboarding" ? (
           <OffboardingPanel

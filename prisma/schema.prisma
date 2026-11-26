@@ -509,3 +509,53 @@ model CalendarReminderLog {
   key    String   @id
   sentAt DateTime @default(now())
 }
+
+// Processos seletivos: vagas abertas pelo RH e o funil de cada uma.
+model JobOpening {
+  id         String         @id @default(cuid())
+  title      String
+  department String? // departamento ou empresa
+  priority   Int            @default(2) // 1 alta · 2 média · 3 baixa
+  status     String         @default("aberta") // "aberta" | "pausada" | "preenchida" | "cancelada"
+  openedAt   DateTime
+  filledAt   DateTime?
+  positions  Int            @default(1)
+  // Números de antes do sistema (vindos da planilha): quem fez a fase 1 e quem foi
+  // contratado sem estar na lista de candidatos. Somam no funil.
+  extraPhase1 Int           @default(0)
+  extraHired  Int           @default(0)
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  candidates JobCandidate[]
+
+  @@index([status])
+}
+
+// Candidato de um processo seletivo: fase atual, datas de cada fase e a devolutiva.
+model JobCandidate {
+  id          String      @id @default(cuid())
+  jobId       String?
+  job         JobOpening? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  jobTitle    String? // vaga de origem (fica mesmo se a vaga for excluída)
+  name        String
+  contact     String?
+  stage       String // "fase1" | "fase2" | "fase3" | "contratado" | "reprovado" | "desistiu" | "banco"
+  phase1Date  DateTime?
+  phase2Date  DateTime?
+  phase3Date  DateTime? // início na empresa (período de teste)
+  notes       String?
+  // Devolutiva ao candidato: prazo, quando foi dada, por quem, tipo e ponderações.
+  feedbackDue  DateTime?
+  feedbackAt   DateTime?
+  feedbackBy   String?
+  feedbackType String? // "fase2" | "teste" | "reprovacao" | "banco"
+  feedbackNote String?
+  createdBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([jobId])
+  @@index([stage])
+}
