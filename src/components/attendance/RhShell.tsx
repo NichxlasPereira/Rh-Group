@@ -482,7 +482,7 @@ function AccountMenu({
         aria-label={user ? `Conta de ${user.name}` : "Conta"}
         title={user?.name}
         className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-xs font-extrabold text-accent-strong transition hover:brightness-110 ${
-          open ? "ring-2 ring-border-strong" : ""
+          open ? "ring-2 ring-brand ring-offset-2 ring-offset-surface" : ""
         }`}
       >
         {user ? initials(user.name) : <IconKey className="h-4 w-4" />}
