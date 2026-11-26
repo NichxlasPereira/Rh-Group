@@ -310,3 +310,9 @@ export const IconHourglass = strokeIcon("M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 
 export const IconSparkles = strokeIcon("M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15zM5 15l.6 1.4L7 17l-1.4.6L5 19l-.6-1.4L3 17l1.4-.6L5 15z");
 export const IconBell = strokeIcon("M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0");
 export const IconFunnel = strokeIcon("M3 4h18l-7 8.5V19l-4 2v-8.5L3 4z");
+export const IconText = strokeIcon("M4 6h16M4 12h16M4 18h10");
+export const IconPhone = strokeIcon(
+  "M5 4h3.5l1.5 4-2 1.5a11 11 0 0 0 6.5 6.5l1.5-2 4 1.5V19a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"
+);
+export const IconCollapse = strokeIcon("M3 12h6M6.5 9l2.5 3-2.5 3M21 12h-6M17.5 9 15 12l2.5 3");
+export const IconDots = strokeIcon("M5 12h.01M12 12h.01M19 12h.01");

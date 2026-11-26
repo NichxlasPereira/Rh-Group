@@ -120,7 +120,7 @@ const SECTION_COPY: Record<AttendanceTabKey, { title: string; description: strin
   },
   selecao: {
     title: "Processos seletivos",
-    description: "Funil de cada vaga, candidatos por fase, devolutivas e banco de talentos.",
+    description: "Quadro dos candidatos por fase, funil de cada vaga, devolutivas e banco de talentos.",
   },
   offboarding: {
     title: "Offboarding",

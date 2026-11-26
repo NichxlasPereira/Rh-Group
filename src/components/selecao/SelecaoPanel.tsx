@@ -6,9 +6,26 @@ import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { EmptyState, Field, SkeletonRows, inputClass } from "../attendance/formControls";
 import { SectorSlider } from "../attendance/SectorSlider";
-import { IconArrowUpTray, IconCheckCircle, IconChevronRight, IconCopy, IconEdit, IconFunnel, IconTrash, IconUsers } from "../icons";
 import {
-  ACTIVE_STAGES,
+  IconArrowUpTray,
+  IconCalendar,
+  IconCheckCircle,
+  IconChevronRight,
+  IconClock,
+  IconCollapse,
+  IconCopy,
+  IconDots,
+  IconEdit,
+  IconFunnel,
+  IconPhone,
+  IconPlus,
+  IconSearch,
+  IconText,
+  IconTrash,
+  IconUsers,
+  IconX,
+} from "../icons";
+import {
   CLOSED_STAGES,
   CandidateInfo,
   FEEDBACK_LABEL,
@@ -39,7 +56,7 @@ import {
 } from "@/lib/selecao";
 import { redirectIfSessionExpired } from "@/lib/sessionClient";
 
-type View = "funil" | "candidatos" | "devolutivas" | "banco";
+type View = "quadro" | "funil" | "devolutivas" | "banco";
 
 const cardClass = "overflow-hidden rounded-[14px] neon-cinza border bg-surface";
 
@@ -59,15 +76,6 @@ const FEEDBACK_TONE: Record<FeedbackStatus, string> = {
   atrasada: "bg-critical-soft text-critical",
   no_prazo: "bg-ok-soft text-ok",
   com_atraso: "bg-surface-2 text-muted",
-};
-const STAGE_TONE: Record<Stage, string> = {
-  fase1: "bg-surface-2 text-ink",
-  fase2: "bg-surface-2 text-ink",
-  fase3: "bg-warn-soft text-warn",
-  contratado: "bg-ok-soft text-ok",
-  reprovado: "bg-critical-soft text-critical",
-  desistiu: "bg-surface-2 text-muted",
-  banco: "tone-campanha",
 };
 
 async function call<T = unknown>(url: string, method = "GET", body?: unknown): Promise<T> {
@@ -106,7 +114,7 @@ export function SelecaoPanel({ departments, newJobSignal, newCandidateSignal, im
   const [jobs, setJobs] = useState<JobInfo[] | null>(null);
   const [candidates, setCandidates] = useState<CandidateInfo[]>([]);
   const [templates, setTemplates] = useState<FeedbackTemplate[]>([]);
-  const [view, setView] = useState<View>("funil");
+  const [view, setView] = useState<View>("quadro");
   const [jobFilter, setJobFilter] = useState<string>("");
   const [editingJob, setEditingJob] = useState<JobInfo | "new" | null>(null);
   const [editingCandidate, setEditingCandidate] = useState<CandidateInfo | "new" | null>(null);
@@ -162,6 +170,24 @@ export function SelecaoPanel({ departments, newJobSignal, newCandidateSignal, im
     if (saved) toast.success(`${c.name}: ${STAGE_SHORT[stage]}.`);
   }
 
+  /** "Adicionar um cartão": cria o candidato direto na lista (vaga do filtro, se houver). */
+  async function quickAdd(name: string, stage: Stage) {
+    const job = jobs?.find((j) => j.id === jobFilter);
+    const dates = {
+      phase1Date: today,
+      phase2Date: stage === "fase1" ? null : today,
+      phase3Date: stage === "fase1" || stage === "fase2" ? null : today,
+    };
+    try {
+      const saved = await call<CandidateInfo>("/api/frequencia/selecao/candidatos", "POST", { name, stage, jobId: job?.id ?? null, ...dates });
+      setCandidates((list) => [saved, ...list]);
+      return true;
+    } catch (err) {
+      errorToast(err);
+      return false;
+    }
+  }
+
   async function removeCandidate(c: CandidateInfo) {
     if (!window.confirm(`Excluir ${c.name} do processo seletivo?`)) return;
     try {
@@ -202,8 +228,8 @@ export function SelecaoPanel({ departments, newJobSignal, newCandidateSignal, im
     <div className="flex flex-col gap-4">
       <SectorSlider
         options={[
+          { key: "quadro", label: "Quadro", count: inProcess },
           { key: "funil", label: "Funil das vagas", count: openJobs },
-          { key: "candidatos", label: "Candidatos por fase", count: inProcess },
           { key: "devolutivas", label: "Devolutivas", count: pending },
           { key: "banco", label: "Banco de talentos", count: pool },
         ]}
@@ -233,12 +259,12 @@ export function SelecaoPanel({ departments, newJobSignal, newCandidateSignal, im
           overdue={overdue}
           onOpenJob={(id) => {
             setJobFilter(id);
-            setView("candidatos");
+            setView("quadro");
           }}
           onEditJob={setEditingJob}
           onRemoveJob={removeJob}
         />
-      ) : view === "candidatos" ? (
+      ) : view === "quadro" ? (
         <BoardView
           jobs={jobs}
           candidates={candidates}
@@ -249,6 +275,7 @@ export function SelecaoPanel({ departments, newJobSignal, newCandidateSignal, im
           onEdit={setEditingCandidate}
           onRemove={removeCandidate}
           onFeedback={setFeedbackFor}
+          onQuickAdd={quickAdd}
         />
       ) : view === "devolutivas" ? (
         <FeedbackView
@@ -527,6 +554,32 @@ function FunnelView({
 
 // ---------------------------------------------------------------- candidatos por fase
 
+/** Cores das etiquetas de vaga (estilo quadro): cada vaga fica sempre com a mesma cor. */
+const LABEL_COLORS = ["#4bce97", "#e2b203", "#fea362", "#f87168", "#9f8fef", "#579dff", "#6cc3e0", "#94c748", "#e774bb", "#8590a2"];
+function jobColor(key: string | null) {
+  if (!key) return LABEL_COLORS[LABEL_COLORS.length - 1];
+  let h = 0;
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return LABEL_COLORS[h % (LABEL_COLORS.length - 1)];
+}
+
+/** Data em que o candidato entrou na fase atual. */
+function stageDate(c: CandidateInfo) {
+  if (c.stage === "fase1") return c.phase1Date;
+  if (c.stage === "fase2") return c.phase2Date ?? c.phase1Date;
+  return c.phase3Date ?? c.phase2Date ?? c.phase1Date;
+}
+
+const COLUMN_HINT: Record<Stage, string> = {
+  fase1: "Entrevista com o RH",
+  fase2: "Entrevista com coordenadores",
+  fase3: "Período de teste",
+  contratado: "Entraram na empresa",
+  reprovado: "Não seguiram no processo",
+  desistiu: "Saíram por conta própria",
+  banco: "Para chamar em outra vaga",
+};
+
 function BoardView({
   jobs,
   candidates,
@@ -537,6 +590,7 @@ function BoardView({
   onEdit,
   onRemove,
   onFeedback,
+  onQuickAdd,
 }: {
   jobs: JobInfo[];
   candidates: CandidateInfo[];
@@ -547,18 +601,56 @@ function BoardView({
   onEdit: (c: CandidateInfo) => void;
   onRemove: (c: CandidateInfo) => void;
   onFeedback: (c: CandidateInfo) => void;
+  onQuickAdd: (name: string, stage: Stage) => Promise<boolean>;
 }) {
   const [search, setSearch] = useState("");
-  const [showClosed, setShowClosed] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<Stage>>(() => new Set(CLOSED_STAGES));
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<Stage | null>(null);
   const term = search.trim().toLowerCase();
   const list = candidates.filter((c) => (!jobFilter || c.jobId === jobFilter) && (!term || c.name.toLowerCase().includes(term)));
-  const closed = list.filter((c) => CLOSED_STAGES.includes(c.stage));
+
+  const toggle = (s: Stage) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+
+  function drop(stage: Stage) {
+    const c = candidates.find((x) => x.id === dragId);
+    setDragId(null);
+    setOver(null);
+    if (c && c.stage !== stage) onMove(c, stage);
+  }
+
+  const dropProps = (stage: Stage) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!dragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (over !== stage) setOver(stage);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((o) => (o === stage ? null : o));
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      drop(stage);
+    },
+  });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className={`${cardClass} flex flex-wrap items-end gap-3 p-4`}>
-        <Field label="Vaga" className="min-w-[16rem] flex-1">
-          <select value={jobFilter} onChange={(e) => onJobFilter(e.target.value)} className={`${inputClass(false)} h-10`}>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <label className="relative flex min-w-[15rem] flex-1 sm:flex-none">
+          <span className="sr-only">Vaga</span>
+          <select
+            value={jobFilter}
+            onChange={(e) => onJobFilter(e.target.value)}
+            className={`${inputClass(false)} h-10 w-full pl-8 sm:w-[20rem]`}
+          >
             <option value="">Todas as vagas</option>
             {jobs.map((j) => (
               <option key={j.id} value={j.id}>
@@ -566,80 +658,176 @@ function BoardView({
               </option>
             ))}
           </select>
-        </Field>
-        <Field label="Buscar" className="min-w-[14rem] flex-1">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nome do candidato" className={inputClass(false)} />
-        </Field>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
+            style={{ background: jobFilter ? jobColor(jobFilter) : "var(--color-border-strong)" }}
+          />
+        </label>
+        <label className="relative flex min-w-[13rem] flex-1 sm:max-w-[18rem]">
+          <span className="sr-only">Buscar candidato</span>
+          <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar candidato" className={`${inputClass(false)} h-10 pl-9`} />
+        </label>
+        <span className="ml-auto hidden text-xs text-muted md:inline">Arraste os cartões entre as listas para mudar de fase.</span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {ACTIVE_STAGES.map((stage) => {
+      <div className="rh-quadro -mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-3">
+        {STAGES.map((stage) => {
           const col = list.filter((c) => c.stage === stage);
+          const isOver = over === stage;
+          if (collapsed.has(stage)) {
+            return (
+              <button
+                key={stage}
+                type="button"
+                onClick={() => toggle(stage)}
+                {...dropProps(stage)}
+                aria-label={`Abrir a lista ${STAGE_SHORT[stage]} (${col.length})`}
+                title={`Abrir a lista ${STAGE_SHORT[stage]}`}
+                className={`flex w-11 shrink-0 flex-col items-center gap-3 rounded-[14px] border bg-surface-2 py-3 transition hover:border-border-strong ${
+                  isOver ? "border-brand ring-2 ring-brand/30" : "border-border"
+                }`}
+              >
+                <IconCollapse className="h-4 w-4 text-muted" />
+                <span className="text-[13px] font-bold text-ink [writing-mode:vertical-rl]">{STAGE_SHORT[stage]}</span>
+                <span className="font-mono text-[11px] font-bold tabular-nums text-muted">{col.length}</span>
+              </button>
+            );
+          }
           return (
-            <section key={stage} className={`${cardClass} flex min-h-[12rem] flex-col`}>
-              <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                <h3 className="text-[13px] font-bold text-ink">{STAGE_LABEL[stage]}</h3>
-                <span className="min-w-6 rounded-full bg-surface-2 px-1.5 py-px text-center font-mono text-[11px] font-bold tabular-nums text-muted">
-                  {col.length}
-                </span>
+            <section
+              key={stage}
+              {...dropProps(stage)}
+              aria-label={STAGE_SHORT[stage]}
+              className={`flex max-h-[calc(100vh-15rem)] min-h-[9rem] w-[272px] shrink-0 flex-col rounded-[14px] border bg-surface-2 transition ${
+                isOver ? "border-brand ring-2 ring-brand/30" : "border-border"
+              }`}
+            >
+              <header className="flex items-start gap-2 px-3 pb-1.5 pt-3">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <h3 className="truncate text-[14px] font-bold text-ink">{STAGE_SHORT[stage]}</h3>
+                  <span className="truncate text-[11.5px] text-muted">{COLUMN_HINT[stage]}</span>
+                </div>
+                <span className="mt-0.5 font-mono text-[12px] font-bold tabular-nums text-muted">{col.length}</span>
+                <button
+                  type="button"
+                  onClick={() => toggle(stage)}
+                  aria-label={`Recolher a lista ${STAGE_SHORT[stage]}`}
+                  title="Recolher lista"
+                  className="-mr-1 rounded-[8px] p-1 text-muted transition hover:bg-surface hover:text-ink"
+                >
+                  <IconCollapse className="h-4 w-4" />
+                </button>
               </header>
-              <ul className="flex flex-1 flex-col gap-2 p-2">
-                {col.length === 0 && <li className="px-2 py-6 text-center text-xs text-muted">Ninguém nesta fase.</li>}
+              <ul className="flex min-h-[2.5rem] flex-1 flex-col gap-2 overflow-y-auto px-2 py-1.5">
                 {col.map((c) => (
                   <CandidateCard
                     key={c.id}
                     c={c}
                     today={today}
                     showJob={!jobFilter}
+                    dragging={dragId === c.id}
+                    onDragStart={() => setDragId(c.id)}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOver(null);
+                    }}
                     onMove={onMove}
                     onEdit={onEdit}
                     onRemove={onRemove}
                     onFeedback={onFeedback}
                   />
                 ))}
+                {col.length === 0 && dragId && <li className="h-14 rounded-[10px] border border-dashed border-border-strong" aria-hidden="true" />}
               </ul>
+              <QuickAdd stage={stage} onAdd={onQuickAdd} />
             </section>
           );
         })}
       </div>
+    </div>
+  );
+}
 
-      <section className={cardClass}>
+function QuickAdd({ stage, onAdd }: { stage: Stage; onAdd: (name: string, stage: Stage) => Promise<boolean> }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  async function submit() {
+    const value = name.trim();
+    if (!value || busy) return;
+    setBusy(true);
+    const ok = await onAdd(value, stage);
+    setBusy(false);
+    if (ok) {
+      setName("");
+      ref.current?.focus();
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="m-2 mt-1 flex items-center gap-2 rounded-[10px] px-2 py-2 text-left text-[13px] font-semibold text-muted transition hover:bg-surface hover:text-ink"
+      >
+        <IconPlus className="h-4 w-4" />
+        Adicionar um cartão
+      </button>
+    );
+  }
+  return (
+    <form
+      className="m-2 mt-1 flex flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <textarea
+        ref={ref}
+        autoFocus
+        rows={2}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            void submit();
+          } else if (e.key === "Escape") {
+            setOpen(false);
+            setName("");
+          }
+        }}
+        placeholder="Nome do candidato"
+        aria-label="Nome do candidato"
+        className="resize-none rounded-[10px] border border-border bg-surface px-3 py-2 text-[13.5px] text-ink shadow-[0_1px_1px_rgba(0,0,0,0.12)] outline-none focus:border-brand"
+      />
+      <div className="flex items-center gap-1.5">
+        <button
+          type="submit"
+          disabled={busy || !name.trim()}
+          className="rounded-[8px] bg-brand px-3 py-1.5 text-[13px] font-bold text-white transition hover:brightness-110 disabled:opacity-50"
+        >
+          Adicionar cartão
+        </button>
         <button
           type="button"
-          onClick={() => setShowClosed((v) => !v)}
-          aria-expanded={showClosed}
-          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+          onClick={() => {
+            setOpen(false);
+            setName("");
+          }}
+          aria-label="Cancelar"
+          className="rounded-[8px] p-1.5 text-muted transition hover:bg-surface hover:text-ink"
         >
-          <span className="font-display text-[15px] font-semibold text-ink">Encerrados</span>
-          <span className="flex items-center gap-2 text-xs text-muted">
-            {CLOSED_STAGES.map((s) => `${STAGE_SHORT[s]} ${closed.filter((c) => c.stage === s).length}`).join(" · ")}
-            <IconChevronRight className={`h-4 w-4 transition ${showClosed ? "rotate-90" : ""}`} />
-          </span>
+          <IconX className="h-4 w-4" />
         </button>
-        {showClosed && (
-          <ul className="flex flex-col border-t border-border">
-            {closed.length === 0 && <li className="px-4 py-4 text-sm text-muted">Nenhum candidato encerrado.</li>}
-            {closed.map((c) => (
-              <li key={c.id} className="group flex items-center gap-3 border-t border-border px-4 py-2.5 first:border-t-0">
-                <span className={`shrink-0 rounded-full px-2 py-px text-[10.5px] font-bold ${STAGE_TONE[c.stage]}`}>{STAGE_SHORT[c.stage]}</span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-semibold text-ink">{c.name}</span>
-                  <span className="truncate text-xs text-muted">{[c.jobTitle, c.notes].filter(Boolean).join(" · ")}</span>
-                </span>
-                <span className="flex shrink-0 items-center opacity-60 transition group-hover:opacity-100">
-                  <button type="button" onClick={() => onEdit(c)} aria-label={`Editar ${c.name}`} className="rounded-[8px] p-1.5 text-muted hover:bg-surface-2 hover:text-ink">
-                    <IconEdit className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => onRemove(c)} aria-label={`Excluir ${c.name}`} className="rounded-[8px] p-1.5 text-muted hover:bg-surface-2 hover:text-critical">
-                    <IconTrash className="h-4 w-4" />
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+      </div>
+    </form>
   );
 }
 
@@ -647,6 +835,9 @@ function CandidateCard({
   c,
   today,
   showJob,
+  dragging,
+  onDragStart,
+  onDragEnd,
   onMove,
   onEdit,
   onRemove,
@@ -655,87 +846,200 @@ function CandidateCard({
   c: CandidateInfo;
   today: string;
   showJob: boolean;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
   onMove: (c: CandidateInfo, stage: Stage) => void;
   onEdit: (c: CandidateInfo) => void;
   onRemove: (c: CandidateInfo) => void;
   onFeedback: (c: CandidateInfo) => void;
 }) {
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
   const fb = feedbackStatus(c, today);
   const next = nextStage(c.stage);
-  const lastDate = c.phase3Date ?? c.phase2Date ?? c.phase1Date;
+  const since = stageDate(c);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
+
+  const item = "flex w-full items-center rounded-[7px] px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-ink hover:bg-surface-2";
+
   return (
-    <li className="relative flex flex-col gap-1.5 rounded-[10px] border border-border bg-surface-2/50 p-2.5">
-      <button type="button" onClick={() => onEdit(c)} className="flex flex-col text-left">
-        <span className="text-[13px] font-semibold text-ink">{c.name}</span>
-        <span className="text-[11.5px] text-muted">
-          {[showJob ? c.jobTitle : null, lastDate ? brDate(lastDate) : null].filter(Boolean).join(" · ")}
-        </span>
-        {c.notes && <span className="mt-0.5 line-clamp-2 text-[11.5px] text-muted">{c.notes}</span>}
-      </button>
-      {(fb === "pendente" || fb === "atrasada") && (
-        <button
-          type="button"
-          onClick={() => onFeedback(c)}
-          className={`self-start rounded-full px-2 py-px text-[10.5px] font-bold ${FEEDBACK_TONE[fb]}`}
-        >
-          Devolutiva {fb === "atrasada" ? "atrasada" : `até ${brDate(c.feedbackDue).slice(0, 5)}`}
-        </button>
-      )}
-      <div className="flex items-center gap-1.5">
-        {next && (
-          <button
-            type="button"
-            onClick={() => onMove(c, next)}
-            className="rounded-[8px] bg-ink px-2 py-1 text-[11.5px] font-bold text-bg transition hover:brightness-110"
+    <li
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", c.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      className={`group relative cursor-grab rounded-[10px] border border-border bg-surface shadow-[0_1px_1px_rgba(0,0,0,0.14)] transition hover:border-border-strong active:cursor-grabbing ${
+        dragging ? "rotate-[2deg] opacity-40" : ""
+      }`}
+    >
+      <button type="button" onClick={() => onEdit(c)} className="flex w-full flex-col gap-1.5 px-3 pb-2.5 pt-2.5 text-left">
+        {showJob && c.jobTitle && (
+          <span
+            className="max-w-full self-start truncate rounded-[4px] px-1.5 py-px text-[10.5px] font-bold leading-4 text-[#1d2125]"
+            style={{ background: jobColor(c.jobId ?? c.jobTitle) }}
           >
-            {next === "contratado" ? "Contratar" : `Aprovar · ${STAGE_SHORT[next]}`}
-          </button>
+            {c.jobTitle}
+          </span>
         )}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenu((v) => !v)}
-            aria-expanded={menu}
-            className="rounded-[8px] border border-border px-2 py-1 text-[11.5px] font-semibold text-muted transition hover:text-ink"
+        <span className="pr-6 text-[13.5px] font-medium leading-5 text-ink">{c.name}</span>
+        {(since || c.notes || c.contact || fb === "pendente" || fb === "atrasada" || fb === "no_prazo") && (
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted">
+            {(fb === "pendente" || fb === "atrasada") && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFeedback(c);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onFeedback(c);
+                  }
+                }}
+                title={fb === "atrasada" ? "Devolutiva atrasada: registrar" : "Devolutiva pendente: registrar"}
+                className={`inline-flex items-center gap-1 rounded-[4px] px-1.5 py-px font-semibold ${FEEDBACK_TONE[fb]}`}
+              >
+                <IconClock className="h-3.5 w-3.5" />
+                {brDate(c.feedbackDue).slice(0, 5)}
+              </span>
+            )}
+            {fb === "no_prazo" && (
+              <span title="Devolutiva dada no prazo" className={`inline-flex items-center gap-1 rounded-[4px] px-1.5 py-px font-semibold ${FEEDBACK_TONE[fb]}`}>
+                <IconCheckCircle className="h-3.5 w-3.5" />
+                Devolutiva
+              </span>
+            )}
+            {since && (
+              <span title={`Na fase desde ${brDate(since)}`} className="inline-flex items-center gap-1">
+                <IconCalendar className="h-3.5 w-3.5" />
+                {brDate(since).slice(0, 5)}
+              </span>
+            )}
+            {c.notes && (
+              <span title="Tem observações" className="inline-flex items-center">
+                <IconText className="h-3.5 w-3.5" />
+              </span>
+            )}
+            {c.contact && (
+              <span title="Tem contato" className="inline-flex items-center">
+                <IconPhone className="h-3.5 w-3.5" />
+              </span>
+            )}
+          </span>
+        )}
+      </button>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          // Perto do fim da tela, o menu abre para cima.
+          const top = r.bottom + 340 > window.innerHeight ? Math.max(8, r.top - 344) : r.bottom + 4;
+          setMenu((m) => (m ? null : { top, left: Math.min(r.left, window.innerWidth - 216) }));
+        }}
+        aria-label={`Ações de ${c.name}`}
+        aria-expanded={Boolean(menu)}
+        className={`absolute right-1.5 top-1.5 rounded-[8px] p-1 text-muted transition hover:bg-surface-2 hover:text-ink focus-visible:opacity-100 ${
+          menu ? "bg-surface-2 opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        <IconDots className="h-4 w-4" />
+      </button>
+
+      {menu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} aria-hidden="true" />
+          <div
+            role="menu"
+            style={{ top: menu.top, left: menu.left }}
+            className="fixed z-50 flex w-52 flex-col rounded-[10px] border border-border bg-surface p-1 shadow-[0_12px_30px_-14px_rgba(0,0,0,0.5)]"
           >
-            Mais
-          </button>
-          {menu && (
-            <div
-              role="menu"
-              onMouseLeave={() => setMenu(false)}
-              className="absolute left-0 top-[calc(100%+4px)] z-20 flex w-44 flex-col rounded-[10px] border border-border bg-surface p-1 shadow-[0_12px_30px_-14px_rgba(0,0,0,0.5)]"
-            >
-              {STAGES.filter((s) => s !== c.stage).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenu(false);
-                    onMove(c, s);
-                  }}
-                  className="rounded-[7px] px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-ink hover:bg-surface-2"
-                >
-                  {STAGE_SHORT[s]}
-                </button>
-              ))}
+            {next && (
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  setMenu(false);
-                  onRemove(c);
+                  setMenu(null);
+                  onMove(c, next);
                 }}
-                className="rounded-[7px] px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-critical hover:bg-surface-2"
+                className={`${item} text-ok`}
               >
-                Excluir
+                {next === "contratado" ? "Contratar" : `Aprovar · ${STAGE_SHORT[next]}`}
               </button>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(null);
+                onFeedback(c);
+              }}
+              className={item}
+            >
+              Registrar devolutiva
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(null);
+                onEdit(c);
+              }}
+              className={item}
+            >
+              Abrir cartão
+            </button>
+            <span className="px-2.5 pb-1 pt-2 text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted">Mover para</span>
+            {STAGES.filter((s) => s !== c.stage && s !== next).map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenu(null);
+                  onMove(c, s);
+                }}
+                className={item}
+              >
+                {STAGE_SHORT[s]}
+              </button>
+            ))}
+            <span className="my-1 border-t border-border" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(null);
+                onRemove(c);
+              }}
+              className={`${item} text-critical`}
+            >
+              Excluir
+            </button>
+          </div>
+        </>
+      )}
     </li>
   );
 }
