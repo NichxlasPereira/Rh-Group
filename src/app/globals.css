@@ -341,7 +341,7 @@ body {
   .rh-dock-item[data-aberto] {
     margin-inline: 14px;
   }
-  /* Bolinha neon cinza correndo pela borda do ícone escolhido, deixando um rastro que some
+  /* Bolinha vermelha (cor da marca) correndo pela borda do ícone escolhido, deixando um rastro que some
      (::before é o rastro, ::after a bolinha; giram juntos, a bolinha na frente). */
   .rh-dock-icone::before,
   .rh-dock-icone::after {
@@ -354,7 +354,7 @@ body {
   .rh-dock-icone::before {
     inset: 0;
     border-radius: 9999px;
-    background: conic-gradient(from 0deg, transparent 0 70%, var(--neon-cinza) 100%);
+    background: conic-gradient(from 0deg, transparent 0 70%, var(--brand) 100%);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
     mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
   }
@@ -363,7 +363,7 @@ body {
   /* Camada com folga (8px) em volta do círculo para o brilho da bolinha não ser cortado. */
   .rh-dock-icone::after {
     inset: -8px;
-    background: radial-gradient(circle at 50% 9px, var(--neon-cinza) 0 2.6px, var(--neon-cinza-glow) 3.2px, transparent 6px);
+    background: radial-gradient(circle at 50% 9px, var(--brand) 0 2.6px, color-mix(in srgb, var(--brand) 45%, transparent) 3.2px, transparent 6px);
   }
   [data-aberto] > .rh-dock-icone::before,
   [data-aberto] > .rh-dock-icone::after {
