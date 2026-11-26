@@ -8,6 +8,7 @@ import { ATTACHMENT_ACCEPT, MAX_ATTACHMENT_MB, formatFileSize } from "@/lib/atte
 import { EMPLOYEE_DOCUMENT_TYPES } from "@/lib/employeeProfile";
 import { formatDateBR } from "@/lib/format";
 import { ActionButton, inputClass } from "./formControls";
+import { Select } from "../Select";
 
 export interface UploadedDocument {
   id: string;
@@ -90,14 +91,14 @@ export function EmployeeDocuments({ employeeId, documents, onChange }: EmployeeD
       >
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-ink">Documento</span>
-          <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass(false)}>
+          <Select value={type} onChange={(e) => setType(e.target.value)} className={inputClass(false)}>
             {EMPLOYEE_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
             <option value={OTHER}>Outro...</option>
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-ink">Arquivo</span>

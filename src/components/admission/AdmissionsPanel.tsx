@@ -24,6 +24,7 @@ import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { TermsSettingsModal, companyIncomplete } from "./TermsSettingsModal";
 import { LocalCopyModal } from "./LocalCopyModal";
 import { AdmissionKitCard, kitStepStatus, type KitState } from "./AdmissionKitCard";
+import { Select } from "../Select";
 
 async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -1298,7 +1299,7 @@ function InternalInfoCard({
         <input value={values.role} onChange={(e) => set("role", e.target.value)} className={inputClass(false)} autoFocus />
       </Field>
       <Field label="Setor (empresa)">
-        <select
+        <Select
           value={values.department}
           // As áreas são de cada empresa: trocar de setor limpa a área.
           onChange={(e) => setValues((v) => ({ ...v, department: e.target.value, areaId: "" }))}
@@ -1314,10 +1315,10 @@ function InternalInfoCard({
               {dep}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       <Field label="Área">
-        <select
+        <Select
           value={values.areaId}
           onChange={(e) => set("areaId", e.target.value)}
           disabled={!values.department || areasFor(values.department).length === 0}
@@ -1330,7 +1331,7 @@ function InternalInfoCard({
                 {a.name}
               </option>
             ))}
-        </select>
+        </Select>
       </Field>
       <Field label="Início previsto">
         <input
@@ -1453,7 +1454,7 @@ function NdaCompanyCard({
         )}
       </div>
       {editable && companies.length > 0 ? (
-        <select
+        <Select
           value={current}
           onChange={(e) => {
             const next = e.target.value;
@@ -1476,7 +1477,7 @@ function NdaCompanyCard({
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
       ) : (
         <span className="text-sm text-ink">{company?.name ?? "Sem termos"}</span>
       )}

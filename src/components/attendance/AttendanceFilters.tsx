@@ -2,6 +2,7 @@
 
 import { OCCURRENCE_LABEL, OCCURRENCE_TYPES, OccurrenceType, monthKeyLabel } from "@/lib/attendance";
 import { IconSearch } from "../icons";
+import { Select } from "../Select";
 
 export type AttendanceTabKey = "mural" | "calendario" | "ocorrencias" | "colaboradores" | "prestadores" | "aniversariantes" | "relatorios" | "selecao" | "admissoes" | "offboarding" | "acessos";
 
@@ -48,14 +49,14 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
       {/* Aniversariantes troca de mês no próprio cartão. */}
       {tab !== "aniversariantes" && (
         <Field label="Mês" className="w-full sm:w-44">
-          <select value={props.month} onChange={(e) => props.onMonthChange(e.target.value)} className={selectClass}>
+          <Select value={props.month} onChange={(e) => props.onMonthChange(e.target.value)} className={selectClass}>
             {tab !== "relatorios" && <option value={ALL_MONTHS}>Todo o período</option>}
             {props.months.map((m) => (
               <option key={m} value={m}>
                 {monthKeyLabel(m)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 
@@ -75,7 +76,7 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
 
       {tab === "ocorrencias" && (
         <Field label="Tipo" className="w-full sm:w-40">
-          <select
+          <Select
             value={props.type}
             onChange={(e) => props.onTypeChange(e.target.value as OccurrenceType | "")}
             className={selectClass}
@@ -86,14 +87,14 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
                 {OCCURRENCE_LABEL[t]}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 
       {/* Em Colaboradores o setor se escolhe na faixa de setores. */}
       {tab !== "colaboradores" && (
         <Field label="Setor" className="w-full sm:w-44">
-          <select
+          <Select
             value={props.department}
             onChange={(e) => props.onDepartmentChange(e.target.value)}
             className={selectClass}
@@ -104,7 +105,7 @@ export function AttendanceFilters(props: AttendanceFiltersProps) {
                 {d}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 

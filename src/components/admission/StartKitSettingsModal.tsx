@@ -6,6 +6,7 @@ import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { inputClass } from "../attendance/formControls";
 import { IconEdit, IconTrash } from "../icons";
+import { Select } from "../Select";
 
 interface Item {
   id: string;
@@ -321,7 +322,7 @@ export function StartKitSettingsModal({
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex min-w-[14rem] flex-1 flex-col gap-1.5">
                 <span className="text-xs font-semibold text-muted">Mandar uma mensagem de teste para</span>
-                <select value={testUser} onChange={(e) => setTestUser(e.target.value)} className={inputClass(false)}>
+                <Select value={testUser} onChange={(e) => setTestUser(e.target.value)} className={inputClass(false)}>
                   <option value="">Escolha a pessoa…</option>
                   {(people ?? []).map((p) => (
                     <option key={p.id} value={p.id}>
@@ -329,7 +330,7 @@ export function StartKitSettingsModal({
                       {p.title ? ` — ${p.title}` : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <Button type="button" variant="ghost" className="!px-4 !py-2 text-xs" disabled={busy || !testUser} onClick={sendTest}>
                 Enviar teste
@@ -416,7 +417,7 @@ export function StartKitSettingsModal({
               className={inputClass(false)}
             />
             <label className="flex flex-col gap-1.5 sm:col-span-2">
-              <select
+              <Select
                 value={form.slackMention}
                 onChange={(e) => {
                   const person = peopleOptions.find((p) => p.id === e.target.value);
@@ -432,18 +433,18 @@ export function StartKitSettingsModal({
                     {p.title ? ` — ${p.title}` : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
               <span className="text-xs text-muted">Essa pessoa recebe o item por mensagem direta e marca “Pronto” quando resolver.</span>
             </label>
-            <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value, area: "" })} className={inputClass(false)}>
+            <Select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value, area: "" })} className={inputClass(false)}>
               <option value="">Todas as empresas</option>
               {departments.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               value={form.area}
               onChange={(e) => setForm({ ...form, area: e.target.value })}
               disabled={!form.department || formAreas.length === 0}
@@ -455,7 +456,7 @@ export function StartKitSettingsModal({
                   {a}
                 </option>
               ))}
-            </select>
+            </Select>
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" className="!px-4 !py-2 text-xs" disabled={busy || !form.name.trim() || !form.responsible.trim()}>
                 {editingId ? "Salvar item" : "Adicionar item"}

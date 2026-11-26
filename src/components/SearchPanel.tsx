@@ -2,6 +2,7 @@
 
 import { TabKey } from "./Tabs";
 import { IconSearch } from "./icons";
+import { Select } from "./Select";
 
 export type MaterialSortKey = "nome" | "estoque-asc" | "estoque-desc";
 
@@ -47,7 +48,7 @@ export function SearchPanel({
           </Field>
 
           <Field label="Categoria">
-            <select
+            <Select
               value={materialCategory}
               onChange={(e) => onMaterialCategoryChange(e.target.value)}
               className="w-full rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
@@ -58,11 +59,11 @@ export function SearchPanel({
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <Field label="Ordenar por">
-            <select
+            <Select
               value={materialSort}
               onChange={(e) => onMaterialSortChange(e.target.value as MaterialSortKey)}
               className="w-full rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
@@ -70,7 +71,7 @@ export function SearchPanel({
               <option value="nome">Nome (A-Z)</option>
               <option value="estoque-asc">Estoque (crescente)</option>
               <option value="estoque-desc">Estoque (decrescente)</option>
-            </select>
+            </Select>
           </Field>
         </>
       ) : (

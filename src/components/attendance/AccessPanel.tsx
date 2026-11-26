@@ -6,6 +6,7 @@ import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { IconPlus, IconTrash, IconUsers } from "../icons";
 import { ActionButton, EmptyState, Field, SkeletonRows, inputClass } from "./formControls";
+import { Select } from "../Select";
 
 export interface AccessUser {
   id: string;
@@ -163,7 +164,7 @@ export function AccessPanel({ currentUserId, onChanged }: AccessPanelProps) {
                         <p className="text-xs text-muted">{u.email}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <select
+                        <Select
                           value={u.role}
                           onChange={(e) =>
                             update(u, { role: e.target.value as AccessUser["role"] }, "Perfil atualizado.")
@@ -172,7 +173,7 @@ export function AccessPanel({ currentUserId, onChanged }: AccessPanelProps) {
                         >
                           <option value="member">Acesso</option>
                           <option value="admin">Administrador</option>
-                        </select>
+                        </Select>
                       </td>
                       <td className="px-4 py-3">
                         {u.active ? (
@@ -341,14 +342,14 @@ function AddUserModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
           />
         </Field>
         <Field label="Perfil" hint="Administradores também liberam e removem acessos.">
-          <select
+          <Select
             value={values.role}
             onChange={(e) => setValues((v) => ({ ...v, role: e.target.value as AccessUser["role"] }))}
             className={inputClass(false)}
           >
             <option value="member">Acesso — vê e registra ocorrências</option>
             <option value="admin">Administrador — também gerencia acessos</option>
-          </select>
+          </Select>
         </Field>
         {error && <span className="text-xs text-critical">{error}</span>}
       </form>

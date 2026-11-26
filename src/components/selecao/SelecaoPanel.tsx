@@ -57,6 +57,7 @@ import {
   todayKey,
 } from "@/lib/selecao";
 import { redirectIfSessionExpired } from "@/lib/sessionClient";
+import { Select } from "../Select";
 
 type View = "quadro" | "funil" | "devolutivas" | "banco";
 
@@ -1321,7 +1322,7 @@ function PoolView({
                 {(c.feedbackNote || c.notes) && <span className="mt-0.5 line-clamp-2 text-xs text-muted">{c.feedbackNote || c.notes}</span>}
               </span>
               {c.contact && <span className="shrink-0 font-mono text-xs text-ink">{c.contact}</span>}
-              <select
+              <Select
                 value=""
                 onChange={(e) => e.target.value && onCall(c, e.target.value)}
                 disabled={open.length === 0}
@@ -1334,7 +1335,7 @@ function PoolView({
                     {j.title}
                   </option>
                 ))}
-              </select>
+              </Select>
               <span className="flex shrink-0 items-center opacity-60 transition group-hover:opacity-100">
                 <button type="button" onClick={() => onEdit(c)} aria-label={`Editar ${c.name}`} className="rounded-[8px] p-1.5 text-muted hover:bg-surface-2 hover:text-ink">
                   <IconEdit className="h-4 w-4" />
@@ -1432,22 +1433,22 @@ function JobModal({
             </datalist>
           </Field>
           <Field label="Prioridade">
-            <select value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} className={select}>
+            <Select value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} className={select}>
               {[1, 2, 3].map((p) => (
                 <option key={p} value={p}>
                   {PRIORITY_LABEL[p]}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field label="Status">
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as JobStatus })} className={select}>
+            <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as JobStatus })} className={select}>
               {JOB_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {JOB_STATUS_LABEL[s]}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field label="Posições">
             <input type="number" min={1} max={500} value={form.positions} onChange={(e) => setForm({ ...form, positions: Number(e.target.value) })} className={inputClass(false)} />
@@ -1558,23 +1559,23 @@ function CandidateModal({
             <input value={form.contact ?? ""} maxLength={80} onChange={(e) => set({ contact: e.target.value || null })} placeholder="Telefone ou e-mail" className={inputClass(false)} />
           </Field>
           <Field label="Vaga">
-            <select value={form.jobId ?? ""} onChange={(e) => set({ jobId: e.target.value || null })} className={select}>
+            <Select value={form.jobId ?? ""} onChange={(e) => set({ jobId: e.target.value || null })} className={select}>
               <option value="">{form.jobTitle ? `${form.jobTitle} (vaga excluída)` : "Sem vaga"}</option>
               {jobs.map((j) => (
                 <option key={j.id} value={j.id}>
                   {j.title}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field label="Situação">
-            <select value={form.stage} onChange={(e) => set({ stage: e.target.value as Stage })} className={select}>
+            <Select value={form.stage} onChange={(e) => set({ stage: e.target.value as Stage })} className={select}>
               {STAGES.map((s) => (
                 <option key={s} value={s}>
                   {STAGE_LABEL[s]}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -1589,14 +1590,14 @@ function CandidateModal({
           <legend className="px-1 text-xs font-bold text-muted">Devolutiva</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Tipo">
-              <select value={form.feedbackType ?? ""} onChange={(e) => set({ feedbackType: (e.target.value || null) as FeedbackType | null })} className={select}>
+              <Select value={form.feedbackType ?? ""} onChange={(e) => set({ feedbackType: (e.target.value || null) as FeedbackType | null })} className={select}>
                 <option value="">Nenhuma</option>
                 {FEEDBACK_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {FEEDBACK_LABEL[t]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             {date("feedbackDue", "Prazo")}
             {date("feedbackAt", "Dada em")}
@@ -1684,14 +1685,14 @@ function FeedbackModal({
           </Field>
         </div>
         <Field label="Tipo">
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as FeedbackType | "" })} className={`${inputClass(false)} h-10`}>
+          <Select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as FeedbackType | "" })} className={`${inputClass(false)} h-10`}>
             <option value="">—</option>
             {FEEDBACK_TYPES.map((t) => (
               <option key={t} value={t}>
                 {FEEDBACK_LABEL[t]}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Ponderações (opcional)">
           <textarea rows={3} value={form.note} maxLength={1000} onChange={(e) => setForm({ ...form, note: e.target.value })} className={inputClass(false)} />

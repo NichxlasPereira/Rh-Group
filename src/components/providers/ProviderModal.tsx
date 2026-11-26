@@ -5,6 +5,7 @@ import { Modal } from "../Modal";
 import { Button } from "../Button";
 import { Field, inputClass } from "../attendance/formControls";
 import { ProviderDetail } from "@/lib/providers";
+import { Select } from "../Select";
 
 /** Os mesmos campos do colaborador, mais o início e a validade do contrato. */
 export interface ProviderFormValues {
@@ -103,7 +104,7 @@ export function ProviderModal({ open, onClose, provider, departments, areasBySec
         </Field>
 
         <Field label="Setor (empresa)" hint="Empresas com CNPJ cadastrado no onboarding.">
-          <select
+          <Select
             value={values.department}
             // As áreas são de cada empresa: trocar de setor limpa a área.
             onChange={(e) => setValues((v) => ({ ...v, department: e.target.value, area: "" }))}
@@ -118,7 +119,7 @@ export function ProviderModal({ open, onClose, provider, departments, areasBySec
                 {d}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label="Cargo (opcional)">
@@ -135,7 +136,7 @@ export function ProviderModal({ open, onClose, provider, departments, areasBySec
                 : undefined
           }
         >
-          <select
+          <Select
             value={values.area}
             onChange={(e) => set("area", e.target.value)}
             disabled={areas.length === 0}
@@ -147,7 +148,7 @@ export function ProviderModal({ open, onClose, provider, departments, areasBySec
                 {a}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <div />

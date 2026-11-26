@@ -24,6 +24,7 @@ import {
 import { IconPaperclip, IconX } from "../icons";
 import { todayInputValue } from "@/lib/format";
 import { Field, inputClass } from "./formControls";
+import { Select } from "../Select";
 
 export interface OccurrenceFormValues {
   employeeId: string;
@@ -212,7 +213,7 @@ export function OccurrenceModal({
     >
       <form id="occurrence-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Field label="Colaborador" error={errors.employeeId}>
-          <select
+          <Select
             value={values.employeeId}
             onChange={(e) => set("employeeId", e.target.value)}
             className={inputClass(!!errors.employeeId)}
@@ -225,7 +226,7 @@ export function OccurrenceModal({
                 {!emp.active ? " (inativo)" : ""}
               </option>
             ))}
-          </select>
+          </Select>
           {employees.length === 0 && (
             <span className="text-xs text-muted">Cadastre um colaborador antes de registrar ocorrências.</span>
           )}

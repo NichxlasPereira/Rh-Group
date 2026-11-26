@@ -7,6 +7,7 @@ import { Button } from "../Button";
 import { Employee, MAX_ATTACHMENT_MB } from "@/lib/attendance";
 import { DISPLAYABLE_IMAGE, PHOTO_DOCUMENT_NAME } from "@/lib/employeeProfile";
 import { PhotoMatchKind, matchPhoto } from "@/lib/photoMatch";
+import { Select } from "../Select";
 
 interface PhotoImportModalProps {
   open: boolean;
@@ -244,7 +245,7 @@ export function PhotoImportModal({ open, onClose, employees, onImported }: Photo
                       {r.invalid ? (
                         <span className="text-xs text-muted">{r.invalid}</span>
                       ) : (
-                        <select
+                        <Select
                           value={r.employeeId}
                           disabled={sending || r.status === "enviada"}
                           onChange={(e) => choose(r.key, e.target.value)}
@@ -269,7 +270,7 @@ export function PhotoImportModal({ open, onClose, employees, onImported }: Photo
                               </option>
                             ))}
                           </optgroup>
-                        </select>
+                        </Select>
                       )}
                       {isRepeated && <span className="text-xs font-semibold text-critical">Outra foto marcada para esta pessoa.</span>}
                       {r.error && <span className="text-xs text-critical">{r.error}</span>}

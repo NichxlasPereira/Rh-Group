@@ -43,6 +43,7 @@ import { redirectIfSessionExpired } from "@/lib/sessionClient";
 import { campaignColor } from "@/lib/campaigns";
 import { SlackRemindersModal, SuggestionsModal } from "./CalendarExtras";
 import type { ExitKitView } from "@/lib/startKit";
+import { Select } from "../Select";
 
 type Icon = (props: { className?: string }) => React.ReactNode;
 
@@ -308,7 +309,7 @@ export function CalendarPanel({
                 </button>
               )}
             </div>
-            <select
+            <Select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               aria-label="Empresa"
@@ -320,7 +321,7 @@ export function CalendarPanel({
                   {d}
                 </option>
               ))}
-            </select>
+            </Select>
           </header>
 
           <div className="flex flex-wrap gap-1.5 border-b border-border px-4 py-2.5">
@@ -615,13 +616,13 @@ function EventModal({
           />
         </Field>
         <Field label="Tipo">
-          <select value={type} onChange={(e) => setType(e.target.value as EventType)} className={selectClass}>
+          <Select value={type} onChange={(e) => setType(e.target.value as EventType)} className={selectClass}>
             {EVENT_TYPES.map((t) => (
               <option key={t} value={t}>
                 {EVENT_LABEL[t]}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Início">

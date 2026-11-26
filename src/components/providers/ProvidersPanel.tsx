@@ -16,6 +16,7 @@ import { ContractBadge } from "./ContractBadge";
 import { ProviderFormValues, ProviderModal } from "./ProviderModal";
 import { ProviderSheet, SheetTab } from "./ProviderSheet";
 import { ProviderImportModal } from "./ProviderImportModal";
+import { Select } from "../Select";
 
 async function call(url: string, init?: RequestInit) {
   const res = await fetch(url, init);
@@ -213,14 +214,14 @@ export function ProvidersPanel({
           </div>
         </FilterField>
         <FilterField label="Empresa" className="w-full sm:w-44">
-          <select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
+          <Select value={department} onChange={(e) => setDepartment(e.target.value)} className={selectClass}>
             <option value="">Todas as empresas</option>
             {companies.map((d) => (
               <option key={d} value={d}>
                 {d}
               </option>
             ))}
-          </select>
+          </Select>
         </FilterField>
         <label className="flex h-10 items-center gap-2 text-sm text-muted">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />

@@ -7,6 +7,7 @@ import { CompanyArea, Employee, MAX_ATTACHMENT_MB } from "@/lib/attendance";
 import { DISPLAYABLE_IMAGE } from "@/lib/employeeProfile";
 import { RECORD_FIELDS, RecordEntry, RecordFieldKey } from "@/lib/employeeRecord";
 import { Field, inputClass } from "./formControls";
+import { Select } from "../Select";
 
 export interface EmployeeFormValues {
   name: string;
@@ -288,7 +289,7 @@ export function EmployeeModal({
         </Field>
 
         <Field label="Setor (empresa)" hint="Empresas com CNPJ cadastrado no onboarding.">
-          <select
+          <Select
             value={values.department}
             // As áreas são de cada empresa: trocar de setor limpa a área.
             onChange={(e) => setValues((v) => ({ ...v, department: e.target.value, areaId: "", areaLead: false, managerId: "" }))}
@@ -304,7 +305,7 @@ export function EmployeeModal({
                 {d}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label="Cargo (opcional)">
@@ -326,7 +327,7 @@ export function EmployeeModal({
                 : "Usada no organograma."
           }
         >
-          <select
+          <Select
             value={values.areaId}
             onChange={(e) =>
               setValues((v) => ({ ...v, areaId: e.target.value, areaLead: e.target.value ? v.areaLead : false }))
@@ -340,7 +341,7 @@ export function EmployeeModal({
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <label
@@ -370,7 +371,7 @@ export function EmployeeModal({
           }
           className="sm:col-span-2"
         >
-          <select
+          <Select
             value={values.managerId}
             onChange={(e) => setValues((v) => ({ ...v, managerId: e.target.value }))}
             disabled={!values.department}
@@ -401,7 +402,7 @@ export function EmployeeModal({
                 ))}
               </optgroup>
             )}
-          </select>
+          </Select>
         </Field>
 
         <Field
@@ -435,7 +436,7 @@ export function EmployeeModal({
         </Field>
 
         <Field label="Tipo de contrato">
-          <select
+          <Select
             value={values.contractType}
             onChange={(e) => setValues((v) => ({ ...v, contractType: e.target.value }))}
             className={inputClass(false)}
@@ -446,7 +447,7 @@ export function EmployeeModal({
                 {c === "PJ" ? "PJ (prestação de serviços)" : c}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field

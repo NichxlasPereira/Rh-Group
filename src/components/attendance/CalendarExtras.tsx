@@ -10,6 +10,7 @@ import { CalendarEventInfo, EVENT_TONE } from "@/lib/calendar";
 import { MONTH_NAMES } from "@/lib/birthdays";
 import { alreadyAdded, campaignColor, suggestionsFor } from "@/lib/campaigns";
 import { redirectIfSessionExpired } from "@/lib/sessionClient";
+import { Select } from "../Select";
 
 function shortDate(day: string): string {
   return `${day.slice(8, 10)}/${day.slice(5, 7)}`;
@@ -356,7 +357,7 @@ export function SlackRemindersModal({ open, onClose }: { open: boolean; onClose:
                 ))}
               </div>
             )}
-            <select
+            <Select
               value={pick}
               disabled={!data.slack.ok}
               onChange={(e) => {
@@ -374,7 +375,7 @@ export function SlackRemindersModal({ open, onClose }: { open: boolean; onClose:
                   {p.title ? ` — ${p.title}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
             {form.recipients.length === 0 && (
               <span className="text-xs text-muted">Sem ninguém escolhido, os avisos ficam desligados.</span>
             )}
@@ -391,7 +392,7 @@ export function SlackRemindersModal({ open, onClose }: { open: boolean; onClose:
               )}
             <label className="flex flex-col gap-1.5">
               <span className="font-medium text-ink">Lembrete antes</span>
-              <select
+              <Select
                 value={form.daysBefore}
                 onChange={(e) => setForm({ ...form, daysBefore: Number(e.target.value) })}
                 className={`${inputClass(false)} h-10`}
@@ -401,7 +402,7 @@ export function SlackRemindersModal({ open, onClose }: { open: boolean; onClose:
                     {n === 0 ? "Sem lembrete antecipado" : n === 1 ? "1 dia antes" : `${n} dias antes`}
                   </option>
                 ))}
-              </select>
+              </Select>
               <span className="text-xs text-muted">De feriados, recessos, comemorações, campanhas e treinamentos.</span>
             </label>
             {check(
