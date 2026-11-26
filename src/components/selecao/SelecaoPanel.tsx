@@ -9,7 +9,9 @@ import { SectorSlider } from "../attendance/SectorSlider";
 import {
   IconArrowUpTray,
   IconCalendar,
+  IconCheck,
   IconCheckCircle,
+  IconChevronDown,
   IconChevronRight,
   IconClock,
   IconCollapse,
@@ -644,26 +646,7 @@ function BoardView({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2.5">
-        <label className="relative flex min-w-[15rem] flex-1 sm:flex-none">
-          <span className="sr-only">Vaga</span>
-          <select
-            value={jobFilter}
-            onChange={(e) => onJobFilter(e.target.value)}
-            className={`${inputClass(false)} h-10 w-full pl-8 sm:w-[20rem]`}
-          >
-            <option value="">Todas as vagas</option>
-            {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.title} · {JOB_STATUS_LABEL[j.status]}
-              </option>
-            ))}
-          </select>
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
-            style={{ background: jobFilter ? jobColor(jobFilter) : "var(--color-border-strong)" }}
-          />
-        </label>
+        <JobPicker jobs={jobs} candidates={candidates} value={jobFilter} onChange={onJobFilter} />
         <label className="relative flex min-w-[13rem] flex-1 sm:max-w-[18rem]">
           <span className="sr-only">Buscar candidato</span>
           <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -746,6 +729,155 @@ function BoardView({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Seletor de vaga do quadro: lista própria (no lugar da lista do sistema), agrupada por situação. */
+function JobPicker({
+  jobs,
+  candidates,
+  value,
+  onChange,
+}: {
+  jobs: JobInfo[];
+  candidates: CandidateInfo[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const current = jobs.find((j) => j.id === value) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const inProcess = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of candidates) {
+      if (c.jobId && (c.stage === "fase1" || c.stage === "fase2" || c.stage === "fase3")) m.set(c.jobId, (m.get(c.jobId) ?? 0) + 1);
+    }
+    return m;
+  }, [candidates]);
+
+  const term = query.trim().toLowerCase();
+  const groups = JOB_STATUSES.map((status) => ({
+    status,
+    items: jobs.filter((j) => j.status === status && (!term || j.title.toLowerCase().includes(term))),
+  })).filter((g) => g.items.length > 0);
+
+  function pick(id: string) {
+    onChange(id);
+    setOpen(false);
+    setQuery("");
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      setOpen(false);
+      return;
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const items = [...(listRef.current?.querySelectorAll<HTMLButtonElement>("[role=option]") ?? [])];
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "ArrowDown" ? (i < 0 ? 0 : Math.min(items.length - 1, i + 1)) : i <= 0 ? -1 : i - 1;
+    if (next < 0) rootRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    else items[next].focus();
+  }
+
+  const option = (id: string, label: string, color: string, right?: React.ReactNode) => {
+    const selected = value === id;
+    return (
+      <button
+        key={id || "todas"}
+        type="button"
+        role="option"
+        aria-selected={selected}
+        onClick={() => pick(id)}
+        className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-[13.5px] outline-none transition hover:bg-surface-2 focus-visible:bg-surface-2 ${
+          selected ? "bg-surface-2 font-semibold text-ink" : "text-ink"
+        }`}
+      >
+        <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {right}
+        <IconCheck className={`h-4 w-4 shrink-0 text-brand ${selected ? "" : "invisible"}`} />
+      </button>
+    );
+  };
+
+  return (
+    <div ref={rootRef} className="relative min-w-[15rem] flex-1 sm:w-[20rem] sm:flex-none" onKeyDown={onKeyDown}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Vaga: ${current?.title ?? "Todas as vagas"}`}
+        className={`${inputClass(false)} flex h-10 w-full items-center gap-3 text-left ${open ? "border-brand" : ""}`}
+      >
+        <span
+          aria-hidden="true"
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ background: current ? jobColor(current.id) : "var(--color-border-strong)" }}
+        />
+        <span className="min-w-0 flex-1 truncate">{current?.title ?? "Todas as vagas"}</span>
+        <IconChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 flex w-[max(100%,22rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[14px] border border-border bg-surface shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)]">
+          {jobs.length > 6 && (
+            <div className="border-b border-border p-2">
+              <label className="relative flex">
+                <span className="sr-only">Buscar vaga</span>
+                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar vaga"
+                  className={`${inputClass(false)} h-9 pl-9`}
+                />
+              </label>
+            </div>
+          )}
+          <div ref={listRef} role="listbox" aria-label="Vagas" className="flex max-h-[22rem] flex-col overflow-y-auto p-1.5">
+            {!term && option("", "Todas as vagas", "var(--color-border-strong)")}
+            {groups.map((g) => (
+              <div key={g.status} className="flex flex-col">
+                <span className="px-3 pb-1 pt-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted">
+                  {JOB_STATUS_LABEL[g.status]}s · {g.items.length}
+                </span>
+                {g.items.map((j) => {
+                  const n = inProcess.get(j.id) ?? 0;
+                  return option(
+                    j.id,
+                    j.title,
+                    jobColor(j.id),
+                    n > 0 ? (
+                      <span title={`${n} em processo`} className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px font-mono text-[11px] font-bold tabular-nums text-muted">
+                        {n}
+                      </span>
+                    ) : null
+                  );
+                })}
+              </div>
+            ))}
+            {groups.length === 0 && <span className="px-3 py-4 text-center text-sm text-muted">Nenhuma vaga com esse nome.</span>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

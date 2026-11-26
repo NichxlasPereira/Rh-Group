@@ -316,3 +316,4 @@ export const IconPhone = strokeIcon(
 );
 export const IconCollapse = strokeIcon("M3 12h6M6.5 9l2.5 3-2.5 3M21 12h-6M17.5 9 15 12l2.5 3");
 export const IconDots = strokeIcon("M5 12h.01M12 12h.01M19 12h.01");
+export const IconCheck = strokeIcon("M5 12.5l4.5 4.5L19 7.5");
