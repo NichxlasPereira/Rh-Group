@@ -100,7 +100,7 @@ export function ThemeToggle({ placement = "below" }: { placement?: "below" | "si
         aria-expanded={open}
         onClick={toggleOpen}
         className={`flex h-10 w-10 items-center justify-center rounded-full border text-ink transition-[color,background-color,border-color,box-shadow] duration-200 hover:bg-surface-2 ${
-          open ? "border-brand bg-surface-2 ring-2 ring-brand/35" : "border-border-strong"
+          open ? "border-border-strong bg-surface-2 ring-2 ring-brand ring-offset-2 ring-offset-surface" : "border-border-strong"
         }`}
       >
         <CurrentIcon className="h-[18px] w-[18px]" />
