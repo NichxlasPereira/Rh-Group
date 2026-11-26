@@ -277,9 +277,12 @@ export function RhShell<K extends string>({
               {title}
               <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
             </h1>
-            <p className="max-w-[62ch] text-sm text-white/85">{description}</p>
+            {/* Altura fixa (duas linhas) para a faixa não mudar de tamanho de uma aba para outra. */}
+            <p className="line-clamp-2 min-h-[2.5rem] max-w-[62ch] text-sm leading-5 text-white/85" title={description}>
+              {description}
+            </p>
           </div>
-          <div key={`${String(active)}-acoes`} className="rh-fade relative flex flex-wrap items-center gap-2.5">
+          <div key={`${String(active)}-acoes`} className="rh-fade relative flex min-h-10 flex-wrap items-center gap-2.5">
             {actions}
           </div>
         </header>
