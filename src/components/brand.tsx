@@ -36,7 +36,7 @@ export function CffLogo({ className, title = "CFF Group" }: { className?: string
  * "GROUP" na vertical. Decorativo; fica atrás do conteúdo.
  * - "tall" (painéis altos, como a tela de entrada): a composição inteira,
  *   sempre visível, ancorada no canto inferior direito.
- * - "band" (faixas baixas): só as linhas, que podem ser recortadas sem perder nada.
+ * - "band" (faixas baixas): o logo inteiro em traço claro, à direita.
  */
 export function BrandArt({
   className,
@@ -53,13 +53,28 @@ export function BrandArt({
     animated ? { pathLength: 1, className: "auth-draw", style: { animationDelay: `${delay}ms` } } : {};
   const dot = animated ? "auth-dot" : undefined;
   if (variant === "band") {
+    // O logo inteiro (C, F, F, "GROUP" e o ponto), em traço claro e sempre visível por completo,
+    // ancorado à direita da faixa (antes era um pedaço ampliado das linhas, difícil de reconhecer).
     return (
-      <svg viewBox="0 0 520 220" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
-        <g fill="none" stroke="currentColor" strokeWidth="18">
-          <path d="M540 196H170Q110 196 110 136V-20" {...line(0)} />
-          <path d="M540 96H290V-20" {...line(250)} />
+      <svg viewBox="-28 -26 348 194" className={className} aria-hidden="true" preserveAspectRatio="xMaxYMid meet">
+        <g fill="none" stroke="currentColor" strokeWidth="9" strokeLinejoin="round">
+          <path d="M94 137.5H40.5Q4.5 137.5 4.5 101.5V40.5Q4.5 4.5 40.5 4.5H287.5" {...line(0)} />
+          <path d="M126 137.5V66.5H199" {...line(200)} />
+          <path d="M211 137.5V66.5H287.5" {...line(300)} />
         </g>
-        <circle cx="468" cy="44" r="11" fill="var(--brand)" opacity="0.6" className={dot} />
+        <text
+          x="286"
+          y="38"
+          textAnchor="end"
+          fill="currentColor"
+          fontFamily="var(--font-barlow), 'Segoe UI', sans-serif"
+          fontSize="17"
+          fontWeight="500"
+          letterSpacing="1.5"
+        >
+          GROUP
+        </text>
+        <circle cx="268" cy="126" r="8.5" fill="var(--brand)" opacity="0.7" className={dot} />
       </svg>
     );
   }
