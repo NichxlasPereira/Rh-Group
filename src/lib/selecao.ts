@@ -51,6 +51,9 @@ export const FEEDBACK_LABEL: Record<FeedbackType, string> = {
 export function feedbackFor(stage: Stage): FeedbackType | null {
   return stage === "fase2" ? "fase2" : stage === "fase3" ? "teste" : stage === "reprovado" ? "reprovacao" : stage === "banco" ? "banco" : null;
 }
+/** Dias que um contratado fica no quadro antes de ser descartado (só a contagem fica na vaga). */
+export const HIRED_KEEP_DAYS = 30;
+
 /** Prazo padrão para dar a devolutiva (dias corridos depois da decisão). */
 export const FEEDBACK_DAYS = 2;
 
@@ -78,6 +81,8 @@ export interface CandidateInfo {
   phase1Date: string | null;
   phase2Date: string | null;
   phase3Date: string | null;
+  /** Data da contratação (30 dias depois, sai do quadro). */
+  hiredAt: string | null;
   notes: string | null;
   feedbackDue: string | null;
   feedbackAt: string | null;
@@ -226,6 +231,11 @@ export function parseCandidate(body: unknown) {
       phase1Date: day(b.phase1Date),
       phase2Date: day(b.phase2Date),
       phase3Date: day(b.phase3Date),
+      // Contratado sem data de contratação: usa a última fase (ou hoje).
+      hiredAt:
+        stage === "contratado"
+          ? (day(b.hiredAt) ?? day(b.phase3Date) ?? day(b.phase2Date) ?? day(b.phase1Date) ?? new Date(`${todayKey()}T00:00:00Z`))
+          : null,
       notes: cleanText(b.notes, 1000) || null,
       feedbackDue: day(b.feedbackDue),
       feedbackAt: day(b.feedbackAt),
@@ -279,6 +289,7 @@ type CandidateRow = {
   phase1Date: Date | null;
   phase2Date: Date | null;
   phase3Date: Date | null;
+  hiredAt: Date | null;
   notes: string | null;
   feedbackDue: Date | null;
   feedbackAt: Date | null;
@@ -297,6 +308,7 @@ export function toCandidateInfo(c: CandidateRow): CandidateInfo {
     phase1Date: isoDay(c.phase1Date),
     phase2Date: isoDay(c.phase2Date),
     phase3Date: isoDay(c.phase3Date),
+    hiredAt: isoDay(c.hiredAt),
     notes: c.notes,
     feedbackDue: isoDay(c.feedbackDue),
     feedbackAt: isoDay(c.feedbackAt),
@@ -312,6 +324,7 @@ export function moveCandidate(c: CandidateInfo, stage: Stage, today: string): Ca
   if (stage === "fase1" && !c.phase1Date) next.phase1Date = today;
   if (stage === "fase2" && !c.phase2Date) next.phase2Date = today;
   if ((stage === "fase3" || stage === "contratado") && !c.phase3Date) next.phase3Date = today;
+  next.hiredAt = stage === "contratado" ? (c.stage === "contratado" ? c.hiredAt : today) : null;
   const fb = feedbackFor(stage);
   if (fb) {
     next.feedbackType = fb;
@@ -320,6 +333,13 @@ export function moveCandidate(c: CandidateInfo, stage: Stage, today: string): Ca
     next.feedbackBy = null;
   }
   return next;
+}
+
+/** Dia em que o contratado sai do quadro (null: não é contratado). */
+export function hiredLeavesOn(c: CandidateInfo): string | null {
+  if (c.stage !== "contratado") return null;
+  const since = c.hiredAt ?? c.phase3Date ?? c.phase2Date ?? c.phase1Date;
+  return since ? addDaysKey(since, HIRED_KEEP_DAYS) : null;
 }
 
 /** Próxima fase do quadro (null: já está na última). */

@@ -19,6 +19,7 @@ import {
   IconDots,
   IconEdit,
   IconFunnel,
+  IconHourglass,
   IconPhone,
   IconPlus,
   IconSearch,
@@ -33,6 +34,7 @@ import {
   FEEDBACK_LABEL,
   FEEDBACK_STATUS_LABEL,
   FEEDBACK_TYPES,
+  HIRED_KEEP_DAYS,
   FeedbackStatus,
   FeedbackTemplate,
   FeedbackType,
@@ -49,6 +51,7 @@ import {
   daysBetween,
   feedbackStatus,
   funnelOf,
+  hiredLeavesOn,
   jobDaysOpen,
   jobHired,
   moveCandidate,
@@ -620,7 +623,7 @@ const COLUMN_HINT: Record<Stage, string> = {
   fase1: "Entrevista com o RH",
   fase2: "Entrevista com coordenadores",
   fase3: "Período de teste",
-  contratado: "Entraram na empresa",
+  contratado: `Saem ${HIRED_KEEP_DAYS} dias após a contratação`,
   reprovado: "Não seguiram no processo",
   desistiu: "Saíram por conta própria",
   banco: "Para chamar em outra vaga",
@@ -1040,6 +1043,8 @@ function CandidateCard({
   const fb = feedbackStatus(c, today);
   const next = nextStage(c.stage);
   const since = stageDate(c);
+  const leaves = hiredLeavesOn(c);
+  const leavesIn = leaves ? Math.max(0, daysBetween(today, leaves)) : null;
 
   useEffect(() => {
     if (!menu) return;
@@ -1082,7 +1087,7 @@ function CandidateCard({
           </span>
         )}
         <span className="pr-6 text-[13.5px] font-medium leading-5 text-ink">{c.name}</span>
-        {(since || c.notes || c.contact || fb === "pendente" || fb === "atrasada" || fb === "no_prazo") && (
+        {(since || leaves || c.notes || c.contact || fb === "pendente" || fb === "atrasada" || fb === "no_prazo") && (
           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted">
             {(fb === "pendente" || fb === "atrasada") && (
               <span
@@ -1110,6 +1115,15 @@ function CandidateCard({
               <span title="Devolutiva dada no prazo" className={`inline-flex items-center gap-1 rounded-[4px] px-1.5 py-px font-semibold ${FEEDBACK_TONE[fb]}`}>
                 <IconCheckCircle className="h-3.5 w-3.5" />
                 Devolutiva
+              </span>
+            )}
+            {leaves && leavesIn !== null && (
+              <span
+                title={`Sai do quadro em ${brDate(leaves)} (${HIRED_KEEP_DAYS} dias após a contratação); a vaga continua contando a contratação.`}
+                className="inline-flex items-center gap-1 rounded-[4px] bg-surface-2 px-1.5 py-px font-semibold"
+              >
+                <IconHourglass className="h-3.5 w-3.5" />
+                {leavesIn <= 1 ? "sai amanhã" : `sai em ${leavesIn} dias`}
               </span>
             )}
             {since && (
@@ -1543,6 +1557,7 @@ function CandidateModal({
     phase1Date: todayKey(),
     phase2Date: null,
     phase3Date: null,
+    hiredAt: null,
     notes: null,
     feedbackDue: null,
     feedbackAt: null,

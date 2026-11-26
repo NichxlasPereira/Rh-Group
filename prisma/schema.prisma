@@ -545,6 +545,7 @@ model JobCandidate {
   phase1Date  DateTime?
   phase2Date  DateTime?
   phase3Date  DateTime? // início na empresa (período de teste)
+  hiredAt     DateTime? // contratação: 30 dias depois o candidato sai do quadro (fica só a contagem na vaga)
   notes       String?
   // Devolutiva ao candidato: prazo, quando foi dada, por quem, tipo e ponderações.
   feedbackDue  DateTime?

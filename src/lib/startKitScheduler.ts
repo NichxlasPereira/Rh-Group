@@ -1,5 +1,6 @@
 import { sendStartKitReminders } from "./startKit";
 import { sendCalendarReminders } from "./calendarReminders";
+import { discardOldHires } from "./selecaoServer";
 
 const HOUR = 60 * 60 * 1000;
 const globalForKit = globalThis as unknown as { startKitTimer?: NodeJS.Timeout };
@@ -13,6 +14,7 @@ export function startStartKitScheduler(): void {
   const run = async () => {
     await sendStartKitReminders().catch((err) => console.error("Lembretes do kit de início:", err));
     await sendCalendarReminders().catch((err) => console.error("Avisos do calendário:", err));
+    await discardOldHires().catch((err) => console.error("Descarte de contratados:", err));
   };
   setTimeout(run, 60_000).unref();
   globalForKit.startKitTimer = setInterval(run, HOUR);
