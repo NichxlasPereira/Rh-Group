@@ -120,15 +120,12 @@ export function ProfileBand({
           {logoEl && <div className="sm:hidden">{logoEl}</div>}
         </div>
 
-        <div className="flex min-w-0 flex-col justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            {eyebrow}
-            {title}
-          </div>
-          <div className="flex min-w-0 flex-col gap-2">
-            {chips}
-            {subtitle}
-          </div>
+        {/* Sobretítulo, nome, etiquetas e cargo num bloco só, alinhados e com o mesmo respiro. */}
+        <div className="flex min-w-0 flex-col justify-center gap-2.5">
+          {eyebrow}
+          {title}
+          {chips}
+          {subtitle}
         </div>
 
         <div className="flex flex-col items-start justify-between gap-4 sm:items-end">

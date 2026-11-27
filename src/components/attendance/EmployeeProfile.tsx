@@ -366,20 +366,20 @@ export function EmployeeProfile({
               <img
                 src={photoUrl}
                 alt={`Foto para crachá de ${employee.name}`}
-                className="h-[96px] w-[96px] rounded-[22px] border-[3px] border-white/85 object-cover sm:h-[124px] sm:w-[124px] sm:rounded-[26px]"
+                className="h-[96px] w-[96px] rounded-full border-[3px] border-white/85 object-cover sm:h-[124px] sm:w-[124px]"
               />
             ) : (
               <div
                 role="img"
                 aria-label={`Sem foto: iniciais de ${employee.name}`}
-                className="flex h-[96px] w-[96px] items-center justify-center rounded-[22px] border-[3px] border-white/85 bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display text-[34px] font-semibold text-white sm:h-[124px] sm:w-[124px] sm:rounded-[26px] sm:text-[44px]"
+                className="flex h-[96px] w-[96px] items-center justify-center rounded-full border-[3px] border-white/85 bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display text-[34px] font-semibold text-white sm:h-[124px] sm:w-[124px] sm:text-[44px]"
               >
                 {initials(employee.name)}
               </div>
             )}
             <span
               aria-hidden="true"
-              className={`absolute -bottom-1 -right-1 h-[24px] w-[24px] rounded-full border-[3px] border-[#4b4d51] ${employee.active ? "bg-ok" : "bg-[#8f9196]"}`}
+              className={`absolute bottom-0.5 right-0.5 h-[24px] w-[24px] rounded-full border-[3px] border-[#4b4d51] ${employee.active ? "bg-ok" : "bg-[#8f9196]"}`}
             />
           </div>
         }
