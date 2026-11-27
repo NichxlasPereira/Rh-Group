@@ -357,7 +357,7 @@ export function EmployeeProfile({
       </button>
 
       {/* Cabeçalho da ficha: faixa grafite do cartão, sempre no tema escuro. */}
-      <ProfileBand brand={brand} showLogo={false} className="flex flex-wrap items-center justify-between gap-5">
+      <ProfileBand brand={brand} className="flex flex-wrap items-center justify-between gap-5">
         <div className="relative flex min-w-0 items-center gap-5">
           <div className="relative shrink-0">
             {photoUrl ? (
