@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "../Button";
-import { IconCalendarPlus, IconChevronDown, IconFile, IconPaperclip } from "../icons";
+import { IconCalendarPlus, IconChevronDown, IconEdit, IconFile, IconPaperclip, IconUserMinus, IconUserPlus } from "../icons";
 import { BrandDot } from "../brand";
 import { BandCompanyLogo, ProfileBand, ProfileBrand } from "./ProfileBand";
 import { companyLogoUrl } from "./CompanyBrandModal";
@@ -357,8 +357,8 @@ export function EmployeeProfile({
       </button>
 
       {/* Cabeçalho da ficha: faixa grafite do cartão, sempre no tema escuro. */}
-      <ProfileBand brand={brand} className="flex flex-wrap items-center justify-between gap-5">
-        <div className="relative flex min-w-0 items-center gap-5">
+      <ProfileBand brand={brand} className="flex items-center gap-5 sm:pr-[300px]">
+        <div className="relative flex min-w-0 flex-col items-start gap-5 sm:flex-row">
           <div className="relative shrink-0">
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -422,29 +422,24 @@ export function EmployeeProfile({
                 </span>
               )}
             </div>
+            {/* Ações embaixo do título, à esquerda, como nas faixas das outras abas (o canto fica para a arte). */}
+            <div className="flex flex-wrap gap-2.5 pt-2.5">
+              <Button variant="ghost" onClick={() => onEdit(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+                <IconEdit className="h-4 w-4" />
+                Editar ficha
+              </Button>
+              <Button variant="ghost" onClick={() => onToggleActive(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+                {employee.active ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
+                {employee.active ? "Desligar" : "Reativar"}
+              </Button>
+              {employee.active && (
+                <Button onClick={() => onRegister(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+                  <IconCalendarPlus className="h-4 w-4" />
+                  Registrar ocorrência
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="relative flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(employee)}
-            className="h-10 rounded-[10px] border border-white/35 px-3.5 text-[13px] font-semibold text-white transition hover:bg-white/10"
-          >
-            Editar ficha
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggleActive(employee)}
-            className="h-10 rounded-[10px] border border-white/35 px-3.5 text-[13px] font-semibold text-white transition hover:bg-white/10"
-          >
-            {employee.active ? "Desligar" : "Reativar"}
-          </button>
-          {employee.active && (
-            <Button onClick={() => onRegister(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-              <IconCalendarPlus className="h-4 w-4" />
-              Registrar ocorrência
-            </Button>
-          )}
         </div>
       </ProfileBand>
 
