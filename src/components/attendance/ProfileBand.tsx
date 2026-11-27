@@ -110,7 +110,7 @@ export function ProfileBand({
       }
     >
       {!branded && (
-        <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[380px] text-white/[0.12] sm:block" />
+        <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-[72%] w-[300px] text-white/[0.12] sm:block" />
       )}
 
       <div className="relative flex flex-col gap-4 sm:grid sm:min-h-[160px] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-0">
