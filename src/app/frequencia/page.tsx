@@ -872,6 +872,7 @@ export default function FrequenciaPage() {
             employees={employees}
             folgaRemaining={folgaRemaining.get(profileId) ?? 0}
             areaNameById={areaNameById}
+            companies={companies}
             onBack={() => setProfileId(null)}
             backLabel={tab === "aniversariantes" ? "Aniversariantes" : "Colaboradores"}
             onEdit={(e) => {

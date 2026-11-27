@@ -4,12 +4,14 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "../Button";
 import { IconCalendarPlus, IconChevronDown, IconFile, IconPaperclip } from "../icons";
-import { BrandArt, BrandDot } from "../brand";
+import { BrandDot } from "../brand";
+import { BandCompanyLogo, ProfileBand, ProfileBrand } from "./ProfileBand";
+import { companyLogoUrl } from "./CompanyBrandModal";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { StartKitCard } from "./StartKitCard";
 import { OccurrencesTable } from "./OccurrencesTable";
 import { EmployeeDocuments, UploadedDocument } from "./EmployeeDocuments";
-import { DocumentStatus } from "@/lib/admission";
+import { ContractingCompanyInfo, DocumentStatus, isGroupSector, sectorName } from "@/lib/admission";
 import { Employee, Occurrence, formatDuration, formatFileSize, minutesBetween, occurrenceDays } from "@/lib/attendance";
 import { formatDateBR } from "@/lib/format";
 import { DISPLAYABLE_IMAGE, isPhotoDocument } from "@/lib/employeeProfile";
@@ -122,6 +124,8 @@ interface EmployeeProfileProps {
   folgaRemaining: number;
   /** Nome das áreas (organograma), para mostrar a da pessoa. */
   areaNameById: Map<string, string>;
+  /** Empresas com CNPJ: a do setor da pessoa dá a arte do topo da ficha. */
+  companies?: ContractingCompanyInfo[];
   onBack: () => void;
   /** Seção para onde "voltar" leva (Colaboradores ou Aniversariantes). */
   backLabel?: string;
@@ -139,6 +143,7 @@ export function EmployeeProfile({
   employees,
   folgaRemaining,
   areaNameById,
+  companies = [],
   onBack,
   backLabel = "Colaboradores",
   onEdit,
@@ -261,6 +266,7 @@ export function EmployeeProfile({
   }
 
   const employee = listed;
+  const brand = profileBrand(companies, employee.department);
   const manager = employee.managerId ? employees.find((e) => e.id === employee.managerId) : undefined;
   const admission = ficha.admission;
   const birth = ficha.record.find((r) => r.key === "birthDate")?.value ?? null;
@@ -351,11 +357,7 @@ export function EmployeeProfile({
       </button>
 
       {/* Cabeçalho da ficha: faixa grafite do cartão, sempre no tema escuro. */}
-      <header
-        data-theme="dark"
-        className="brand-band relative flex flex-wrap items-center justify-between gap-5 overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7"
-      >
-        <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[380px] text-white/[0.12] sm:block" />
+      <ProfileBand brand={brand} showLogo={false} className="flex flex-wrap items-center justify-between gap-5">
         <div className="relative flex min-w-0 items-center gap-5">
           <div className="relative shrink-0">
             {photoUrl ? (
@@ -380,7 +382,8 @@ export function EmployeeProfile({
             />
           </div>
           <div className="flex min-w-0 flex-col gap-2">
-            <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/80">
+            <span className="flex flex-wrap items-center gap-2 font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/80">
+              <BandCompanyLogo brand={brand} />
               Colaborador{employee.department ? ` · ${employee.department}` : ""}
               {employee.areaId && areaNameById.has(employee.areaId)
                 ? ` · ${areaNameById.get(employee.areaId)}${employee.areaLead ? " (responsável)" : ""}`
@@ -443,7 +446,7 @@ export function EmployeeProfile({
             </Button>
           )}
         </div>
-      </header>
+      </ProfileBand>
 
       <nav aria-label="Seções da ficha" className="flex gap-6 overflow-x-auto border-b border-border">
         {tabs.map((t) => (
@@ -703,6 +706,19 @@ export function EmployeeProfile({
 }
 
 const RECORD_OPEN_KEY = "rh-ficha-cadastral-aberta";
+
+/** Arte da empresa do colaborador: a empresa com CNPJ do setor dele (a CFFGROUP fica com a arte da CFF). */
+export function profileBrand(companies: ContractingCompanyInfo[], department: string | null): ProfileBrand | null {
+  if (!department || isGroupSector(department)) return null;
+  const company = companies.find((c) => c.cnpj && sectorName(c) === department);
+  if (!company || (!company.brandColor && !company.logoUpdatedAt)) return null;
+  return {
+    name: sectorName(company),
+    color: company.brandColor ?? null,
+    accent: company.accentColor ?? null,
+    logoUrl: companyLogoUrl(company),
+  };
+}
 
 /** Cartão que recolhe para cima e abre para baixo (sanfona). */
 function CollapsibleCard({
