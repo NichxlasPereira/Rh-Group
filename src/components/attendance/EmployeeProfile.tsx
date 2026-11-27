@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { Button } from "../Button";
 import { IconCalendarPlus, IconChevronDown, IconEdit, IconFile, IconPaperclip, IconUserMinus, IconUserPlus } from "../icons";
 import { BrandDot } from "../brand";
-import { BandCompanyLogo, ProfileBand, ProfileBrand } from "./ProfileBand";
+import { ProfileBand, ProfileBrand } from "./ProfileBand";
 import { companyLogoUrl } from "./CompanyBrandModal";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { StartKitCard } from "./StartKitCard";
@@ -356,92 +356,97 @@ export function EmployeeProfile({
         ← {backLabel}
       </button>
 
-      {/* Cabeçalho da ficha: faixa grafite do cartão, sempre no tema escuro. */}
-      <ProfileBand brand={brand} className="flex items-center gap-5 sm:pr-[300px]">
-        <div className="relative flex min-w-0 flex-col items-start gap-5 sm:flex-row">
+      {/* Cabeçalho da ficha: arte da empresa (ou da CFF), no arranjo definido pelo RH. */}
+      <ProfileBand
+        brand={brand}
+        photo={
           <div className="relative shrink-0">
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={photoUrl}
                 alt={`Foto para crachá de ${employee.name}`}
-                className="h-[104px] w-[104px] rounded-[22px] border-[3px] border-white/85 object-cover"
+                className="h-[96px] w-[96px] rounded-[22px] border-[3px] border-white/85 object-cover sm:h-[124px] sm:w-[124px] sm:rounded-[26px]"
               />
             ) : (
               <div
                 role="img"
                 aria-label={`Sem foto: iniciais de ${employee.name}`}
-                className="flex h-[104px] w-[104px] items-center justify-center rounded-[22px] border-[3px] border-white/85 bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display text-[38px] font-semibold text-white"
+                className="flex h-[96px] w-[96px] items-center justify-center rounded-[22px] border-[3px] border-white/85 bg-gradient-to-b from-[#8a8c90] to-[#3a3b3f] font-display text-[34px] font-semibold text-white sm:h-[124px] sm:w-[124px] sm:rounded-[26px] sm:text-[44px]"
               >
                 {initials(employee.name)}
               </div>
             )}
             <span
               aria-hidden="true"
-              className={`absolute -bottom-1 -right-1 h-[22px] w-[22px] rounded-full border-[3px] border-[#4b4d51] ${employee.active ? "bg-ok" : "bg-[#8f9196]"}`}
+              className={`absolute -bottom-1 -right-1 h-[24px] w-[24px] rounded-full border-[3px] border-[#4b4d51] ${employee.active ? "bg-ok" : "bg-[#8f9196]"}`}
             />
           </div>
-          <div className="flex min-w-0 flex-col gap-2">
-            <span className="flex flex-wrap items-center gap-2 font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/80">
-              <BandCompanyLogo brand={brand} />
-              Colaborador{employee.department ? ` · ${employee.department}` : ""}
-              {employee.areaId && areaNameById.has(employee.areaId)
-                ? ` · ${areaNameById.get(employee.areaId)}${employee.areaLead ? " (responsável)" : ""}`
-                : ""}
-              {manager ? ` · responde a ${manager.name}` : ""}
+        }
+        eyebrow={
+          <span className="font-display text-[11.5px] font-medium uppercase tracking-[0.2em] text-white/80">
+            Colaborador{employee.department ? ` · ${employee.department}` : ""}
+            {employee.areaId && areaNameById.has(employee.areaId)
+              ? ` · ${areaNameById.get(employee.areaId)}${employee.areaLead ? " (responsável)" : ""}`
+              : ""}
+            {manager ? ` · responde a ${manager.name}` : ""}
+          </span>
+        }
+        title={
+          <h1 className="font-display text-[30px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[36px]">
+            {employee.name}
+            <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
+          </h1>
+        }
+        chips={
+          <div className="flex flex-wrap gap-1.5">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${employee.active ? "bg-ok/20 text-[#9ff0c9]" : "bg-white/10 text-white/80"}`}>
+              {employee.active ? "Ativo" : "Desligado"}
             </span>
-            <h1 className="font-display text-[32px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[38px]">
-              {employee.name}
-              <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
-            </h1>
-            <span className="text-sm text-white/90">
-              {employee.role || "Cargo não informado"}
-              {employee.startDate ? (
-                <>
-                  {" · na empresa há "}
-                  <strong className="text-white">{tenure(employee.startDate)}</strong>
-                </>
-              ) : (
-                " · entrada não informada"
-              )}
-            </span>
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${employee.active ? "bg-ok/20 text-[#9ff0c9]" : "bg-white/10 text-white/80"}`}
-              >
-                {employee.active ? "Ativo" : "Desligado"}
+            {(employee.contractType || companyName) && (
+              <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white">
+                {[employee.contractType, companyName].filter(Boolean).join(" · ")}
               </span>
-              {(employee.contractType || companyName) && (
-                <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white">
-                  {[employee.contractType, companyName].filter(Boolean).join(" · ")}
-                </span>
-              )}
-              {employee.startDate && (
-                <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white">
-                  Entrada {formatDateBR(employee.startDate)}
-                </span>
-              )}
-            </div>
-            {/* Ações embaixo do título, à esquerda, como nas faixas das outras abas (o canto fica para a arte). */}
-            <div className="flex flex-wrap gap-2.5 pt-2.5">
-              <Button variant="ghost" onClick={() => onEdit(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-                <IconEdit className="h-4 w-4" />
-                Editar ficha
-              </Button>
-              <Button variant="ghost" onClick={() => onToggleActive(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-                {employee.active ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
-                {employee.active ? "Desligar" : "Reativar"}
-              </Button>
-              {employee.active && (
-                <Button onClick={() => onRegister(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-                  <IconCalendarPlus className="h-4 w-4" />
-                  Registrar ocorrência
-                </Button>
-              )}
-            </div>
+            )}
+            {employee.startDate && (
+              <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white">
+                Entrada {formatDateBR(employee.startDate)}
+              </span>
+            )}
           </div>
-        </div>
-      </ProfileBand>
+        }
+        subtitle={
+          <span className="text-[13px] text-white/90">
+            {employee.role || "Cargo não informado"}
+            {employee.startDate ? (
+              <>
+                {" · na empresa há "}
+                <strong className="text-white">{tenure(employee.startDate)}</strong>
+              </>
+            ) : (
+              " · entrada não informada"
+            )}
+          </span>
+        }
+        actions={
+          <div className="flex flex-wrap gap-2.5 sm:justify-end">
+            <Button variant="ghost" onClick={() => onEdit(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+              <IconEdit className="h-4 w-4" />
+              Editar ficha
+            </Button>
+            <Button variant="ghost" onClick={() => onToggleActive(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+              {employee.active ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
+              {employee.active ? "Desligar" : "Reativar"}
+            </Button>
+            {employee.active && (
+              <Button onClick={() => onRegister(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
+                <IconCalendarPlus className="h-4 w-4" />
+                Registrar ocorrência
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       <nav aria-label="Seções da ficha" className="flex gap-6 overflow-x-auto border-b border-border">
         {tabs.map((t) => (

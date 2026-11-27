@@ -15,11 +15,12 @@ export interface ProfileBrand {
 }
 
 /**
- * Logo em traço claro, como a arte da CFF na faixa: tira o fundo branco e pinta o resto
- * de branco, com a transparência proporcional à "tinta" de cada ponto (branco some,
- * cores e escuros ficam). null enquanto processa ou se não der para ler a imagem.
+ * Logo pronta para o fundo escuro da faixa: o fundo branco some (transparência pela
+ * "tinta" de cada ponto) e as partes muito escuras (texto preto ou azul-marinho, que
+ * sumiriam no fundo) ficam brancas; as cores da marca continuam como são.
+ * null enquanto processa ou se não der para ler a imagem.
  */
-function useLogoSilhouette(url: string | null): string | null {
+function useBandLogo(url: string | null): string | null {
   const [result, setResult] = useState<{ url: string; data: string | null } | null>(null);
   useEffect(() => {
     if (!url) return;
@@ -40,10 +41,11 @@ function useLogoSilhouette(url: string | null): string | null {
         const pixels = ctx.getImageData(0, 0, w, h);
         const d = pixels.data;
         for (let i = 0; i < d.length; i += 4) {
-          const ink = 1 - Math.min(d[i], d[i + 1], d[i + 2]) / 255;
-          const alpha = (d[i + 3] / 255) * Math.min(1, ink * 1.6);
-          d[i] = d[i + 1] = d[i + 2] = 255;
-          d[i + 3] = Math.round(alpha * 255);
+          const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+          const ink = 1 - Math.min(r, g, b) / 255;
+          d[i + 3] = Math.round((d[i + 3] / 255) * Math.min(1, ink * 1.6) * 255);
+          const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+          if (luminance < 0.3) d[i] = d[i + 1] = d[i + 2] = 255;
         }
         ctx.putImageData(pixels, 0, 0);
         if (alive) setResult({ url, data: canvas.toDataURL("image/png") });
@@ -61,29 +63,44 @@ function useLogoSilhouette(url: string | null): string | null {
 }
 
 /**
- * Faixa do topo do perfil com a arte da empresa: o fundo nas cores da marca (escurecidas
- * para o texto branco continuar legível), a logo em traço claro no canto direito (do tamanho
- * da arte da CFF) e a faixa das cores embaixo. Sem identidade cadastrada (ou CFFGROUP),
- * fica a faixa grafite com o logo da CFF.
+ * Faixa do topo do perfil (ficha do RH e portal), no arranjo definido pelo RH:
+ * foto grande à esquerda; no meio, o sobretítulo e o nome em cima e as etiquetas e o
+ * cargo embaixo; à direita, a logo colorida da empresa no alto e as ações embaixo.
+ * Com identidade da empresa, o fundo fica nas cores da marca (escurecidas para o texto
+ * branco continuar legível) com a faixa das cores no pé; sem ela (ou CFFGROUP), fica
+ * a faixa grafite com a arte da CFF.
  */
 export function ProfileBand({
   brand,
-  className = "",
-  children,
+  photo,
+  eyebrow,
+  title,
+  chips,
+  subtitle,
+  actions,
 }: {
   brand: ProfileBrand | null;
-  className?: string;
-  children: React.ReactNode;
+  photo: React.ReactNode;
+  eyebrow: React.ReactNode;
+  title: React.ReactNode;
+  chips: React.ReactNode;
+  subtitle: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   const color = brand?.color ?? null;
   const branded = Boolean(brand && (color || brand.logoUrl));
-  const silhouette = useLogoSilhouette(branded ? (brand?.logoUrl ?? null) : null);
+  const logo = useBandLogo(branded ? (brand?.logoUrl ?? null) : null);
+  const logoEl = logo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={logo} alt={brand ? `Logo ${brand.name}` : ""} className="h-9 w-auto max-w-[170px] object-contain object-right sm:h-[52px] sm:max-w-[240px]" />
+  ) : null;
+
   return (
     <header
       data-theme="dark"
-      className={`relative overflow-clip rounded-[18px] px-5 py-6 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-7 ${
+      className={`relative overflow-clip rounded-[18px] px-5 pb-6 pt-5 text-ink shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)] sm:px-6 ${
         branded && color ? "" : "brand-band"
-      } ${className}`}
+      }`}
       style={
         branded && color
           ? {
@@ -92,31 +109,37 @@ export function ProfileBand({
           : undefined
       }
     >
-      {branded ? (
-        silhouette && (
-          <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[380px] items-center justify-end py-[22px] pr-7 sm:flex">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={silhouette} alt="" className="max-h-full max-w-full object-contain opacity-[0.16]" />
-          </div>
-        )
-      ) : (
+      {!branded && (
         <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[380px] text-white/[0.12] sm:block" />
       )}
-      {children}
+
+      <div className="relative flex flex-col gap-4 sm:grid sm:min-h-[150px] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-0">
+        {/* Celular: foto e logo na mesma linha; computador: a foto ocupa a altura da faixa. */}
+        <div className="flex items-start justify-between gap-4 sm:items-center">
+          {photo}
+          {logoEl && <div className="sm:hidden">{logoEl}</div>}
+        </div>
+
+        <div className="flex min-w-0 flex-col justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            {eyebrow}
+            {title}
+          </div>
+          <div className="flex min-w-0 flex-col gap-2">
+            {chips}
+            {subtitle}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-start justify-between gap-4 sm:items-end">
+          {logoEl ? <div className="hidden sm:block">{logoEl}</div> : <span className="hidden sm:block" />}
+          {actions}
+        </div>
+      </div>
+
       {branded && color && (
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1.5" style={{ background: brandStripe(color, brand?.accent) }} />
       )}
     </header>
-  );
-}
-
-/** Logo pequena da empresa no título da faixa, só no celular (lá a arte do canto não aparece). */
-export function BandCompanyLogo({ brand }: { brand: ProfileBrand | null }) {
-  if (!brand?.logoUrl) return null;
-  return (
-    <span className="inline-flex h-7 shrink-0 items-center rounded-[7px] bg-white px-2 sm:hidden">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={brand.logoUrl} alt={`Logo ${brand.name}`} className="h-5 w-auto max-w-[96px] object-contain" />
-    </span>
   );
 }
