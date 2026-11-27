@@ -113,7 +113,7 @@ export function ProfileBand({
         <BrandArt variant="band" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[380px] text-white/[0.12] sm:block" />
       )}
 
-      <div className="relative flex flex-col gap-4 sm:grid sm:min-h-[150px] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-0">
+      <div className="relative flex flex-col gap-4 sm:grid sm:min-h-[160px] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-6 sm:gap-y-0">
         {/* Celular: foto e logo na mesma linha; computador: a foto ocupa a altura da faixa. */}
         <div className="flex items-start justify-between gap-4 sm:items-center">
           {photo}
