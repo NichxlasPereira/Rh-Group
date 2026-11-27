@@ -393,7 +393,7 @@ export function EmployeeProfile({
           </span>
         }
         title={
-          <h1 className="font-display text-[30px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[36px]">
+          <h1 className="-ml-[0.06em] font-display text-[30px] font-semibold uppercase leading-none tracking-[0.02em] text-white sm:text-[36px]">
             {employee.name}
             <BrandDot className="ml-1 h-2.5 w-2.5 align-baseline" />
           </h1>
