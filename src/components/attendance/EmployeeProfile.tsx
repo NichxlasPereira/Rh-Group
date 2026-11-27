@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Button } from "../Button";
 import { IconCalendarPlus, IconChevronDown, IconEdit, IconFile, IconPaperclip, IconUserMinus, IconUserPlus } from "../icons";
 import { BrandDot } from "../brand";
 import { ProfileBand, ProfileBrand } from "./ProfileBand";
+import { ProfileActions } from "./ProfileActions";
 import { companyLogoUrl } from "./CompanyBrandModal";
 import { DocumentStatusBadge } from "../admission/DocumentStatusBadge";
 import { StartKitCard } from "./StartKitCard";
@@ -429,22 +429,17 @@ export function EmployeeProfile({
           </span>
         }
         actions={
-          <div className="flex flex-wrap gap-2.5 sm:justify-end">
-            <Button variant="ghost" onClick={() => onEdit(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-              <IconEdit className="h-4 w-4" />
-              Editar ficha
-            </Button>
-            <Button variant="ghost" onClick={() => onToggleActive(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-              {employee.active ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
-              {employee.active ? "Desligar" : "Reativar"}
-            </Button>
-            {employee.active && (
-              <Button onClick={() => onRegister(employee)} className="!h-10 !rounded-[10px] !px-4 !py-0 text-[13px]">
-                <IconCalendarPlus className="h-4 w-4" />
-                Registrar ocorrência
-              </Button>
-            )}
-          </div>
+          <ProfileActions
+            actions={[
+              ...(employee.active
+                ? [{ label: "Registrar ocorrência", icon: <IconCalendarPlus className="h-4 w-4" />, onClick: () => onRegister(employee) }]
+                : []),
+              { label: "Editar ficha", icon: <IconEdit className="h-4 w-4" />, onClick: () => onEdit(employee) },
+              employee.active
+                ? { label: "Desligar", icon: <IconUserMinus className="h-4 w-4" />, onClick: () => onToggleActive(employee), danger: true }
+                : { label: "Reativar", icon: <IconUserPlus className="h-4 w-4" />, onClick: () => onToggleActive(employee) },
+            ]}
+          />
         }
       />
 
